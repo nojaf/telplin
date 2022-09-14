@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.Core.Tests", "Autograph.Core.Tests\Autograph.Core.Tests.fsproj", "{008D3316-3B23-4C6D-A9BF-183B4397768B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.TypedTree", "Autograph.TypedTree\Autograph.TypedTree.fsproj", "{9B012915-8BC1-4CDB-AAB4-FA3695345028}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.UntypedTree", "Autograph.UntypedTree\Autograph.UntypedTree.fsproj", "{1FE631B1-AEA9-4235-B1EC-12E2B03281E4}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.Common", "Autograph.Common\Autograph.Common.fsproj", "{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{008D3316-3B23-4C6D-A9BF-183B4397768B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{008D3316-3B23-4C6D-A9BF-183B4397768B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{008D3316-3B23-4C6D-A9BF-183B4397768B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{008D3316-3B23-4C6D-A9BF-183B4397768B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B012915-8BC1-4CDB-AAB4-FA3695345028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B012915-8BC1-4CDB-AAB4-FA3695345028}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B012915-8BC1-4CDB-AAB4-FA3695345028}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B012915-8BC1-4CDB-AAB4-FA3695345028}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FE631B1-AEA9-4235-B1EC-12E2B03281E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FE631B1-AEA9-4235-B1EC-12E2B03281E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FE631B1-AEA9-4235-B1EC-12E2B03281E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FE631B1-AEA9-4235-B1EC-12E2B03281E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
