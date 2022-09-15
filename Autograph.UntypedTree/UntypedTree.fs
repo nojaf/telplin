@@ -270,7 +270,7 @@ and mkSynTypeDefnSig
         | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
             SynTypeDefnSigRepr.Simple (synTypeDefnSimpleRepr, zeroRange)
         | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, range) ->
-            let members = []
+            let members = List.choose (mkSynMemberSig resolver) synMemberDefns
             SynTypeDefnSigRepr.ObjectModel (synTypeDefnKind, members, zeroRange)
         | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
 
@@ -305,3 +305,24 @@ and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModu
             EqualsRange = trivia.EqualsRange
         }
     )
+
+and mkSynMemberSig resolver (md : SynMemberDefn) : SynMemberSig option =
+    match md with
+    | SynMemberDefn.ValField (fieldInfo, _range) -> Some (SynMemberSig.ValField (fieldInfo, zeroRange))
+    | SynMemberDefn.Member (SynBinding(valData = SynValData (memberFlags = memberFlags)) as binding, _range) ->
+        if Option.isNone memberFlags then
+            failwith "SynMemberDefn.Member does not have memberFlags"
+
+        let valSig = mkSynValSig resolver binding
+        Some (SynMemberSig.Member (valSig, memberFlags.Value, zeroRange))
+    | SynMemberDefn.AbstractSlot (synValSig, synMemberFlags, _range) ->
+        Some (SynMemberSig.Member (synValSig, synMemberFlags, zeroRange))
+    | SynMemberDefn.AutoProperty _
+    | SynMemberDefn.GetSetMember _
+    | SynMemberDefn.ImplicitCtor _
+    | SynMemberDefn.ImplicitInherit _
+    | SynMemberDefn.Inherit _
+    | SynMemberDefn.Interface _
+    | SynMemberDefn.LetBindings _
+    | SynMemberDefn.Open _
+    | SynMemberDefn.NestedType _ -> failwith "todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9"

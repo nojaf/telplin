@@ -9,7 +9,6 @@ type ParameterTypeName =
     | WithGenericArguments of name : string * args : ParameterTypeName list
     | Tuple of types : ParameterTypeName list
 
-[<Struct>]
 type RangeProxy =
     struct
         val StartLine : int

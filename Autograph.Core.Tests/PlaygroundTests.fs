@@ -236,7 +236,9 @@ let projectOptions =
         Stamp = None
     }
 
+#if DEBUG
 [<Test>]
+#endif
 let ``real world`` () =
     let code = File.ReadAllText typesFile
     let sourceText = SourceText.ofString code
@@ -260,22 +262,16 @@ type ParameterTypeName =
     | WithGenericArguments of name: string * args: ParameterTypeName list
     | Tuple of types: ParameterTypeName list
 
-[<Struct>]
 type RangeProxy =
-
-    new: startLine: int * startColumn: int * endLine: int * endColumn: int -> RangeProxy
-
-    val StartLine: int
-
-    val StartColumn: int
-
-    val EndLine: int
-
-    val EndColumn: int
+    struct
+        val StartLine: int
+        val StartColumn: int
+        val EndLine: int
+        val EndColumn: int
+        new: startLine: int * startColumn: int * endLine: int * endColumn: int -> RangeProxy
+    end
 
 type TypedTreeInfoResolver =
-
-    abstract GetReturnTypeFor: range: RangeProxy -> ParameterTypeName
-
-    abstract GetTypeNameFor: range: RangeProxy -> ParameterTypeName
+    abstract member GetTypeNameFor: range: RangeProxy -> ParameterTypeName
+    abstract member GetReturnTypeFor: range: RangeProxy -> ParameterTypeName
 """
