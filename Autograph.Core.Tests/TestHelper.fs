@@ -9,5 +9,5 @@ let shouldEqualWithPrepend (other : string) (this : string) =
     Assert.AreEqual (other, this)
 
 let mkSignature code =
-    let resolver = Autograph.TypedTree.Resolver.mkResolver code
+    let resolver = Autograph.TypedTree.Resolver.mkResolverForCode code
     Autograph.UntypedTree.Writer.mkSignatureFile resolver code

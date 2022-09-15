@@ -90,26 +90,7 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
     else
         failwith "todo 4A2A9BDE-1AEB-49FF-B1FD-E57C2D9ADFBA"
 
-let mkResolver (code : string) : TypedTreeInfoResolver =
-    let sourceFileName = "A.fs"
-
-    let projectOptions : FSharpProjectOptions =
-        {
-            ProjectFileName = "A"
-            ProjectId = None
-            SourceFiles = [| sourceFileName |]
-            OtherOptions = [||]
-            ReferencedProjects = [||]
-            IsIncompleteTypeCheckEnvironment = false
-            UseScriptResolutionRules = false
-            LoadTime = DateTime.Now
-            UnresolvedReferences = None
-            OriginalLoadReferences = []
-            Stamp = None
-        }
-
-    let sourceText = SourceText.ofString code
-
+let mkResolverFor sourceFileName sourceText projectOptions =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
         |> Async.RunSynchronously
@@ -145,3 +126,25 @@ let mkResolver (code : string) : TypedTreeInfoResolver =
                     | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
         }
     | FSharpCheckFileAnswer.Aborted -> failwith "type checking aborted"
+
+let mkResolverForCode (code : string) : TypedTreeInfoResolver =
+    let sourceFileName = "A.fs"
+
+    let projectOptions : FSharpProjectOptions =
+        {
+            ProjectFileName = "A"
+            ProjectId = None
+            SourceFiles = [| sourceFileName |]
+            OtherOptions = [||]
+            ReferencedProjects = [||]
+            IsIncompleteTypeCheckEnvironment = false
+            UseScriptResolutionRules = false
+            LoadTime = DateTime.Now
+            UnresolvedReferences = None
+            OriginalLoadReferences = []
+            Stamp = None
+        }
+
+    let sourceText = SourceText.ofString code
+
+    mkResolverFor sourceFileName sourceText projectOptions
