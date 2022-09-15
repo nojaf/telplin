@@ -8,11 +8,11 @@ open NUnit.Framework
 open TestHelper
 
 let targetFile =
-    @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\UntypedTree.fs"
+    @"C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\TypedTree.fs"
 
 let compilerArgs =
     [|
-        @"-o:C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.dll"
+        @"-o:C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\obj\Debug\net7.0\Autograph.TypedTree.dll"
         @"-g"
         @"--debug:portable"
         @"--noframework"
@@ -31,15 +31,18 @@ let compilerArgs =
         @"--define:NETCOREAPP2_2_OR_GREATER"
         @"--define:NETCOREAPP3_0_OR_GREATER"
         @"--define:NETCOREAPP3_1_OR_GREATER"
-        @"--doc:C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.xml"
+        @"--doc:C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\obj\Debug\net7.0\Autograph.TypedTree.xml"
         @"--optimize-"
         @"--tailcalls-"
         @"-r:C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\ref\Autograph.Common.dll"
-        @"-r:C:\Users\nojaf\.nuget\packages\fantomas.core\5.0.0-beta-010\lib\netstandard2.0\Fantomas.Core.dll"
-        @"-r:C:\Users\nojaf\.nuget\packages\fantomas.fcs\5.0.0-beta-010\lib\netstandard2.0\Fantomas.FCS.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\fsharp.compiler.service\41.0.6\lib\netstandard2.0\FSharp.Compiler.Service.dll"
         @"-r:C:\Users\nojaf\.nuget\packages\fsharp.core\6.0.6\lib\netstandard2.1\FSharp.Core.dll"
-        @"-r:C:\Users\nojaf\.nuget\packages\fslexyacc.runtime\10.2.0\lib\netstandard2.0\FsLexYacc.Runtime.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\fsharp.compiler.service\41.0.6\lib\netstandard2.0\FSharp.DependencyManager.Nuget.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\microsoft.build.framework\17.0.0\lib\netstandard2.0\Microsoft.Build.Framework.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\microsoft.build.tasks.core\17.0.0\lib\netstandard2.0\Microsoft.Build.Tasks.Core.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\microsoft.build.utilities.core\17.0.0\lib\netstandard2.0\Microsoft.Build.Utilities.Core.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.CSharp.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\microsoft.net.stringtools\1.0.0\lib\netstandard2.0\Microsoft.NET.StringTools.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.VisualBasic.Core.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.VisualBasic.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.Win32.Primitives.dll"
@@ -48,6 +51,7 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\netstandard.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.AppContext.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Buffers.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.codedom\4.4.0\ref\netstandard2.0\System.CodeDom.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Collections.Concurrent.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Collections.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Collections.Immutable.dll"
@@ -59,6 +63,9 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.EventBasedAsync.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.Primitives.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.TypeConverter.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.configuration.configurationmanager\4.7.0\ref\netstandard2.0\System.Configuration.ConfigurationManager.dll"
+        @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Configuration.dll"
+        @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Console.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Core.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Data.Common.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Data.DataSetExtensions.dll"
@@ -133,6 +140,7 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Reflection.Metadata.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Reflection.Primitives.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Reflection.TypeExtensions.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.resources.extensions\4.6.0\ref\netstandard2.0\System.Resources.Extensions.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Resources.Reader.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Resources.ResourceManager.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Resources.Writer.dll"
@@ -160,9 +168,12 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Cryptography.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Cryptography.Encoding.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Cryptography.OpenSsl.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.security.cryptography.pkcs\4.7.0\ref\netcoreapp3.0\System.Security.Cryptography.Pkcs.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Cryptography.Primitives.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Cryptography.X509Certificates.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.security.cryptography.xml\4.7.0\ref\netstandard2.0\System.Security.Cryptography.Xml.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.security.permissions\4.7.0\ref\netcoreapp3.0\System.Security.Permissions.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Principal.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.Principal.Windows.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Security.SecureString.dll"
@@ -190,6 +201,7 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Web.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Web.HttpUtility.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Windows.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\system.windows.extensions\4.7.0\ref\netcoreapp3.0\System.Windows.Extensions.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Xml.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Xml.Linq.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Xml.ReaderWriter.dll"
@@ -211,9 +223,10 @@ let compilerArgs =
         @"--nocopyfsharpcore"
         @"--deterministic+"
         @"--simpleresolution"
-        @"--refout:obj\Debug\net7.0\refint\Autograph.UntypedTree.dll"
-        @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\.NETCoreApp,Version=v7.0.AssemblyAttributes.fs"
-        @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.AssemblyInfo.fs"
+        @"--refout:obj\Debug\net7.0\refint\Autograph.TypedTree.dll"
+        @"C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\obj\Debug\net7.0\.NETCoreApp,Version=v7.0.AssemblyAttributes.fs"
+        @"C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\obj\Debug\net7.0\Autograph.TypedTree.AssemblyInfo.fs"
+        @"C:\Users\nojaf\Projects\autograph\Autograph.TypedTree\TypedTree.fs"
         targetFile
     |]
 
@@ -254,51 +267,21 @@ let ``real world`` () =
     signature
     |> shouldEqualWithPrepend
         """
-module Autograph.UntypedTree.Writer
-open System.IO
-open FSharp.Compiler.Syntax
-open FSharp.Compiler.SyntaxTrivia
-open Autograph.Common
+module Autograph.TypedTree.Resolver
+open System
 open FSharp.Compiler.Text
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Symbols
+open Autograph.Common
 
-val zeroRange: range
-val mkSynTypeFun: types: SynType list -> SynType
-val mkSynTypeParen: t: SynType -> SynType
-val mkSynTypeTuple: mkType: ('a -> SynType) -> ts: 'a list -> SynType
-val mkSynTypeOfParameterTypeName: p: ParameterTypeName -> SynType
+val equalProxyRange: proxyRange: RangeProxy -> m: range -> bool
+val checker: FSharpChecker
+val getTypeName: t: FSharpType -> string
+val transformToFSharpCoreAlias: fe: FSharpEntity -> string
+val mkParameterTypeName: t: FSharpType -> ParameterTypeName
 
-type Range with
+val mkResolverFor:
+    sourceFileName: string -> sourceText: ISourceText -> projectOptions: FSharpProjectOptions -> TypedTreeInfoResolver
 
-    member ToProxy: unit -> RangeProxy
-
-val (|NewConstructorPattern|_|):
-    memberFlags: SynMemberFlags option * headPat: SynPat -> (SynLongIdent * SynArgPats * SynAccess option) option
-
-val (|RemoveParensInPat|): pat: SynPat -> SynPat
-val collectInfoFromSynArgPats: argPats: SynArgPats -> Map<string, SynType>
-val mkSignatureFile: resolver: TypedTreeInfoResolver -> code: string -> string
-val mkSynModuleOrNamespaceSig: resolver: TypedTreeInfoResolver -> SynModuleOrNamespace -> SynModuleOrNamespaceSig
-val mkSynModuleSigDecl: resolver: TypedTreeInfoResolver -> decl: SynModuleDecl -> SynModuleSigDecl list
-val mkSynValSig: resolver: TypedTreeInfoResolver -> SynBinding -> SynValSig
-
-val mkSynTypeForArity:
-    resolver: TypedTreeInfoResolver ->
-    mBindingName: range ->
-    arity: SynArgInfo list list ->
-    existingTypedParameters: Map<string, SynType> ->
-    existingReturnType: SynType option ->
-        SynType
-
-val mkSynTypeDefnSig: resolver: TypedTreeInfoResolver -> SynTypeDefn -> SynTypeDefnSig
-val mkSynExceptionDefn: resolver: TypedTreeInfoResolver -> SynExceptionDefn -> SynExceptionSig
-
-val mkSynModuleSigDeclNestedModule:
-    resolver: TypedTreeInfoResolver ->
-    synComponentInfo: SynComponentInfo ->
-    isRecursive: bool ->
-    synModuleDecls: SynModuleDecl list ->
-    trivia: SynModuleDeclNestedModuleTrivia ->
-        SynModuleSigDecl
-
-val mkSynMemberSig: resolver: TypedTreeInfoResolver -> md: SynMemberDefn -> SynMemberSig option
+val mkResolverForCode: code: string -> TypedTreeInfoResolver
 """

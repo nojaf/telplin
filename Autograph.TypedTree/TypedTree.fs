@@ -71,7 +71,7 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
                 else
                     mkParameterTypeName ga
 
-            let pt = ParameterTypeName.SingleIdentifier (t.TypeDefinition.DisplayName)
+            let pt = ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
             ParameterTypeName.PostFix (mt, pt)
         else
             let args =
@@ -143,7 +143,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                     // Assume unit
                     ParameterTypeName.SingleIdentifier "unit"
                 else
-                    mkParameterTypeName (valSymbol.CurriedParameterGroups.[index].[0].Type)
+                    mkParameterTypeName valSymbol.CurriedParameterGroups.[index].[0].Type
         }
     | FSharpCheckFileAnswer.Aborted -> failwith "type checking aborted"
 

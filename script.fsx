@@ -1,6 +1,7 @@
 open System
 open System.IO
 
+let pwd = Directory.GetCurrentDirectory()
 let isPipedInput = Console.IsInputRedirected
 let fsharpFiles = set [| ".fs"; ".fsi"; ".fsx" |]
 
@@ -9,12 +10,12 @@ let processLine (line: string) =
 
     if line.Contains("-o:obj") then
         let idx = line.IndexOf("-o:")
-        $"-o:{__SOURCE_DIRECTORY__}\\{line.Substring(idx + 3)}"
+        $"-o:{pwd}\\{line.Substring(idx + 3)}"
     elif fsharpFiles.Contains(Path.GetExtension(line)) then
-        $"{__SOURCE_DIRECTORY__}\\{line}"
+        $"{pwd}\\{line}"
     elif line.StartsWith("--doc:") then
         let path = line.Split([| "--doc:" |], StringSplitOptions.RemoveEmptyEntries).[0]
-        $"--doc:{__SOURCE_DIRECTORY__}\\{path}"
+        $"--doc:{pwd}\\{path}"
     else
         line
 
