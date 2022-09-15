@@ -11,6 +11,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.UntypedTree", "Au
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph.Common", "Autograph.Common\Autograph.Common.fsproj", "{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Autograph", "Autograph\Autograph.fsproj", "{5E4DB2FC-7D68-4F81-B193-843C480C1D57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F2ADC2E-113E-423F-BAEA-84E7A62FD8A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E4DB2FC-7D68-4F81-B193-843C480C1D57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E4DB2FC-7D68-4F81-B193-843C480C1D57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E4DB2FC-7D68-4F81-B193-843C480C1D57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E4DB2FC-7D68-4F81-B193-843C480C1D57}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

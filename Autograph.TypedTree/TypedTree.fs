@@ -145,7 +145,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                 else
                     mkParameterTypeName valSymbol.CurriedParameterGroups.[index].[0].Type
         }
-    | FSharpCheckFileAnswer.Aborted -> failwith "type checking aborted"
+    | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
 let mkResolverForCode (code : string) : TypedTreeInfoResolver =
     let sourceFileName = "A.fs"

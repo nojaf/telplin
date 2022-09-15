@@ -6,6 +6,7 @@ It's a bit of secret for now.
 
 dotnet build -v n /m:1 --no-incremental  | dotnet fsi .\script.fsx
 dotnet build -v n /m:1 --no-incremental  --no-dependencies | dotnet fsi ..\script.fsx
+C:/Users/nojaf/Projects/autograph/Autograph/bin/Debug/net7.0/autograph.exe
 
 ## Ideas
 

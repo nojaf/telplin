@@ -1,5 +1,6 @@
 ﻿module Autograph.Core.Tests.TypeTests
 
+open System
 open NUnit.Framework
 open TestHelper
 
@@ -119,4 +120,91 @@ module Hej
 type System.Int32 with
 
     member PlusPlus: unit -> int
+"""
+
+[<Test>]
+let ``type with nested interface`` () =
+    mkSignature
+        """
+namespace Hej
+
+open System
+        
+type A =
+    { B: int }
+    interface IDisposable with
+        member this.Dispose () = ()
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace Hej
+open System
+
+type A =
+    { B: int }
+
+    interface IDisposable
+"""
+
+[<Test>]
+let ``interface that inherits an interface`` () =
+    mkSignature
+        """
+namespace B
+
+type A =
+    interface
+        inherit IDisposable
+    end
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace B
+
+type A =
+    interface
+        inherit IDisposable
+    end
+"""
+
+[<Test>]
+let ``static member value`` () =
+    mkSignature
+        """
+namespace X
+
+type State =
+    {
+        Files : string list
+    }
+
+    static member Empty : State = { Files = [] }
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace X
+
+type State =
+    { Files: string list }
+
+    static member Empty: State
+"""
+
+[<Test>]
+let ``empty class with constructor`` () =
+    mkSignature
+        """
+namespace X
+
+type LSPFantomasService() =
+    class end
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace X
+
+type LSPFantomasService =
+    class
+        new: unit -> LSPFantomasService
+    end
 """
