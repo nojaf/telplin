@@ -51,13 +51,29 @@ let rec mkSynTypeOfParameterTypeName (p : ParameterTypeName) =
             true,
             zeroRange
         )
-    | ParameterTypeName.WithGenericArguments _ -> failwith "todo 3538EC9A-02FC-492E-9473-D8463971F750"
+    | ParameterTypeName.WithGenericArguments (name, parameterTypeNames) ->
+        let args = List.map mkSynTypeOfParameterTypeName parameterTypeNames
+        SynType.App (mkSynTypeOfParameterTypeName name, Some zeroRange, args, [], Some zeroRange, false, zeroRange)
     | ParameterTypeName.Tuple ts -> mkSynTypeTuple mkSynTypeOfParameterTypeName ts
 
 type Range with
 
     member r.ToProxy () : RangeProxy =
         RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
+
+let (|NewConstructorPattern|_|)
+    (
+        memberFlags : SynMemberFlags option,
+        headPat : SynPat
+    )
+    : (SynLongIdent * SynArgPats * SynAccess option) option
+    =
+    match memberFlags, headPat with
+    | Some _,
+      SynPat.LongIdent (longDotId = SynLongIdent(id = newIdent :: _) as longDotId
+                        argPats = argPats
+                        accessibility = vis) when newIdent.idText = "new" -> Some (longDotId, argPats, vis)
+    | _ -> None
 
 let (|RemoveParensInPat|) (pat : SynPat) =
     let rec visit (pat : SynPat) : SynPat =
@@ -126,7 +142,7 @@ and mkSynModuleOrNamespaceSig
                            synModuleOrNamespaceTrivia))
     : SynModuleOrNamespaceSig
     =
-    let decls = List.choose (mkSynModuleSigDecl resolver) synModuleDecls
+    let decls = List.collect (mkSynModuleSigDecl resolver) synModuleDecls
 
     let trivia : SynModuleOrNamespaceSigTrivia =
         {
@@ -146,23 +162,27 @@ and mkSynModuleOrNamespaceSig
         trivia
     )
 
-and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl) : SynModuleSigDecl option =
+and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl) : SynModuleSigDecl list =
     match decl with
-    | SynModuleDecl.Let (_, [ binding ], _) ->
-        let valSig = mkSynValSig resolver binding
-        Some (SynModuleSigDecl.Val (valSig, zeroRange))
-    | SynModuleDecl.Open (synOpenDeclTarget, range) -> Some (SynModuleSigDecl.Open (synOpenDeclTarget, zeroRange))
+    | SynModuleDecl.Let (_, bindings, _) ->
+        bindings
+        |> List.map (fun binding ->
+            let valSig = mkSynValSig resolver binding
+            SynModuleSigDecl.Val (valSig, zeroRange)
+        )
+    | SynModuleDecl.Open (synOpenDeclTarget, _range) -> [ SynModuleSigDecl.Open (synOpenDeclTarget, zeroRange) ]
     | SynModuleDecl.Types (typeDefns, _) ->
         let types = List.map (mkSynTypeDefnSig resolver) typeDefns
-        Some (SynModuleSigDecl.Types (types, zeroRange))
+        [ SynModuleSigDecl.Types (types, zeroRange) ]
     | SynModuleDecl.Exception (synExceptionDefn, _range) ->
         let exnSig = mkSynExceptionDefn resolver synExceptionDefn
-        Some (SynModuleSigDecl.Exception (exnSig, zeroRange))
-    | SynModuleDecl.ModuleAbbrev (ident, longId, _range) ->
-        Some (SynModuleSigDecl.ModuleAbbrev (ident, longId, zeroRange))
+        [ SynModuleSigDecl.Exception (exnSig, zeroRange) ]
+    | SynModuleDecl.ModuleAbbrev (ident, longId, _range) -> [ SynModuleSigDecl.ModuleAbbrev (ident, longId, zeroRange) ]
     | SynModuleDecl.NestedModule (synComponentInfo, isRecursive, synModuleDecls, _isContinuing, _range, trivia) ->
-        Some (mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia)
-    | _ -> None
+        [
+            mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia
+        ]
+    | _ -> []
 
 and mkSynValSig
     (resolver : TypedTreeInfoResolver)
@@ -172,23 +192,42 @@ and mkSynValSig
                  isMutable,
                  synAttributeLists,
                  preXmlDoc,
-                 synValData,
+                 (SynValData (memberFlags = memberFlags) as synValData),
                  headPat,
                  synBindingReturnInfoOption,
                  _synExpr,
                  _range,
                  _debugPointAtBinding,
                  _synBindingTrivia))
+    : SynValSig
     =
     let ident, mBindingName, existingTypedParameters, vis =
-        match headPat with
-        | SynPat.LongIdent (longDotId = longDotId ; argPats = argPats ; accessibility = vis) ->
-            SynIdent (longDotId.LongIdent.[0], None),
+        match memberFlags, headPat with
+        // new
+        | NewConstructorPattern (longDotId, argPats, vis) ->
+            let identTrivia = List.tryHead longDotId.Trivia
+
+            SynIdent (longDotId.LongIdent.[0], identTrivia),
             longDotId.LongIdent.[0].idRange,
             collectInfoFromSynArgPats argPats,
             vis
-        | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
+        | Some _,
+          SynPat.LongIdent (longDotId = (SynLongIdent (id = [ _ ; ident ] ; trivia = [ _ ; identTrivia ]) as longDotId)
+                            argPats = argPats
+                            accessibility = vis) ->
+            SynIdent (ident, identTrivia), ident.idRange, collectInfoFromSynArgPats argPats, vis
+
+        | None, SynPat.LongIdent (longDotId = longDotId ; argPats = argPats ; accessibility = vis) ->
+            let identTrivia = List.tryHead longDotId.Trivia
+
+            SynIdent (longDotId.LongIdent.[0], identTrivia),
+            longDotId.LongIdent.[0].idRange,
+            collectInfoFromSynArgPats argPats,
+            vis
+
+        | None, SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
             synIdent, ident.idRange, Map.empty, vis
+
         | _ -> failwith "todo 245B29E5-9303-4911-ABBE-0C3EA80DB536"
 
     let existingReturnType =
@@ -200,12 +239,18 @@ and mkSynValSig
     let t =
         mkSynTypeForArity resolver mBindingName arity existingTypedParameters existingReturnType
 
+    let synValInfo =
+        match memberFlags, synValData.SynValInfo with
+        | Some _, SynValInfo ([ [ SynArgInfo ([], false, None) ] ; [] ], returnTypeArgInfo) ->
+            SynValInfo ([ [ SynArgInfo ([], false, None) ] ], returnTypeArgInfo)
+        | _ -> synValData.SynValInfo
+
     SynValSig (
         synAttributeLists,
         ident,
         SynValTyparDecls (None, false),
         t,
-        synValData.SynValInfo,
+        synValInfo,
         isInline,
         isMutable,
         preXmlDoc,
@@ -220,34 +265,44 @@ and mkSynValSig
     )
 
 and mkSynTypeForArity resolver mBindingName arity existingTypedParameters existingReturnType : SynType =
+    let bindingRange = mBindingName.ToProxy ()
+
     let returnType =
         match existingReturnType with
         | Some t -> t
         | None ->
-            resolver.GetReturnTypeFor (mBindingName.ToProxy ())
+            resolver.GetReturnTypeFor bindingRange (not arity.IsEmpty)
             |> mkSynTypeOfParameterTypeName
 
     if arity.IsEmpty then
         returnType
     else
-        let mkTypeForArgInfo (SynArgInfo (ident = ident)) =
-            match ident with
-            | None -> failwith "expected ident"
-            | Some ident ->
-                match Map.tryFind ident.idText existingTypedParameters with
-                | Some t -> t
-                | None ->
-                    resolver.GetTypeNameFor (ident.idRange.ToProxy ())
-                    |> mkSynTypeOfParameterTypeName
+        let mkTypeForArgInfo (ident : Ident) =
+            match Map.tryFind ident.idText existingTypedParameters with
+            | Some t -> t
+            | None ->
+                resolver.GetTypeNameFor (ident.idRange.ToProxy ())
+                |> mkSynTypeOfParameterTypeName
 
         let allTypes =
             let parameters =
+                match arity with
+                | [ [ SynArgInfo(ident = None) ] ; [] ] ->
+                    [ ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName ]
+                | arity ->
+
                 arity
-                |> List.map (fun group ->
+                |> List.mapi (fun idx group ->
                     match group with
-                    | [] -> failwith "unexpected empty arity group"
-                    | [ singleArg ] -> mkTypeForArgInfo singleArg
-                    | ts -> mkSynTypeTuple mkTypeForArgInfo ts
+                    | [] -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
+                    | [ SynArgInfo(ident = None) ] ->
+                        resolver.GetTypeForCurriedParameterGroup bindingRange idx
+                        |> mkSynTypeOfParameterTypeName
+                    | [ SynArgInfo(ident = Some ident) ] -> mkTypeForArgInfo ident
+                    | ts ->
+                        ts
+                        |> List.choose (fun (SynArgInfo (ident = indent)) -> indent)
+                        |> mkSynTypeTuple mkTypeForArgInfo
                 )
 
             [ yield! parameters ; yield returnType ]
@@ -265,26 +320,34 @@ and mkSynTypeDefnSig
     (SynTypeDefn (typeInfo, typeRepr, members, implicitConstructor, _range, trivia))
     : SynTypeDefnSig
     =
-    let typeRepr =
+    let typeSigRepr =
         match typeRepr with
         | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
             SynTypeDefnSigRepr.Simple (synTypeDefnSimpleRepr, zeroRange)
-        | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, range) ->
+        // Type extensions
+        | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _synMemberDefns, _range) ->
+            SynTypeDefnSigRepr.Simple (SynTypeDefnSimpleRepr.None zeroRange, zeroRange)
+        | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, _range) ->
             let members = List.choose (mkSynMemberSig resolver) synMemberDefns
             SynTypeDefnSigRepr.ObjectModel (synTypeDefnKind, members, zeroRange)
         | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
 
-    let members = []
+    let withKeyword =
+        match typeRepr with
+        | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _) -> Some zeroRange
+        | _ -> trivia.WithKeyword
+
+    let members = members |> List.choose (mkSynMemberSig resolver)
 
     SynTypeDefnSig (
         typeInfo,
-        typeRepr,
+        typeSigRepr,
         members,
         zeroRange,
         {
             EqualsRange = trivia.EqualsRange
             TypeKeyword = trivia.TypeKeyword
-            WithKeyword = trivia.WithKeyword
+            WithKeyword = withKeyword
         }
     )
 
@@ -293,7 +356,7 @@ and mkSynExceptionDefn resolver (SynExceptionDefn (synExceptionDefnRepr, withKey
     SynExceptionSig (synExceptionDefnRepr, withKeyword, members, zeroRange)
 
 and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia : SynModuleSigDecl =
-    let decls = List.choose (mkSynModuleSigDecl resolver) synModuleDecls
+    let decls = List.collect (mkSynModuleSigDecl resolver) synModuleDecls
 
     SynModuleSigDecl.NestedModule (
         synComponentInfo,

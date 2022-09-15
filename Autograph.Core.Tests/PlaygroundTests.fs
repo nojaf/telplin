@@ -7,11 +7,12 @@ open FSharp.Compiler.Text
 open NUnit.Framework
 open TestHelper
 
-let typesFile = @"C:\Users\nojaf\Projects\autograph\Autograph.Common\Types.fs"
+let targetFile =
+    @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\UntypedTree.fs"
 
 let compilerArgs =
     [|
-        @"-o:C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\Autograph.Common.dll"
+        @"-o:C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.dll"
         @"-g"
         @"--debug:portable"
         @"--noframework"
@@ -30,10 +31,14 @@ let compilerArgs =
         @"--define:NETCOREAPP2_2_OR_GREATER"
         @"--define:NETCOREAPP3_0_OR_GREATER"
         @"--define:NETCOREAPP3_1_OR_GREATER"
-        @"--doc:C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\Autograph.Common.xml"
+        @"--doc:C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.xml"
         @"--optimize-"
         @"--tailcalls-"
+        @"-r:C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\ref\Autograph.Common.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\fantomas.core\5.0.0-beta-010\lib\netstandard2.0\Fantomas.Core.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\fantomas.fcs\5.0.0-beta-010\lib\netstandard2.0\Fantomas.FCS.dll"
         @"-r:C:\Users\nojaf\.nuget\packages\fsharp.core\6.0.6\lib\netstandard2.1\FSharp.Core.dll"
+        @"-r:C:\Users\nojaf\.nuget\packages\fslexyacc.runtime\10.2.0\lib\netstandard2.0\FsLexYacc.Runtime.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.CSharp.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.VisualBasic.Core.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\Microsoft.VisualBasic.dll"
@@ -54,8 +59,6 @@ let compilerArgs =
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.EventBasedAsync.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.Primitives.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.ComponentModel.TypeConverter.dll"
-        @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Configuration.dll"
-        @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Console.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Core.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Data.Common.dll"
         @"-r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\7.0.0-rc.1.22426.10\ref\net7.0\System.Data.DataSetExtensions.dll"
@@ -208,10 +211,10 @@ let compilerArgs =
         @"--nocopyfsharpcore"
         @"--deterministic+"
         @"--simpleresolution"
-        @"--refout:obj\Debug\net7.0\refint\Autograph.Common.dll"
-        @"C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\.NETCoreApp,Version=v7.0.AssemblyAttributes.fs"
-        @"C:\Users\nojaf\Projects\autograph\Autograph.Common\obj\Debug\net7.0\Autograph.Common.AssemblyInfo.fs"
-        typesFile
+        @"--refout:obj\Debug\net7.0\refint\Autograph.UntypedTree.dll"
+        @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\.NETCoreApp,Version=v7.0.AssemblyAttributes.fs"
+        @"C:\Users\nojaf\Projects\autograph\Autograph.UntypedTree\obj\Debug\net7.0\Autograph.UntypedTree.AssemblyInfo.fs"
+        targetFile
     |]
 
 let projectOptions =
@@ -240,38 +243,62 @@ let projectOptions =
 [<Test>]
 #endif
 let ``real world`` () =
-    let code = File.ReadAllText typesFile
+    let code = File.ReadAllText targetFile
     let sourceText = SourceText.ofString code
 
     let resolver =
-        Autograph.TypedTree.Resolver.mkResolverFor typesFile sourceText projectOptions
+        Autograph.TypedTree.Resolver.mkResolverFor targetFile sourceText projectOptions
 
     let signature = Autograph.UntypedTree.Writer.mkSignatureFile resolver code
 
     signature
     |> shouldEqualWithPrepend
         """
-namespace Autograph.Common
+module Autograph.UntypedTree.Writer
+open System.IO
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.SyntaxTrivia
+open Autograph.Common
+open FSharp.Compiler.Text
 
-[<RequireQualifiedAccess>]
-type ParameterTypeName =
-    | SingleIdentifier of name: string
-    | FunctionType of types: ParameterTypeName list
-    | GenericParameter of name: string * isSolveAtCompileTime: bool
-    | PostFix of mainType: ParameterTypeName * postType: ParameterTypeName
-    | WithGenericArguments of name: string * args: ParameterTypeName list
-    | Tuple of types: ParameterTypeName list
+val zeroRange: range
+val mkSynTypeFun: types: SynType list -> SynType
+val mkSynTypeParen: t: SynType -> SynType
+val mkSynTypeTuple: mkType: ('a -> SynType) -> ts: 'a list -> SynType
+val mkSynTypeOfParameterTypeName: p: ParameterTypeName -> SynType
 
-type RangeProxy =
-    struct
-        val StartLine: int
-        val StartColumn: int
-        val EndLine: int
-        val EndColumn: int
-        new: startLine: int * startColumn: int * endLine: int * endColumn: int -> RangeProxy
-    end
+type Range with
 
-type TypedTreeInfoResolver =
-    abstract member GetTypeNameFor: range: RangeProxy -> ParameterTypeName
-    abstract member GetReturnTypeFor: range: RangeProxy -> ParameterTypeName
+    member ToProxy: unit -> RangeProxy
+
+val (|NewConstructorPattern|_|):
+    memberFlags: SynMemberFlags option * headPat: SynPat -> (SynLongIdent * SynArgPats * SynAccess option) option
+
+val (|RemoveParensInPat|): pat: SynPat -> SynPat
+val collectInfoFromSynArgPats: argPats: SynArgPats -> Map<string, SynType>
+val mkSignatureFile: resolver: TypedTreeInfoResolver -> code: string -> string
+val mkSynModuleOrNamespaceSig: resolver: TypedTreeInfoResolver -> SynModuleOrNamespace -> SynModuleOrNamespaceSig
+val mkSynModuleSigDecl: resolver: TypedTreeInfoResolver -> decl: SynModuleDecl -> SynModuleSigDecl list
+val mkSynValSig: resolver: TypedTreeInfoResolver -> SynBinding -> SynValSig
+
+val mkSynTypeForArity:
+    resolver: TypedTreeInfoResolver ->
+    mBindingName: range ->
+    arity: SynArgInfo list list ->
+    existingTypedParameters: Map<string, SynType> ->
+    existingReturnType: SynType option ->
+        SynType
+
+val mkSynTypeDefnSig: resolver: TypedTreeInfoResolver -> SynTypeDefn -> SynTypeDefnSig
+val mkSynExceptionDefn: resolver: TypedTreeInfoResolver -> SynExceptionDefn -> SynExceptionSig
+
+val mkSynModuleSigDeclNestedModule:
+    resolver: TypedTreeInfoResolver ->
+    synComponentInfo: SynComponentInfo ->
+    isRecursive: bool ->
+    synModuleDecls: SynModuleDecl list ->
+    trivia: SynModuleDeclNestedModuleTrivia ->
+        SynModuleSigDecl
+
+val mkSynMemberSig: resolver: TypedTreeInfoResolver -> md: SynMemberDefn -> SynMemberSig option
 """

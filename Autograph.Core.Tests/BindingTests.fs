@@ -241,3 +241,83 @@ module Foo
 
 val v: int * string
 """
+
+[<Test>]
+let ``recursive functions`` () =
+    mkSignature
+        """
+module Hej
+
+let rec a (b: int) = b + 1
+and c (d:int) = d - 1
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+val a: b: int -> int
+val c: d: int -> int
+"""
+
+[<Test>]
+let ``active pattern with parameter`` () =
+    mkSignature
+        """
+module Hej
+
+let (|Foo|) (a:string) = a
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+val (|Foo|): a: string -> string
+"""
+
+[<Test>]
+let ``active pattern without parameter`` () =
+    mkSignature
+        """
+module Hej
+
+let (|Foo|) = function | 1 -> 2 | x -> x
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+val (|Foo|): (int -> int)
+"""
+
+[<Test>]
+let ``unwrapped discriminated union value`` () =
+    mkSignature
+        """
+module A
+
+type B = | B of string * int
+
+let c (B(d,e)) = 4
+"""
+    |> shouldEqualWithPrepend
+        """
+module A
+
+type B = B of string * int
+val c: B -> int
+"""
+
+[<Test>]
+let ``type with generic arguments`` () =
+    mkSignature
+        """
+module Hej
+
+let collectInfoFromSynArgPats (argPats : obj) =  Map.empty<string, obj>
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+val collectInfoFromSynArgPats: argPats: obj -> Map<string, obj>
+"""

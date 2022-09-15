@@ -46,10 +46,15 @@ let rec getTypeName (t : FSharpType) : string =
     else
         "???"
 
+let transformToFSharpCoreAlias (fe : FSharpEntity) =
+    match fe.AccessPath, fe.DisplayName with
+    | "System", "Int32" -> "int"
+    | _ -> fe.DisplayName
+
 let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
     if t.HasTypeDefinition then
         if Seq.isEmpty t.GenericArguments then
-            ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
+            ParameterTypeName.SingleIdentifier (transformToFSharpCoreAlias t.TypeDefinition)
         else
 
         let isPostFix =
@@ -57,10 +62,14 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
             |> Set.contains t.TypeDefinition.DisplayName
 
         if isPostFix then
-            let ga = t.GenericArguments[0].GenericParameter
-
             let mt =
-                ParameterTypeName.GenericParameter (ga.DisplayName, ga.IsSolveAtCompileTime)
+                let ga = t.GenericArguments[0]
+
+                if ga.IsGenericParameter then
+                    let gp = t.GenericArguments[0].GenericParameter
+                    ParameterTypeName.GenericParameter (gp.DisplayName, gp.IsSolveAtCompileTime)
+                else
+                    mkParameterTypeName ga
 
             let pt = ParameterTypeName.SingleIdentifier (t.TypeDefinition.DisplayName)
             ParameterTypeName.PostFix (mt, pt)
@@ -69,7 +78,8 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
                 Seq.map (getTypeName >> ParameterTypeName.SingleIdentifier) t.GenericArguments
                 |> Seq.toList
 
-            ParameterTypeName.WithGenericArguments (t.TypeDefinition.DisplayName, args)
+            let typeName = ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
+            ParameterTypeName.WithGenericArguments (typeName, args)
 
     elif t.IsGenericParameter then
         ParameterTypeName.GenericParameter (t.GenericParameter.DisplayName, t.GenericParameter.IsSolveAtCompileTime)
@@ -99,31 +109,41 @@ let mkResolverFor sourceFileName sourceText projectOptions =
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
         let allSymbols = checkFileResults.GetAllUsesOfAllSymbolsInFile () |> Seq.toArray
 
+        let findValSymbol proxyRange =
+            let symbol =
+                allSymbols
+                |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
+
+            match symbol with
+            | None -> failwith $"Failed to resolve symbols for {proxyRange}"
+            | Some symbol ->
+                match symbol.Symbol with
+                | :? FSharpMemberOrFunctionOrValue as valSymbol -> valSymbol
+                | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
+
         { new TypedTreeInfoResolver with
             member resolver.GetTypeNameFor proxyRange =
-                let symbol =
-                    allSymbols
-                    |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
+                let valSymbol = findValSymbol proxyRange
+                mkParameterTypeName valSymbol.FullType
 
-                match symbol with
-                | None -> failwith $"Failed to resolve symbols for {proxyRange}"
-                | Some symbol ->
-                    match symbol.Symbol with
-                    | :? FSharpMemberOrFunctionOrValue as valSymbol -> mkParameterTypeName valSymbol.FullType
-                    | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
+            member resolver.GetReturnTypeFor proxyRange hasParameters =
+                let valSymbol = findValSymbol proxyRange
 
-            member resolver.GetReturnTypeFor proxyRange =
-                let symbol =
-                    allSymbols
-                    |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
+                mkParameterTypeName (
+                    if hasParameters then
+                        valSymbol.ReturnParameter.Type
+                    else
+                        valSymbol.FullType
+                )
 
-                match symbol with
-                | None -> failwith $"Failed to resolve symbols for {proxyRange}"
-                | Some symbol ->
-                    match symbol.Symbol with
-                    | :? FSharpMemberOrFunctionOrValue as valSymbol ->
-                        mkParameterTypeName valSymbol.ReturnParameter.Type
-                    | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
+            member resolve.GetTypeForCurriedParameterGroup proxyRange index =
+                let valSymbol = findValSymbol proxyRange
+
+                if Seq.isEmpty valSymbol.CurriedParameterGroups then
+                    // Assume unit
+                    ParameterTypeName.SingleIdentifier "unit"
+                else
+                    mkParameterTypeName (valSymbol.CurriedParameterGroups.[index].[0].Type)
         }
     | FSharpCheckFileAnswer.Aborted -> failwith "type checking aborted"
 

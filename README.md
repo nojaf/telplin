@@ -5,6 +5,7 @@ It's a bit of secret for now.
 ## Scratch
 
 dotnet build -v n /m:1 --no-incremental  | dotnet fsi .\script.fsx
+dotnet build .\Autograph.UntypedTree.fsproj -v n /m:1 --no-incremental  --no-dependencies | dotnet fsi .\script.fsx
 
 ## Ideas
 

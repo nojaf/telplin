@@ -6,7 +6,7 @@ type ParameterTypeName =
     | FunctionType of types: ParameterTypeName list
     | GenericParameter of name: string * isSolveAtCompileTime: bool
     | PostFix of mainType: ParameterTypeName * postType: ParameterTypeName
-    | WithGenericArguments of name: string * args: ParameterTypeName list
+    | WithGenericArguments of name: ParameterTypeName * args: ParameterTypeName list
     | Tuple of types: ParameterTypeName list
 
 type RangeProxy =
@@ -20,4 +20,5 @@ type RangeProxy =
 
 type TypedTreeInfoResolver =
     abstract member GetTypeNameFor: range: RangeProxy -> ParameterTypeName
-    abstract member GetReturnTypeFor: range: RangeProxy -> ParameterTypeName
+    abstract member GetReturnTypeFor: range: RangeProxy -> hasParameters: bool -> ParameterTypeName
+    abstract member GetTypeForCurriedParameterGroup: range: RangeProxy -> index: int -> ParameterTypeName

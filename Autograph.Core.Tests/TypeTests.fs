@@ -102,3 +102,21 @@ namespace Hej
 type Foo =
     abstract member Bar: x: int -> y: int -> int
 """
+
+[<Test>]
+let ``type extension`` () =
+    mkSignature
+        """
+module Hej
+
+type System.Int32 with
+    member i.PlusPlus () = i + 1
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+type System.Int32 with
+
+    member PlusPlus: unit -> int
+"""
