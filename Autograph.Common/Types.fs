@@ -4,6 +4,10 @@
 type ParameterTypeName =
     | SingleIdentifier of name : string
     | FunctionType of types : ParameterTypeName list
+    | GenericParameter of name : string * isSolveAtCompileTime : bool
+    | PostFix of mainType : ParameterTypeName * postType : ParameterTypeName
+    | WithGenericArguments of name : string * args : ParameterTypeName list
+    | Tuple of types : ParameterTypeName list
 
 [<Struct>]
 type RangeProxy =

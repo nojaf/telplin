@@ -4,6 +4,7 @@
         <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+        <WarningsAsErrors>FS0025</WarningsAsErrors>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="6.0.6" />

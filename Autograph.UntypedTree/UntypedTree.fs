@@ -16,12 +16,43 @@ let rec mkSynTypeFun (types : SynType list) : SynType =
 
 let mkSynTypeParen (t : SynType) : SynType = SynType.Paren (t, zeroRange)
 
+let mkSynTypeTuple mkType ts =
+    match ts with
+    | []
+    | [ _ ] -> failwith "ts cannot have a single or zero types"
+    | h :: rest ->
+        let types =
+            SynTupleTypeSegment.Type (mkType h)
+            :: List.collect (fun t -> [ SynTupleTypeSegment.Star zeroRange ; SynTupleTypeSegment.Type (mkType t) ]) rest
+
+        SynType.Tuple (false, types, zeroRange)
+
 let rec mkSynTypeOfParameterTypeName (p : ParameterTypeName) =
     match p with
     | ParameterTypeName.SingleIdentifier displayName ->
         SynType.LongIdent (SynLongIdent ([ Ident (displayName, zeroRange) ], [], [ None ]))
     | ParameterTypeName.FunctionType types ->
         List.map mkSynTypeOfParameterTypeName types |> mkSynTypeFun |> mkSynTypeParen
+    | ParameterTypeName.GenericParameter (name, isSolveAtCompileTime) ->
+        let typarStaticReq =
+            if isSolveAtCompileTime then
+                TyparStaticReq.HeadType
+            else
+                TyparStaticReq.None
+
+        SynType.Var (SynTypar.SynTypar (Ident (name, zeroRange), typarStaticReq, false), zeroRange)
+    | ParameterTypeName.PostFix (mainType, postType) ->
+        SynType.App (
+            mkSynTypeOfParameterTypeName postType,
+            None,
+            [ mkSynTypeOfParameterTypeName mainType ],
+            [],
+            None,
+            true,
+            zeroRange
+        )
+    | ParameterTypeName.WithGenericArguments _ -> failwith "todo 3538EC9A-02FC-492E-9473-D8463971F750"
+    | ParameterTypeName.Tuple ts -> mkSynTypeTuple mkSynTypeOfParameterTypeName ts
 
 type Range with
 
@@ -135,8 +166,8 @@ and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl)
 
 and mkSynValSig
     (resolver : TypedTreeInfoResolver)
-    (SynBinding (synAccessOption,
-                 synBindingKind,
+    (SynBinding (_synAccessOption,
+                 _synBindingKind,
                  isInline,
                  isMutable,
                  synAttributeLists,
@@ -144,16 +175,20 @@ and mkSynValSig
                  synValData,
                  headPat,
                  synBindingReturnInfoOption,
-                 synExpr,
-                 range,
-                 debugPointAtBinding,
-                 synBindingTrivia))
+                 _synExpr,
+                 _range,
+                 _debugPointAtBinding,
+                 _synBindingTrivia))
     =
-    let ident, mBindingName, existingTypedParameters =
+    let ident, mBindingName, existingTypedParameters, vis =
         match headPat with
-        | SynPat.LongIdent (longDotId = longDotId ; argPats = argPats) ->
-            SynIdent (longDotId.LongIdent.[0], None), longDotId.LongIdent.[0].idRange, collectInfoFromSynArgPats argPats
-        | SynPat.Named(ident = SynIdent (ident, _) as synIdent) -> synIdent, ident.idRange, Map.empty
+        | SynPat.LongIdent (longDotId = longDotId ; argPats = argPats ; accessibility = vis) ->
+            SynIdent (longDotId.LongIdent.[0], None),
+            longDotId.LongIdent.[0].idRange,
+            collectInfoFromSynArgPats argPats,
+            vis
+        | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
+            synIdent, ident.idRange, Map.empty, vis
         | _ -> failwith "todo 245B29E5-9303-4911-ABBE-0C3EA80DB536"
 
     let existingReturnType =
@@ -174,7 +209,7 @@ and mkSynValSig
         isInline,
         isMutable,
         preXmlDoc,
-        synAccessOption,
+        vis,
         None,
         zeroRange,
         {
@@ -212,19 +247,7 @@ and mkSynTypeForArity resolver mBindingName arity existingTypedParameters existi
                     match group with
                     | [] -> failwith "unexpected empty arity group"
                     | [ singleArg ] -> mkTypeForArgInfo singleArg
-                    | h :: rest ->
-                        let types =
-                            SynTupleTypeSegment.Type (mkTypeForArgInfo h)
-                            :: List.collect
-                                (fun t ->
-                                    [
-                                        SynTupleTypeSegment.Star zeroRange
-                                        SynTupleTypeSegment.Type (mkTypeForArgInfo t)
-                                    ]
-                                )
-                                rest
-
-                        SynType.Tuple (false, types, zeroRange)
+                    | ts -> mkSynTypeTuple mkTypeForArgInfo ts
                 )
 
             [ yield! parameters ; yield returnType ]
@@ -246,6 +269,9 @@ and mkSynTypeDefnSig
         match typeRepr with
         | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
             SynTypeDefnSigRepr.Simple (synTypeDefnSimpleRepr, zeroRange)
+        | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, range) ->
+            let members = []
+            SynTypeDefnSigRepr.ObjectModel (synTypeDefnKind, members, zeroRange)
         | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
 
     let members = []

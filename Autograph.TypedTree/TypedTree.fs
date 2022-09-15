@@ -14,27 +14,65 @@ let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
 
 let checker = FSharpChecker.Create ()
 
+let rec getTypeName (t : FSharpType) : string =
+    if t.HasTypeDefinition then
+        if Seq.isEmpty t.GenericArguments then
+            t.TypeDefinition.DisplayName
+        else
+            let isPostFix =
+                set [| "list" ; "option" ; "array" |]
+                |> Set.contains t.TypeDefinition.DisplayName
+
+            if isPostFix then
+                let ga = t.GenericArguments[0].GenericParameter
+                let tick = if ga.IsSolveAtCompileTime then "^" else "'"
+                $"{tick}{ga.DisplayName} {t.TypeDefinition.DisplayName}"
+            else
+                let args = Seq.map getTypeName t.GenericArguments |> String.concat ","
+                $"{t.TypeDefinition.DisplayName}<{args}>"
+    elif t.IsGenericParameter then
+        let tick = if t.GenericParameter.IsSolveAtCompileTime then "^" else "'"
+        $"{tick}{t.GenericParameter.DisplayName}"
+    elif t.IsFunctionType then
+        let rec visit (t : FSharpType) : string seq =
+            if t.IsFunctionType then
+                Seq.collect visit t.GenericArguments
+            else
+                Seq.singleton (getTypeName t)
+
+        visit t |> String.concat " -> " |> sprintf "(%s)"
+    elif t.IsTupleType then
+        t.GenericArguments |> Seq.map getTypeName |> String.concat " * "
+    else
+        "???"
+
 let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
     if t.HasTypeDefinition then
         if Seq.isEmpty t.GenericArguments then
             ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
         else
-            failwith "todo 1BD8CC45-36A6-43E3-8355-7B2A71190790"
-    // let isPostFix =
-    //     set [| "list"; "option"; "array" |]
-    //     |> Set.contains t.TypeDefinition.DisplayName
-    //
-    // if isPostFix then
-    //     let ga = t.GenericArguments[0].GenericParameter
-    //     let tick = if ga.IsSolveAtCompileTime then "^" else "'"
-    //     $"{tick}{ga.DisplayName} {t.TypeDefinition.DisplayName}"
-    // else
-    //     let args = Seq.map getTypeName t.GenericArguments |> String.concat ","
-    //     $"{t.TypeDefinition.DisplayName}<{args}>"
+
+        let isPostFix =
+            set [| "list" ; "option" ; "array" |]
+            |> Set.contains t.TypeDefinition.DisplayName
+
+        if isPostFix then
+            let ga = t.GenericArguments[0].GenericParameter
+
+            let mt =
+                ParameterTypeName.GenericParameter (ga.DisplayName, ga.IsSolveAtCompileTime)
+
+            let pt = ParameterTypeName.SingleIdentifier (t.TypeDefinition.DisplayName)
+            ParameterTypeName.PostFix (mt, pt)
+        else
+            let args =
+                Seq.map (getTypeName >> ParameterTypeName.SingleIdentifier) t.GenericArguments
+                |> Seq.toList
+
+            ParameterTypeName.WithGenericArguments (t.TypeDefinition.DisplayName, args)
+
     elif t.IsGenericParameter then
-        failwith "todo C144D459-9279-4910-8944-56AE5BF340E9"
-    // let tick = if t.GenericParameter.IsSolveAtCompileTime then "^" else "'"
-    // $"{tick}{t.GenericParameter.DisplayName}"
+        ParameterTypeName.GenericParameter (t.GenericParameter.DisplayName, t.GenericParameter.IsSolveAtCompileTime)
     elif t.IsFunctionType then
         let rec visit (t : FSharpType) : ParameterTypeName seq =
             if t.IsFunctionType then
@@ -44,10 +82,11 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
 
         visit t |> Seq.toList |> ParameterTypeName.FunctionType
     elif t.IsTupleType then
-        failwith "todo CBDBA377-8BF2-4200-B2A2-98C80CF2C064"
-    // t.GenericArguments
-    // |> Seq.map getTypeName
-    // |> String.concat " * "
+        let ts =
+            Seq.map (getTypeName >> ParameterTypeName.SingleIdentifier) t.GenericArguments
+            |> Seq.toList
+
+        ParameterTypeName.Tuple ts
     else
         failwith "todo 4A2A9BDE-1AEB-49FF-B1FD-E57C2D9ADFBA"
 
