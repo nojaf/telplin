@@ -3,6 +3,7 @@
     <PropertyGroup>
         <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+        <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="6.0.6" />
