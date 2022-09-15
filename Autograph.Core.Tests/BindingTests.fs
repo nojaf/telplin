@@ -54,7 +54,7 @@ let ``function return type`` () =
         """
 module A
 
-let a (b:string) : int -> int = failwith "todo"
+let a (b:string) : int -> int = failwith "not implemented"
 """
     |> shouldEqualWithPrepend
         """
@@ -69,7 +69,7 @@ let ``re-use existing type information is present`` () =
         """
 module A
 
-let a (b:string list) : seq<int> = failwith "todo"
+let a (b:string list) : seq<int> = failwith "not implemented"
 """
     |> shouldEqualWithPrepend
         """

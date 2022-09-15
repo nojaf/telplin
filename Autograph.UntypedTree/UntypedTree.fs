@@ -121,6 +121,16 @@ and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl)
         let valSig = mkSynValSig resolver binding
         Some (SynModuleSigDecl.Val (valSig, zeroRange))
     | SynModuleDecl.Open (synOpenDeclTarget, range) -> Some (SynModuleSigDecl.Open (synOpenDeclTarget, zeroRange))
+    | SynModuleDecl.Types (typeDefns, _) ->
+        let types = List.map (mkSynTypeDefnSig resolver) typeDefns
+        Some (SynModuleSigDecl.Types (types, zeroRange))
+    | SynModuleDecl.Exception (synExceptionDefn, _range) ->
+        let exnSig = mkSynExceptionDefn resolver synExceptionDefn
+        Some (SynModuleSigDecl.Exception (exnSig, zeroRange))
+    | SynModuleDecl.ModuleAbbrev (ident, longId, _range) ->
+        Some (SynModuleSigDecl.ModuleAbbrev (ident, longId, zeroRange))
+    | SynModuleDecl.NestedModule (synComponentInfo, isRecursive, synModuleDecls, _isContinuing, _range, trivia) ->
+        Some (mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia)
     | _ -> None
 
 and mkSynValSig
@@ -144,7 +154,7 @@ and mkSynValSig
         | SynPat.LongIdent (longDotId = longDotId ; argPats = argPats) ->
             SynIdent (longDotId.LongIdent.[0], None), longDotId.LongIdent.[0].idRange, collectInfoFromSynArgPats argPats
         | SynPat.Named(ident = SynIdent (ident, _) as synIdent) -> synIdent, ident.idRange, Map.empty
-        | _ -> failwith "todo"
+        | _ -> failwith "todo 245B29E5-9303-4911-ABBE-0C3EA80DB536"
 
     let existingReturnType =
         synBindingReturnInfoOption
@@ -226,3 +236,46 @@ and mkSynTypeForArity resolver mBindingName arity existingTypedParameters existi
             | t :: rest -> SynType.Fun (t, visit rest, zeroRange, { ArrowRange = zeroRange })
 
         visit allTypes
+
+and mkSynTypeDefnSig
+    resolver
+    (SynTypeDefn (typeInfo, typeRepr, members, implicitConstructor, _range, trivia))
+    : SynTypeDefnSig
+    =
+    let typeRepr =
+        match typeRepr with
+        | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
+            SynTypeDefnSigRepr.Simple (synTypeDefnSimpleRepr, zeroRange)
+        | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
+
+    let members = []
+
+    SynTypeDefnSig (
+        typeInfo,
+        typeRepr,
+        members,
+        zeroRange,
+        {
+            EqualsRange = trivia.EqualsRange
+            TypeKeyword = trivia.TypeKeyword
+            WithKeyword = trivia.WithKeyword
+        }
+    )
+
+and mkSynExceptionDefn resolver (SynExceptionDefn (synExceptionDefnRepr, withKeyword, synMemberDefns, range)) =
+    let members = []
+    SynExceptionSig (synExceptionDefnRepr, withKeyword, members, zeroRange)
+
+and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia : SynModuleSigDecl =
+    let decls = List.choose (mkSynModuleSigDecl resolver) synModuleDecls
+
+    SynModuleSigDecl.NestedModule (
+        synComponentInfo,
+        isRecursive,
+        decls,
+        zeroRange,
+        {
+            ModuleKeyword = trivia.ModuleKeyword
+            EqualsRange = trivia.EqualsRange
+        }
+    )

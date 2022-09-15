@@ -19,7 +19,7 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
         if Seq.isEmpty t.GenericArguments then
             ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
         else
-            failwith "todo"
+            failwith "todo 1BD8CC45-36A6-43E3-8355-7B2A71190790"
     // let isPostFix =
     //     set [| "list"; "option"; "array" |]
     //     |> Set.contains t.TypeDefinition.DisplayName
@@ -32,7 +32,7 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
     //     let args = Seq.map getTypeName t.GenericArguments |> String.concat ","
     //     $"{t.TypeDefinition.DisplayName}<{args}>"
     elif t.IsGenericParameter then
-        failwith "todo"
+        failwith "todo C144D459-9279-4910-8944-56AE5BF340E9"
     // let tick = if t.GenericParameter.IsSolveAtCompileTime then "^" else "'"
     // $"{tick}{t.GenericParameter.DisplayName}"
     elif t.IsFunctionType then
@@ -44,12 +44,12 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
 
         visit t |> Seq.toList |> ParameterTypeName.FunctionType
     elif t.IsTupleType then
-        failwith "todo"
+        failwith "todo CBDBA377-8BF2-4200-B2A2-98C80CF2C064"
     // t.GenericArguments
     // |> Seq.map getTypeName
     // |> String.concat " * "
     else
-        failwith "todo"
+        failwith "todo 4A2A9BDE-1AEB-49FF-B1FD-E57C2D9ADFBA"
 
 let mkResolver (code : string) : TypedTreeInfoResolver =
     let sourceFileName = "A.fs"
