@@ -1,0 +1,29 @@
+name: PR
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Check formatting
+        run: dotnet fantomas . -r --check
+      - name: Restore dependencies
+        run: dotnet restore ./autograph.sln
+      - name: Build
+        run: dotnet build --no-restore -c Release ./autograph.sln
+      - name: Tests
+        run: dotnet test --no-restore --no-build -c Release
