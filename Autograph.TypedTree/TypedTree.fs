@@ -14,38 +14,6 @@ let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
 
 let checker = FSharpChecker.Create ()
 
-let rec getTypeName (t : FSharpType) : string =
-    if t.HasTypeDefinition then
-        if Seq.isEmpty t.GenericArguments then
-            t.TypeDefinition.DisplayName
-        else
-            let isPostFix =
-                set [| "list" ; "option" ; "array" |]
-                |> Set.contains t.TypeDefinition.DisplayName
-
-            if isPostFix then
-                let ga = t.GenericArguments[0].GenericParameter
-                let tick = if ga.IsSolveAtCompileTime then "^" else "'"
-                $"{tick}{ga.DisplayName} {t.TypeDefinition.DisplayName}"
-            else
-                let args = Seq.map getTypeName t.GenericArguments |> String.concat ","
-                $"{t.TypeDefinition.DisplayName}<{args}>"
-    elif t.IsGenericParameter then
-        let tick = if t.GenericParameter.IsSolveAtCompileTime then "^" else "'"
-        $"{tick}{t.GenericParameter.DisplayName}"
-    elif t.IsFunctionType then
-        let rec visit (t : FSharpType) : string seq =
-            if t.IsFunctionType then
-                Seq.collect visit t.GenericArguments
-            else
-                Seq.singleton (getTypeName t)
-
-        visit t |> String.concat " -> " |> sprintf "(%s)"
-    elif t.IsTupleType then
-        t.GenericArguments |> Seq.map getTypeName |> String.concat " * "
-    else
-        "???"
-
 let transformToFSharpCoreAlias (fe : FSharpEntity) =
     match fe.AccessPath, fe.DisplayName with
     | "System", "Int32" -> "int"
@@ -73,10 +41,13 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
 
             let pt = ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
             ParameterTypeName.PostFix (mt, pt)
+        elif t.TypeDefinition.DisplayName = "[]" then
+            ParameterTypeName.PostFix (
+                mkParameterTypeName t.GenericArguments[0],
+                ParameterTypeName.SingleIdentifier "array"
+            )
         else
-            let args =
-                Seq.map (getTypeName >> ParameterTypeName.SingleIdentifier) t.GenericArguments
-                |> Seq.toList
+            let args = Seq.map mkParameterTypeName t.GenericArguments |> Seq.toList
 
             let typeName = ParameterTypeName.SingleIdentifier t.TypeDefinition.DisplayName
             ParameterTypeName.WithGenericArguments (typeName, args)
@@ -92,9 +63,7 @@ let rec mkParameterTypeName (t : FSharpType) : ParameterTypeName =
 
         visit t |> Seq.toList |> ParameterTypeName.FunctionType
     elif t.IsTupleType then
-        let ts =
-            Seq.map (getTypeName >> ParameterTypeName.SingleIdentifier) t.GenericArguments
-            |> Seq.toList
+        let ts = Seq.map mkParameterTypeName t.GenericArguments |> Seq.toList
 
         ParameterTypeName.Tuple ts
     else
@@ -108,6 +77,9 @@ let mkResolverFor sourceFileName sourceText projectOptions =
     match checkFileAnswer with
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
         let allSymbols = checkFileResults.GetAllUsesOfAllSymbolsInFile () |> Seq.toArray
+
+        let printException ex proxyRange =
+            printfn $"Exception for {proxyRange} in {sourceFileName}\n{ex}"
 
         let findValSymbol proxyRange =
             let symbol =
@@ -123,27 +95,39 @@ let mkResolverFor sourceFileName sourceText projectOptions =
 
         { new TypedTreeInfoResolver with
             member resolver.GetTypeNameFor proxyRange =
-                let valSymbol = findValSymbol proxyRange
-                mkParameterTypeName valSymbol.FullType
+                try
+                    let valSymbol = findValSymbol proxyRange
+                    mkParameterTypeName valSymbol.FullType
+                with ex ->
+                    printException ex proxyRange
+                    raise ex
 
             member resolver.GetReturnTypeFor proxyRange hasParameters =
-                let valSymbol = findValSymbol proxyRange
+                try
+                    let valSymbol = findValSymbol proxyRange
 
-                mkParameterTypeName (
-                    if hasParameters then
-                        valSymbol.ReturnParameter.Type
-                    else
-                        valSymbol.FullType
-                )
+                    mkParameterTypeName (
+                        if hasParameters then
+                            valSymbol.ReturnParameter.Type
+                        else
+                            valSymbol.FullType
+                    )
+                with ex ->
+                    printException ex proxyRange
+                    raise ex
 
             member resolve.GetTypeForCurriedParameterGroup proxyRange index =
-                let valSymbol = findValSymbol proxyRange
+                try
+                    let valSymbol = findValSymbol proxyRange
 
-                if Seq.isEmpty valSymbol.CurriedParameterGroups then
-                    // Assume unit
-                    ParameterTypeName.SingleIdentifier "unit"
-                else
-                    mkParameterTypeName valSymbol.CurriedParameterGroups.[index].[0].Type
+                    if Seq.isEmpty valSymbol.CurriedParameterGroups then
+                        // Assume unit
+                        ParameterTypeName.SingleIdentifier "unit"
+                    else
+                        mkParameterTypeName valSymbol.CurriedParameterGroups.[index].[0].Type
+                with ex ->
+                    printException ex proxyRange
+                    raise ex
         }
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 

@@ -321,3 +321,73 @@ module Hej
 
 val collectInfoFromSynArgPats: argPats: obj -> Map<string, obj>
 """
+
+[<Test>]
+let ``postfix type in tuple return type`` () =
+    mkSignature
+        """
+module SourceParser
+
+type SynValTyparDecls =
+    | SynValTyparDecls of int * int
+
+let inline (|ValTyparDecls|) (SynValTyparDecls (tds, b)) = (Some tds, b)
+"""
+    |> shouldEqualWithPrepend
+        """
+module SourceParser
+
+type SynValTyparDecls = SynValTyparDecls of int * int
+val inline (|ValTyparDecls|): SynValTyparDecls -> int option * int
+"""
+
+[<Test>]
+let ``active pattern choice return type`` () =
+    mkSignature
+        """
+module Colour
+
+open System
+
+let (|Red|Blue|Yellow|) b =
+    match b with
+    | 0 -> Red("hey", DateTime.Now)
+    | 1 -> Blue(9., [| 'a' |])
+    | _ -> Yellow [ 1uy ]
+"""
+    |> shouldEqualWithPrepend
+        """
+module Colour
+open System
+val (|Red|Blue|Yellow|): b: int -> Choice<string * DateTime, float * char array, byte list>
+"""
+
+[<Test>]
+let ``array type`` () =
+    mkSignature
+        """
+module A
+
+let a = [| 0 |]
+"""
+    |> shouldEqualWithPrepend
+        """
+module A
+
+val a: int array
+"""
+
+[<Test>]
+let ``multiple postfixes`` () =
+    mkSignature
+        """
+module A
+
+let v = [ [| None; Some 1 |] ]
+"""
+    |> shouldEqualWithPrepend
+        """
+module A
+
+val v: int option array list
+"""
