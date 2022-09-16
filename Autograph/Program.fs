@@ -19,13 +19,15 @@ Build your project with:
 
 type CliArguments =
     | Store
-    | [<MainCommand>] Load of path : string
+    | Single_File of path : string
+    | Load of path : string
 
     interface IArgParserTemplate with
         member this.Usage =
             match this with
             | Store -> "Stored the current stdin scrapping"
             | Load _ -> "Load compiler arguments from text file"
+            | Single_File _ -> "Process a single file in the current project. File path should be absolute"
 
 let isPipedInput = Console.IsInputRedirected
 
@@ -57,6 +59,15 @@ let main args =
     let projectOptions = TypedTree.Options.mkOptions compilerLines
 
     let signatures =
+        match arguments.TryGetResult <@ Single_File @> with
+        | Some singleFile ->
+            let code = File.ReadAllText singleFile
+            let sourceText = SourceText.ofString code
+            let resolver = TypedTree.Resolver.mkResolverFor singleFile sourceText projectOptions
+            let signature = UntypedTree.Writer.mkSignatureFile resolver code
+            [| singleFile, signature |]
+        | None ->
+
         projectOptions.SourceFiles
         |> Array.filter (fun file -> file.EndsWith ".fs")
         |> Array.skip 1
