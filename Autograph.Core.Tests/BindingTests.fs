@@ -78,7 +78,6 @@ module A
 val a: b: string list -> seq<int>
 """
 
-// See: https://github.com/fsprojects/fantomas/issues/2502
 [<Test>]
 let ``open statements are re-used from source`` () =
     mkSignature
@@ -93,6 +92,7 @@ let a = DateTime.Now
     |> shouldEqualWithPrepend
         """
 module A
+
 open System
 open System.Collections
 
@@ -358,6 +358,7 @@ let (|Red|Blue|Yellow|) b =
     |> shouldEqualWithPrepend
         """
 module Colour
+
 open System
 val (|Red|Blue|Yellow|): b: int -> Choice<string * DateTime, float * char array, byte list>
 """

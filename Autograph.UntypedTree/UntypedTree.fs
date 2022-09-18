@@ -9,8 +9,6 @@ open Autograph.UntypedTree.SourceParser
 
 let zeroRange : range = Range.Zero
 
-let zeroArgInfo = SynArgInfo ([], false, None)
-
 let rec mkSynTypeFun (types : SynType list) : SynType =
     match types with
     | [] -> failwith "unexpected empty list"
@@ -67,16 +65,44 @@ type Range with
     member r.ToProxy () : RangeProxy =
         RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
 
-let collectInfoFromSynArgPats (argPats : SynArgPats) : Map<string, SynType> =
+let wrapInParenWhenFunType (t : SynType) : SynType =
+    match t with
+    | SynType.Fun _ as ft -> mkSynTypeParen ft
+    | t -> t
+
+let removeParensInPat (pat : SynPat) =
+    let rec visit (pat : SynPat) : SynPat =
+        match pat with
+        | SynPat.Paren (pat = pat) -> visit pat
+        | pat -> pat
+
+    visit pat
+
+let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynType =
+    match removeParensInPat pat with
+    | SynPat.Typed (SynPat.Named(ident = SynIdent (ident, _)), synType, _) ->
+        // TODO: attributes and optional parameters
+        SynType.SignatureParameter ([], false, Some ident, wrapInParenWhenFunType synType, zeroRange)
+    | SynPat.Named(ident = SynIdent (ident, _)) ->
+        let t =
+            resolver.GetTypeNameFor (ident.idRange.ToProxy ())
+            |> mkSynTypeOfParameterTypeName
+            |> wrapInParenWhenFunType
+
+        SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+    | SynPat.Tuple (_, pats, _) ->
+        let ts = List.map (mkTypeFromPat resolver) pats
+        mkSynTypeTuple id ts
+    | SynPat.LongIdent (range = m) ->
+        resolver.GetTypeNameFor (m.ToProxy ())
+        |> mkSynTypeOfParameterTypeName
+        |> wrapInParenWhenFunType
+    | SynPat.Const (SynConst.Unit, _) -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
+    | _ -> failwith "todo 233BA311-87C9-49DA-BFE0-9BDFAB0B09BB"
+
+let collectParametersFromSynArgPats (resolver : TypedTreeInfoResolver) (argPats : SynArgPats) : SynType list =
     match argPats with
-    | SynArgPats.Pats pats ->
-        List.choose
-            (function
-            | RemoveParensInPat (SynPat.Typed (SynPat.Named(ident = SynIdent (ident, _)), synType, _)) ->
-                Some (ident.idText, synType)
-            | _ -> None)
-            pats
-        |> Map.ofList
+    | SynArgPats.Pats pats -> List.map (mkTypeFromPat resolver) pats
     | SynArgPats.NamePatPairs _ -> failwith "todo C4E1220D-B309-4E34-A972-C0CD8431DE70"
 
 let rec mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string =
@@ -185,7 +211,7 @@ and mkSynValSig
                  _synBindingTrivia))
     : SynValSig
     =
-    let ident, mBindingName, existingTypedParameters, vis =
+    let ident, mBindingName, parameterTypes, vis =
         match memberFlags, headPat with
         // new
         | NewConstructorPattern (longDotId, argPats, vis) ->
@@ -193,59 +219,54 @@ and mkSynValSig
 
             SynIdent (longDotId.LongIdent.[0], identTrivia),
             longDotId.LongIdent.[0].idRange,
-            collectInfoFromSynArgPats argPats,
+            collectParametersFromSynArgPats resolver argPats,
             vis
         | Some _,
           SynPat.LongIdent (longDotId = SynLongIdent (id = [ _ ; ident ] ; trivia = [ _ ; identTrivia ])
                             argPats = argPats
                             accessibility = vis) ->
-            SynIdent (ident, identTrivia), ident.idRange, collectInfoFromSynArgPats argPats, vis
+            SynIdent (ident, identTrivia), ident.idRange, collectParametersFromSynArgPats resolver argPats, vis
 
         // static member without property
         | Some _,
           SynPat.LongIdent (longDotId = (SynLongIdent (id = [ ident ] ; trivia = [ identTrivia ]))
                             argPats = argPats
                             accessibility = vis) ->
-            SynIdent (ident, identTrivia), ident.idRange, collectInfoFromSynArgPats argPats, vis
+            SynIdent (ident, identTrivia), ident.idRange, collectParametersFromSynArgPats resolver argPats, vis
 
         | None, SynPat.LongIdent (longDotId = longDotId ; argPats = argPats ; accessibility = vis) ->
             let identTrivia = List.tryHead longDotId.Trivia
 
             SynIdent (longDotId.LongIdent.[0], identTrivia),
             longDotId.LongIdent.[0].idRange,
-            collectInfoFromSynArgPats argPats,
+            collectParametersFromSynArgPats resolver argPats,
             vis
 
         | _, SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
-            synIdent, ident.idRange, Map.empty, vis
+            synIdent, ident.idRange, [], vis
 
         | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.ToProxy ()}"
 
-    let existingReturnType =
-        synBindingReturnInfoOption
-        |> Option.map (fun (SynBindingReturnInfo (typeName = t)) -> t)
-
-    let arity = synValData.SynValInfo.CurriedArgInfos
+    let returnType =
+        match synBindingReturnInfoOption with
+        | Some (SynBindingReturnInfo (typeName = t)) -> t
+        | None ->
+            resolver.GetReturnTypeFor (mBindingName.ToProxy ()) (not parameterTypes.IsEmpty)
+            |> mkSynTypeOfParameterTypeName
+        |> wrapInParenWhenFunType
 
     let t =
-        mkSynTypeForArity resolver mBindingName arity memberFlags existingTypedParameters existingReturnType
-
-    let synValInfo =
-        match memberFlags, synValData.SynValInfo with
-        | Some (StaticMemberFlags _), SynValInfo ([ [] ], returnTypeArgInfo) -> SynValInfo ([], returnTypeArgInfo)
-
-        | Some _, SynValInfo ([ [ EmptySynArgInfo _ ] ; [] ], returnTypeArgInfo) ->
-            SynValInfo ([ [ zeroArgInfo ] ], returnTypeArgInfo)
-        | Some { IsInstance = true }, SynValInfo ([ EmptySynArgInfo _ :: realArgs ], returnTypeArgInfo) ->
-            SynValInfo ([ realArgs ], returnTypeArgInfo)
-        | _ -> synValData.SynValInfo
+        match parameterTypes with
+        | [] -> returnType
+        | ts -> mkSynTypeFun [ yield! ts ; yield returnType ]
 
     SynValSig (
         synAttributeLists,
         ident,
         SynValTyparDecls (None, false),
         t,
-        synValInfo,
+        // This isn't correct but doesn't matter for Fantomas
+        synValData.SynValInfo,
         isInline,
         isMutable,
         preXmlDoc,
@@ -259,62 +280,9 @@ and mkSynValSig
         }
     )
 
-and mkSynTypeForArity resolver mBindingName arity memberFlags existingTypedParameters existingReturnType : SynType =
-    let bindingRange = mBindingName.ToProxy ()
-
-    let returnType =
-        match existingReturnType with
-        | Some t -> t
-        | None ->
-            resolver.GetReturnTypeFor bindingRange (not arity.IsEmpty)
-            |> mkSynTypeOfParameterTypeName
-
-    if arity.IsEmpty then
-        returnType
-    else
-        let mkTypeForArgInfo (ident : Ident) =
-            match Map.tryFind ident.idText existingTypedParameters with
-            | Some t -> t
-            | None ->
-                resolver.GetTypeNameFor (ident.idRange.ToProxy ())
-                |> mkSynTypeOfParameterTypeName
-
-        let allTypes =
-            let parameters =
-                match memberFlags, arity with
-                | Some (StaticMemberFlags _), [ [] ] -> []
-
-                | _, [ [ SynArgInfo(ident = None) ] ; [] ] ->
-                    [ ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName ]
-                | _, arity ->
-
-                arity
-                |> List.mapi (fun idx group ->
-                    match group with
-                    | [] -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
-                    | [ SynArgInfo(ident = None) ] ->
-                        resolver.GetTypeForCurriedParameterGroup bindingRange idx
-                        |> mkSynTypeOfParameterTypeName
-                    | [ SynArgInfo(ident = Some ident) ] -> mkTypeForArgInfo ident
-                    | ts ->
-                        ts
-                        |> List.choose (fun (SynArgInfo (ident = indent)) -> indent)
-                        |> mkSynTypeTuple mkTypeForArgInfo
-                )
-
-            [ yield! parameters ; yield returnType ]
-
-        let rec visit types =
-            match types with
-            | [] -> failwith "unexpected empty list"
-            | [ t ] -> t
-            | t :: rest -> SynType.Fun (t, visit rest, zeroRange, { ArrowRange = zeroRange })
-
-        visit allTypes
-
 and mkSynTypeDefnSig
     resolver
-    (SynTypeDefn ((SynComponentInfo (longId = typeInfo) as componentInfo),
+    (SynTypeDefn (SynComponentInfo (longId = typeInfo) as componentInfo,
                   typeRepr,
                   members,
                   _implicitConstructor,
@@ -402,8 +370,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 ]
 
         let valSig =
-            let valInfo =
-                SynValInfo ([ [ SynArgInfo ([], false, None) ] ], SynArgInfo ([], false, None))
+            // This doesn't need to be correct for Fantomas
+            let valInfo = SynValInfo ([], SynArgInfo ([], false, None))
 
             SynValSig (
                 synAttributeLists,

@@ -49,6 +49,7 @@ module A =
     |> shouldEqualWithPrepend
         """
 namespace Company
+
 module A =
     val a: int
 """

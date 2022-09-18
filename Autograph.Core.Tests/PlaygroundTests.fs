@@ -233,10 +233,10 @@ let compilerArgs =
 let projectOptions =
     let sourceFiles =
         compilerArgs
-        |> Array.filter (fun line -> line.EndsWith (".fs") && File.Exists (line))
+        |> Array.filter (fun line -> line.EndsWith ".fs" && File.Exists line)
 
     let otherOptions =
-        compilerArgs |> Array.filter (fun line -> not (line.EndsWith (".fs")))
+        compilerArgs |> Array.filter (fun line -> not (line.EndsWith ".fs"))
 
     {
         ProjectFileName = "Autograph.Common"
@@ -268,6 +268,7 @@ let ``real world`` () =
     |> shouldEqualWithPrepend
         """
 module Autograph.TypedTree.Resolver
+
 open System
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
@@ -276,7 +277,6 @@ open Autograph.Common
 
 val equalProxyRange: proxyRange: RangeProxy -> m: range -> bool
 val checker: FSharpChecker
-val getTypeName: t: FSharpType -> string
 val transformToFSharpCoreAlias: fe: FSharpEntity -> string
 val mkParameterTypeName: t: FSharpType -> ParameterTypeName
 

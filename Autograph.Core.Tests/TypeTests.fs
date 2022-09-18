@@ -138,6 +138,7 @@ type A =
     |> shouldEqualWithPrepend
         """
 namespace Hej
+
 open System
 
 type A =

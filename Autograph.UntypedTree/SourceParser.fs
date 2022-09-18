@@ -26,14 +26,6 @@ let (|NewConstructorPattern|_|)
                         accessibility = vis) when newIdent.idText = "new" -> Some (longDotId, argPats, vis)
     | _ -> None
 
-let (|RemoveParensInPat|) (pat : SynPat) =
-    let rec visit (pat : SynPat) : SynPat =
-        match pat with
-        | SynPat.Paren (pat = pat) -> visit pat
-        | pat -> pat
-
-    visit pat
-
 let (|EmptySynArgInfo|_|) argInfo =
     match argInfo with
     | SynArgInfo ([], false, None) -> Some argInfo
