@@ -78,10 +78,17 @@ let removeParensInPat (pat : SynPat) =
 
     visit pat
 
+let removeParensInType (t : SynType) : SynType =
+    let rec visit t =
+        match t with
+        | SynType.Paren (t, _) -> visit t
+        | _ -> t
+
+    visit t
+
 let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynType =
     match removeParensInPat pat with
     | SynPat.Typed (SynPat.Named(ident = SynIdent (ident, _)), synType, _) ->
-        // TODO: attributes and optional parameters
         SynType.SignatureParameter ([], false, Some ident, wrapInParenWhenFunType synType, zeroRange)
     | SynPat.Named(ident = SynIdent (ident, _)) ->
         let t =
@@ -98,7 +105,38 @@ let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynTyp
         |> mkSynTypeOfParameterTypeName
         |> wrapInParenWhenFunType
     | SynPat.Const (SynConst.Unit, _) -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
-    | _ -> failwith "todo 233BA311-87C9-49DA-BFE0-9BDFAB0B09BB"
+    | SynPat.Attrib (pat, attrs, _range) ->
+        match removeParensInType (mkTypeFromPat resolver pat) with
+        | SynType.SignatureParameter (_, optional, ident, t, range) ->
+            SynType.SignatureParameter (attrs, optional, ident, t, range)
+        | t -> SynType.SignatureParameter (attrs, false, None, t, zeroRange)
+        |> wrapInParenWhenFunType
+    | SynPat.OptionalVal (ident, _range) ->
+        let t =
+            resolver.GetTypeNameFor (ident.idRange.ToProxy ())
+            |> mkSynTypeOfParameterTypeName
+            |> wrapInParenWhenFunType
+
+        // This returns an optional type, we need to unwrap it
+        let t =
+            match t with
+            | SynType.App (SynType.LongIdent(longDotId = SynLongIdent(id = [ optionIdent ])),
+                           lessRange,
+                           typeArgs,
+                           commaRanges,
+                           greaterRange,
+                           isPostfix,
+                           range) when optionIdent.idText = "option" ->
+                match typeArgs with
+                | [] -> failwith "invalid AST in SynType.App"
+                | [ single ] -> wrapInParenWhenFunType single
+                | head :: tail -> SynType.App (head, lessRange, tail, commaRanges, greaterRange, isPostfix, range)
+            | t -> t
+
+        SynType.SignatureParameter ([], true, Some ident, t, zeroRange)
+    | SynPat.Typed (SynPat.OptionalVal (ident, _range), synType, _) ->
+        SynType.SignatureParameter ([], true, Some ident, wrapInParenWhenFunType synType, zeroRange)
+    | pat -> failwith $"todo 233BA311-87C9-49DA-BFE0-9BDFAB0B09BB, {pat}"
 
 let collectParametersFromSynArgPats (resolver : TypedTreeInfoResolver) (argPats : SynArgPats) : SynType list =
     match argPats with
@@ -403,6 +441,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 zeroRange
             )
         )
+    | SynMemberDefn.ImplicitInherit (inheritType, _inheritArgs, _inheritAlias, _range) ->
+        Some (SynMemberSig.Inherit (inheritType, zeroRange))
     | SynMemberDefn.LetBindings _
     | SynMemberDefn.Open _ -> None
     | SynMemberDefn.AutoProperty _

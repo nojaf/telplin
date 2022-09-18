@@ -392,3 +392,98 @@ module A
 
 val v: int option array list
 """
+
+[<Test>]
+let ``attributes in parameter`` () =
+    mkSignature
+        """
+module Foo
+
+type BAttribute() =
+    inherit System.Attribute()
+
+let a ([<B>] c: int) : int = 0
+"""
+    |> shouldEqualWithPrepend
+        """
+module Foo
+
+type BAttribute =
+    new: unit -> BAttribute
+    inherit System.Attribute
+
+val a: [<B>] c: int -> int
+"""
+
+[<Test>]
+let ``attributes in parameter with type`` () =
+    mkSignature
+        """
+module Foo
+
+type BAttribute() =
+    inherit System.Attribute()
+
+let a ([<B>] c) : int = c + 1
+"""
+    |> shouldEqualWithPrepend
+        """
+module Foo
+
+type BAttribute =
+    new: unit -> BAttribute
+    inherit System.Attribute
+
+val a: [<B>] c: int -> int
+"""
+
+[<Test>]
+let ``optional parameter in member`` () =
+    mkSignature
+        """
+namespace X
+
+type Meh =
+    member this.Foo (?x) = defaultArg x 0
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace X
+
+type Meh =
+    member Foo: ?x: int -> int
+"""
+
+[<Test>]
+let ``curried optional parameters in member`` () =
+    mkSignature
+        """
+namespace X
+
+type Meh =
+    member this.Foo (?x, ?y:int) = defaultArg x 0 + defaultArg y 0
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace X
+
+type Meh =
+    member Foo: ?x: int * ?y: int -> int
+"""
+
+[<Test>]
+let ``optional function type in member`` () =
+    mkSignature
+        """
+namespace X
+
+type Meh =
+    member this.Foo (?x:int -> int) = 0
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace X
+
+type Meh =
+    member Foo: ?x: (int -> int) -> int
+"""
