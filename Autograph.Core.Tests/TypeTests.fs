@@ -1,6 +1,5 @@
 ﻿module Autograph.Core.Tests.TypeTests
 
-open System
 open NUnit.Framework
 open TestHelper
 
