@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Scrape.fs" />
+    <Compile Include="OptionCE.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />
+    <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.669" />
   </ItemGroup>
 
 </Project>

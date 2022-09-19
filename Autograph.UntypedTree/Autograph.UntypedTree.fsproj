@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="SourceParser.fsi" />
         <Compile Include="SourceParser.fs" />
         <Compile Include="UntypedTree.fsi" />
         <Compile Include="UntypedTree.fs" />
