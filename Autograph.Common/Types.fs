@@ -28,9 +28,15 @@ type RangeProxy =
             $"({this.StartLine}, {this.StartColumn}) ({this.EndLine},{this.EndColumn})"
     end
 
+type ReturnTypeResponse =
+    {
+        FullType : ParameterTypeName
+        ReturnParameter : ParameterTypeName
+    }
+
 type TypeInfoResponse = { IsClass : bool }
 
 type TypedTreeInfoResolver =
-    abstract member GetTypeNameFor : range : RangeProxy -> ParameterTypeName
-    abstract member GetReturnTypeFor : range : RangeProxy -> hasParameters : bool -> ParameterTypeName
+    abstract member GetTypeNameFor : parameterRange : RangeProxy -> bindingRange : RangeProxy -> ParameterTypeName
+    abstract member GetReturnTypeFor : range : RangeProxy -> ReturnTypeResponse
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse

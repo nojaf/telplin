@@ -579,3 +579,80 @@ module L
 [<Literal>]
 val MaxLength: int = 512
 """
+
+[<Test>]
+let ``active pattern unwrapped in binding`` () =
+    assertSignature
+        """
+module A
+
+type SynTypeDefnSig =
+    /// The information for a type definition in a signature
+    | SynTypeDefnSig of
+        typeInfo: obj *
+        typeRepr: obj *
+        members: obj list *
+        range: obj *
+        trivia: obj
+
+let (|TypeDefnSig|) (SynTypeDefnSig(typeInfo, typeRepr, members, range, _)) = (typeInfo, typeRepr, members)
+let rec meh () = ()
+and fn (x:int) (TypeDefnSig(a,b,c)) = x
+"""
+        """
+module A
+
+type SynTypeDefnSig =
+    /// The information for a type definition in a signature
+    | SynTypeDefnSig of typeInfo: obj * typeRepr: obj * members: obj list * range: obj * trivia: obj
+
+val (|TypeDefnSig|): SynTypeDefnSig -> obj * obj * obj list
+val meh: unit -> unit
+val fn: x: int -> SynTypeDefnSig -> int
+"""
+
+[<Test>]
+let ``nested tuples should no longer be named`` () =
+    assertSignature
+        """
+module X
+
+let a ((x: int, y: float), z:string) = 1uy
+"""
+        """
+module X
+
+val a: (int * float) * z: string -> byte
+"""
+
+let a ((x : int, y : float), z : string) = 1uy
+
+[<Test>]
+let ``binding with unresolvable parameter that return a function type`` () =
+    assertSignature
+        """
+module V
+
+let f _ = (*) 3
+"""
+        """
+module V
+
+val f: 'a -> (int -> int)
+"""
+
+[<Test>]
+let ``lambda return expression`` () =
+    assertSignature
+        """
+module L
+
+let f (a : string) (b : char) = fun (c : float) -> 2.0
+"""
+        """
+module L
+
+val f: a: string -> b: char -> float -> float
+"""
+
+let f (a : string) (b : char) = fun (c : float) -> 2.0

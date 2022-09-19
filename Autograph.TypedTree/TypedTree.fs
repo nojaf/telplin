@@ -76,23 +76,29 @@ let mkResolverFor sourceFileName sourceText projectOptions =
 
     match checkFileAnswer with
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
-        let allSymbols = checkFileResults.GetAllUsesOfAllSymbolsInFile () |> Seq.toArray
+        let allSymbols =
+            checkFileResults.GetAllUsesOfAllSymbolsInFile ()
+            |> Seq.sortBy (fun r -> r.Range.StartLine, r.Range.StartColumn)
+            |> Seq.toArray
 
         let printException ex proxyRange =
             printfn $"Exception for {proxyRange} in {sourceFileName}\n{ex}"
 
-        let findSymbol proxyRange =
-            let symbol =
-                allSymbols
-                |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
-
-            match symbol with
-            | None -> failwith $"Failed to resolve symbols for {proxyRange}"
-            | Some symbol ->
+        let tryFindSymbol proxyRange =
+            allSymbols
+            |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
+            |> Option.map (fun symbol ->
                 match symbol.Symbol with
-                | :? FSharpMemberOrFunctionOrValue as valSymbol -> Choice1Of2 valSymbol
-                | :? FSharpUnionCase as unionCaseSymbol -> Choice2Of2 unionCaseSymbol
-                | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
+                | :? FSharpMemberOrFunctionOrValue as valSymbol -> Choice1Of3 valSymbol
+                | :? FSharpUnionCase as unionCaseSymbol -> Choice2Of3 unionCaseSymbol
+                | :? FSharpActivePatternCase as activePatternCaseSymbol -> Choice3Of3 activePatternCaseSymbol
+                | _ -> failwith $"Unexpected type of {symbol} for {proxyRange}"
+            )
+
+        let findSymbol proxyRange =
+            match tryFindSymbol proxyRange with
+            | None -> failwith $"Failed to resolve symbols for {proxyRange}"
+            | Some symbol -> symbol
 
         let findTypeSymbol proxyRange =
             let symbol =
@@ -107,32 +113,81 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                 | _ -> failwith $"Failed to resolve FSharpType for for {proxyRange}"
 
         { new TypedTreeInfoResolver with
-            member resolver.GetTypeNameFor proxyRange =
+            member resolver.GetTypeNameFor parameterRange bindingRange =
                 try
-                    let symbol = findSymbol proxyRange
+                    let parameterSymbol = tryFindSymbol parameterRange
 
-                    match symbol with
-                    | Choice1Of2 valSymbol -> mkParameterTypeName valSymbol.FullType
-                    | Choice2Of2 unionCaseSymbol -> mkParameterTypeName unionCaseSymbol.ReturnType
+                    match parameterSymbol with
+                    | Some symbol ->
+                        match symbol with
+                        | Choice1Of3 valSymbol -> mkParameterTypeName valSymbol.FullType
+                        | Choice2Of3 unionCaseSymbol -> mkParameterTypeName unionCaseSymbol.ReturnType
+                        | Choice3Of3 activePatternCaseSymbol ->
+                            mkParameterTypeName activePatternCaseSymbol.Group.OverallType.GenericArguments.[0]
+                    | None ->
+                        match findSymbol bindingRange with
+                        | Choice1Of3 valSymbol ->
+                            // The parameter didn't resolve any symbol on its own merits
+                            // It might still be a resolve as an FSharpParameter
+                            let parameterType =
+                                valSymbol.CurriedParameterGroups
+                                |> Seq.choose (fun pg ->
+                                    pg
+                                    |> Seq.choose (fun p ->
+                                        if equalProxyRange parameterRange p.DeclarationLocation then
+                                            Some p.Type
+                                        else
+                                            None
+                                    )
+                                    |> Seq.tryHead
+                                )
+                                |> Seq.tryHead
+
+                            match parameterType with
+                            | None ->
+                                failwith
+                                    $"Could not resolve parameter {parameterRange} in FSharpMemberOrFunctionOrValue {bindingRange}"
+                            | Some p -> mkParameterTypeName p
+                        | Choice2Of3 _
+                        | Choice3Of3 _ -> failwith $"Expected {bindingRange} to resolve FSharpMemberOrFunctionOrValue"
                 with ex ->
-                    printException ex proxyRange
+                    printException ex parameterRange
                     raise ex
 
-            member resolver.GetReturnTypeFor proxyRange hasParameters =
+            member resolver.GetReturnTypeFor proxyRange =
                 try
                     let symbol = findSymbol proxyRange
 
+                    // TODO: pass found number of parameters
+
                     match symbol with
-                    | Choice1Of2 valSymbol ->
+                    | Choice1Of3 valSymbol ->
+                        // TODO: just use the formatted layout?
+                        let s = valSymbol.FormatLayout FSharpDisplayContext.Empty
 
-                        mkParameterTypeName (
-                            if hasParameters then
-                                valSymbol.ReturnParameter.Type
-                            else
-                                valSymbol.FullType
-                        )
+                        let correctReturnParameterQuestionmark =
+                            match mkParameterTypeName valSymbol.FullType with
+                            | ParameterTypeName.FunctionType ts ->
+                                ts
+                                |> List.skip valSymbol.CurriedParameterGroups.Count
+                                |> ParameterTypeName.FunctionType
+                            | _ -> mkParameterTypeName valSymbol.ReturnParameter.Type
+                        // if valSymbol.IsMember then
+                        //     valSymbol.FullType.GenericArguments.[1]
+                        // else
+                        //     valSymbol.FullType
 
-                    | Choice2Of2 unionCaseSymbol -> mkParameterTypeName unionCaseSymbol.ReturnType
+                        {
+                            FullType = mkParameterTypeName valSymbol.FullType
+                            ReturnParameter = correctReturnParameterQuestionmark
+                        }
+
+                    | Choice2Of3 unionCaseSymbol ->
+                        {
+                            FullType = mkParameterTypeName unionCaseSymbol.ReturnType
+                            ReturnParameter = mkParameterTypeName unionCaseSymbol.ReturnType
+                        }
+                    | Choice3Of3 activePatternCaseSymbol -> failwith "todo EA3DEB1F-C6B9-4CFB-9A01-0C4B321C22FD"
                 with ex ->
                     printException ex proxyRange
                     raise ex

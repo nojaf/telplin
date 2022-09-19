@@ -202,3 +202,40 @@ type LSPFantomasService =
         new: unit -> LSPFantomasService
     end
 """
+
+[<Test>]
+let ``static member of record type`` () =
+    assertSignature
+        """
+namespace A
+
+type ASTContext =
+    {
+        /// This pattern matters for formatting extern declarations
+        IsCStylePattern: bool
+        /// A field is rendered as union field or not
+        IsUnionField: bool
+        /// First type param might need extra spaces to avoid parsing errors on `<^`, `<'`, etc.
+        IsFirstTypeParam: bool
+    }
+
+    static member Default =
+        { IsCStylePattern = false
+          IsUnionField = false
+          IsFirstTypeParam = false }
+"""
+        """
+namespace A
+
+type ASTContext =
+    {
+        /// This pattern matters for formatting extern declarations
+        IsCStylePattern: bool
+        /// A field is rendered as union field or not
+        IsUnionField: bool
+        /// First type param might need extra spaces to avoid parsing errors on `<^`, `<'`, etc.
+        IsFirstTypeParam: bool
+    }
+
+    static member Default: ASTContext
+"""

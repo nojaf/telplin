@@ -30,3 +30,8 @@ let (|EmptySynArgInfo|_|) argInfo =
     match argInfo with
     | SynArgInfo ([], false, None) -> Some argInfo
     | _ -> None
+
+let (|UnitType|_|) t =
+    match t with
+    | SynType.LongIdent (SynLongIdent(id = [ ident ])) when ident.idText = "unit" -> Some t
+    | _ -> None
