@@ -487,3 +487,130 @@ namespace X
 type Meh =
     member Foo: ?x: (int -> int) -> int
 """
+
+[<Test>]
+let ``typed single discrimination union`` () =
+    mkSignature
+        """
+module A
+
+type Folder = Folder of path: string
+
+let private runToolListCmd (Folder workingDir: Folder) (globalFlag: bool) = ()
+"""
+    |> shouldEqualWithPrepend
+        """
+module A
+
+type Folder = Folder of path: string
+val private runToolListCmd: Folder -> globalFlag: bool -> unit
+"""
+
+[<Test>]
+let ``aliased pattern parameter`` () =
+    mkSignature
+        """
+module Hej
+
+type DU = DU of one: string * two:int
+
+let (|Two|) (DU.DU(one, two) as du) = two
+"""
+    |> shouldEqualWithPrepend
+        """
+module Hej
+
+type DU = DU of one: string * two: int
+val (|Two|): DU -> int
+"""
+
+[<Test>]
+let ``wildcard pattern`` () =
+    mkSignature
+        """
+module W
+
+let (|Fst|) (a, _) = a
+
+do
+    match "", true with
+    | Fst s -> printfn "%s" s
+"""
+    |> shouldEqualWithPrepend
+        """
+module W
+
+val (|Fst|): 'a * 'b -> 'a
+"""
+
+[<Test>]
+let ``tuple return type in partial active pattern`` () =
+    mkSignature
+        """
+module A
+
+let (|Twice|_|) (a:int) = Some (a, a) 
+"""
+    |> shouldEqualWithPrepend
+        """
+module A
+
+val (|Twice|_|): a: int -> (int * int) option
+"""
+
+[<Test>]
+let ``nested tuples`` () =
+    mkSignature
+        """
+module T
+
+open System
+
+let a = ("", ('c', true)), DateTime.Now
+"""
+    |> shouldEqualWithPrepend
+        """
+module T
+
+open System
+val a: (string * (char * bool)) * DateTime
+"""
+
+[<Test>]
+let ``extension type property`` () =
+    mkSignature
+        """
+namespace P
+
+type System.Object with
+    member this.Range = 0
+"""
+    |> shouldEqualWithPrepend
+        """
+namespace P
+
+type System.Object with
+
+    member Range: int
+"""
+
+[<Test>]
+let ``literal value should contain default value`` () =
+    mkSignature
+        """
+module L
+
+[<Literal>]
+let MaxLength = 512
+"""
+    |> shouldEqualWithPrepend
+        """
+module L
+
+[<Literal>]
+val MaxLength: int = 512
+"""
+
+type System.Object with
+
+    member this.Range = 0

@@ -31,4 +31,3 @@ type RangeProxy =
 type TypedTreeInfoResolver =
     abstract member GetTypeNameFor : range : RangeProxy -> ParameterTypeName
     abstract member GetReturnTypeFor : range : RangeProxy -> hasParameters : bool -> ParameterTypeName
-    abstract member GetTypeForCurriedParameterGroup : range : RangeProxy -> index : int -> ParameterTypeName

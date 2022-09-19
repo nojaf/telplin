@@ -81,7 +81,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
         let printException ex proxyRange =
             printfn $"Exception for {proxyRange} in {sourceFileName}\n{ex}"
 
-        let findValSymbol proxyRange =
+        let findSymbol proxyRange =
             let symbol =
                 allSymbols
                 |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
@@ -90,41 +90,37 @@ let mkResolverFor sourceFileName sourceText projectOptions =
             | None -> failwith $"Failed to resolve symbols for {proxyRange}"
             | Some symbol ->
                 match symbol.Symbol with
-                | :? FSharpMemberOrFunctionOrValue as valSymbol -> valSymbol
+                | :? FSharpMemberOrFunctionOrValue as valSymbol -> Choice1Of2 valSymbol
+                | :? FSharpUnionCase as unionCaseSymbol -> Choice2Of2 unionCaseSymbol
                 | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
 
         { new TypedTreeInfoResolver with
             member resolver.GetTypeNameFor proxyRange =
                 try
-                    let valSymbol = findValSymbol proxyRange
-                    mkParameterTypeName valSymbol.FullType
+                    let symbol = findSymbol proxyRange
+
+                    match symbol with
+                    | Choice1Of2 valSymbol -> mkParameterTypeName valSymbol.FullType
+                    | Choice2Of2 unionCaseSymbol -> mkParameterTypeName unionCaseSymbol.ReturnType
                 with ex ->
                     printException ex proxyRange
                     raise ex
 
             member resolver.GetReturnTypeFor proxyRange hasParameters =
                 try
-                    let valSymbol = findValSymbol proxyRange
+                    let symbol = findSymbol proxyRange
 
-                    mkParameterTypeName (
-                        if hasParameters then
-                            valSymbol.ReturnParameter.Type
-                        else
-                            valSymbol.FullType
-                    )
-                with ex ->
-                    printException ex proxyRange
-                    raise ex
+                    match symbol with
+                    | Choice1Of2 valSymbol ->
 
-            member resolve.GetTypeForCurriedParameterGroup proxyRange index =
-                try
-                    let valSymbol = findValSymbol proxyRange
+                        mkParameterTypeName (
+                            if hasParameters then
+                                valSymbol.ReturnParameter.Type
+                            else
+                                valSymbol.FullType
+                        )
 
-                    if Seq.isEmpty valSymbol.CurriedParameterGroups then
-                        // Assume unit
-                        ParameterTypeName.SingleIdentifier "unit"
-                    else
-                        mkParameterTypeName valSymbol.CurriedParameterGroups.[index].[0].Type
+                    | Choice2Of2 unionCaseSymbol -> mkParameterTypeName unionCaseSymbol.ReturnType
                 with ex ->
                     printException ex proxyRange
                     raise ex
