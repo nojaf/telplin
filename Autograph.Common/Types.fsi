@@ -18,6 +18,9 @@ type RangeProxy =
         new: startLine: int * startColumn: int * endLine: int * endColumn: int -> RangeProxy
     end
 
+type TypeInfoResponse = { IsClass: bool }
+
 type TypedTreeInfoResolver =
     abstract member GetTypeNameFor: range: RangeProxy -> ParameterTypeName
     abstract member GetReturnTypeFor: range: RangeProxy -> hasParameters: bool -> ParameterTypeName
+    abstract member GetTypeInfo: range: RangeProxy -> TypeInfoResponse

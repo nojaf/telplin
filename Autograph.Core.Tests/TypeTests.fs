@@ -5,7 +5,7 @@ open TestHelper
 
 [<Test>]
 let ``simple record`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
@@ -15,7 +15,6 @@ type B = {
     SomethingElseButSomewhatLonger: float
 }
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -27,14 +26,13 @@ type B =
 
 [<Test>]
 let ``empty struct`` () =
-    mkSignature
+    assertSignature
         """
 namespace Foo
 
 [<Struct>]
 type Bar = struct end
 """
-    |> shouldEqualWithPrepend
         """
 namespace Foo
 
@@ -46,7 +44,7 @@ type Bar =
 
 [<Test>]
 let ``struct with value`` () =
-    mkSignature
+    assertSignature
         """
 namespace Foo
 
@@ -54,7 +52,6 @@ namespace Foo
 type Bar =
     val X : int
 """
-    |> shouldEqualWithPrepend
         """
 namespace Foo
 
@@ -65,7 +62,7 @@ type Bar =
 
 [<Test>]
 let ``struct with constructor`` () =
-    mkSignature
+    assertSignature
         """
 namespace Foo
 
@@ -75,7 +72,6 @@ type Bar =
         new(x : int) = { X = x }
     end
 """
-    |> shouldEqualWithPrepend
         """
 namespace Foo
 
@@ -88,14 +84,13 @@ type Bar =
 
 [<Test>]
 let ``AbstractSlot in type definition`` () =
-    mkSignature
+    assertSignature
         """
 namespace Hej
 
 type Foo =
     abstract member Bar : x : int -> y : int -> int
 """
-    |> shouldEqualWithPrepend
         """
 namespace Hej
 
@@ -105,14 +100,13 @@ type Foo =
 
 [<Test>]
 let ``type extension`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
 type System.Int32 with
     member i.PlusPlus () = i + 1
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -123,7 +117,7 @@ type System.Int32 with
 
 [<Test>]
 let ``type with nested interface`` () =
-    mkSignature
+    assertSignature
         """
 namespace Hej
 
@@ -134,7 +128,6 @@ type A =
     interface IDisposable with
         member this.Dispose () = ()
 """
-    |> shouldEqualWithPrepend
         """
 namespace Hej
 
@@ -148,18 +141,21 @@ type A =
 
 [<Test>]
 let ``interface that inherits an interface`` () =
-    mkSignature
+    assertSignature
         """
 namespace B
+
+open System
 
 type A =
     interface
         inherit IDisposable
     end
 """
-    |> shouldEqualWithPrepend
         """
 namespace B
+
+open System
 
 type A =
     interface
@@ -169,7 +165,7 @@ type A =
 
 [<Test>]
 let ``static member value`` () =
-    mkSignature
+    assertSignature
         """
 namespace X
 
@@ -180,7 +176,6 @@ type State =
 
     static member Empty : State = { Files = [] }
 """
-    |> shouldEqualWithPrepend
         """
 namespace X
 
@@ -192,14 +187,13 @@ type State =
 
 [<Test>]
 let ``empty class with constructor`` () =
-    mkSignature
+    assertSignature
         """
 namespace X
 
 type LSPFantomasService() =
     class end
 """
-    |> shouldEqualWithPrepend
         """
 namespace X
 

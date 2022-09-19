@@ -94,6 +94,18 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                 | :? FSharpUnionCase as unionCaseSymbol -> Choice2Of2 unionCaseSymbol
                 | _ -> failwith $"Failed to resolve FSharpMemberOrFunctionOrValue for for {proxyRange}"
 
+        let findTypeSymbol proxyRange =
+            let symbol =
+                allSymbols
+                |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
+
+            match symbol with
+            | None -> failwith $"Failed to resolve symbols for {proxyRange}"
+            | Some symbol ->
+                match symbol.Symbol with
+                | :? FSharpEntity as typeSymbol -> typeSymbol
+                | _ -> failwith $"Failed to resolve FSharpType for for {proxyRange}"
+
         { new TypedTreeInfoResolver with
             member resolver.GetTypeNameFor proxyRange =
                 try
@@ -124,6 +136,14 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                 with ex ->
                     printException ex proxyRange
                     raise ex
+
+            member resolver.GetTypeInfo proxyRange =
+                try
+                    let symbol = findTypeSymbol proxyRange
+                    { IsClass = symbol.IsClass }
+                with ex ->
+                    printException ex proxyRange
+                    raise ex
         }
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
@@ -148,3 +168,25 @@ let mkResolverForCode (code : string) : TypedTreeInfoResolver =
     let sourceText = SourceText.ofString code
 
     mkResolverFor sourceFileName sourceText projectOptions
+
+let assertTypeCheckFor implementationPath signaturePath =
+    let projectOptions : FSharpProjectOptions =
+        {
+            ProjectFileName = "A"
+            ProjectId = None
+            SourceFiles = [| signaturePath ; implementationPath |]
+            OtherOptions = [||]
+            ReferencedProjects = [||]
+            IsIncompleteTypeCheckEnvironment = false
+            UseScriptResolutionRules = false
+            LoadTime = DateTime.Now
+            UnresolvedReferences = None
+            OriginalLoadReferences = []
+            Stamp = None
+        }
+
+    let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+
+    if not (Array.isEmpty result.Diagnostics) then
+        Array.iter (fun d -> printfn "%A" d) result.Diagnostics
+        failwith "Could not compile source with signature file"

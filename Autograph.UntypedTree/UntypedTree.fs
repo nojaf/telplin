@@ -8,6 +8,7 @@ open Autograph.Common
 open Autograph.UntypedTree.SourceParser
 
 let zeroRange : range = Range.Zero
+let unitExpr : SynExpr = SynExpr.Const (SynConst.Unit, zeroRange)
 
 [<RequireQualifiedAccess>]
 type TypesFromPattern =
@@ -71,9 +72,12 @@ and wrapInParenIfTuple (p : ParameterTypeName) : SynType =
 let mkSynIdent text =
     SynIdent (Ident (text, zeroRange), None)
 
+let mkSynLongIdent text =
+    SynLongIdent ([ Ident (text, zeroRange) ], [], [ None ])
+
 type Range with
 
-    member r.ToProxy () : RangeProxy =
+    member r.Proxy : RangeProxy =
         RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
 
 let wrapInParenWhenFunType (t : SynType) : SynType =
@@ -103,7 +107,7 @@ let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynTyp
         SynType.SignatureParameter ([], false, Some ident, wrapInParenWhenFunType synType, zeroRange)
     | SynPat.Named(ident = SynIdent (ident, _)) ->
         let t =
-            resolver.GetTypeNameFor (ident.idRange.ToProxy ())
+            resolver.GetTypeNameFor ident.idRange.Proxy
             |> mkSynTypeOfParameterTypeName
             |> wrapInParenWhenFunType
 
@@ -112,7 +116,7 @@ let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynTyp
         let ts = List.map (mkTypeFromPat resolver) pats
         mkSynTypeTuple id ts
     | SynPat.LongIdent (range = m) ->
-        resolver.GetTypeNameFor (m.ToProxy ())
+        resolver.GetTypeNameFor m.Proxy
         |> mkSynTypeOfParameterTypeName
         |> wrapInParenWhenFunType
     | SynPat.Const (SynConst.Unit, _) -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
@@ -124,7 +128,7 @@ let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynTyp
         |> wrapInParenWhenFunType
     | SynPat.OptionalVal (ident, _range) ->
         let t =
-            resolver.GetTypeNameFor (ident.idRange.ToProxy ())
+            resolver.GetTypeNameFor ident.idRange.Proxy
             |> mkSynTypeOfParameterTypeName
             |> wrapInParenWhenFunType
 
@@ -149,8 +153,7 @@ let rec mkTypeFromPat (resolver : TypedTreeInfoResolver) (pat : SynPat) : SynTyp
         SynType.SignatureParameter ([], true, Some ident, wrapInParenWhenFunType synType, zeroRange)
     | SynPat.Typed (_, synType, _) -> wrapInParenWhenFunType synType
     | SynPat.As (SynPat.LongIdent (longDotId = synIdent), _rhs, _range) ->
-        resolver.GetTypeNameFor (synIdent.Range.ToProxy ())
-        |> mkSynTypeOfParameterTypeName
+        resolver.GetTypeNameFor synIdent.Range.Proxy |> mkSynTypeOfParameterTypeName
     | pat -> failwith $"todo 233BA311-87C9-49DA-BFE0-9BDFAB0B09BB, {pat}"
 
 let rec patternContainsWildCard (pat : SynPat) : bool =
@@ -184,7 +187,7 @@ let collectParametersFromSynArgPats
             // If there is a wildcard we cannot resolve that parameter
             // As a fallback we should just try and resolve the fullType instead
             // We want to inspect the `FullType` anyways
-            resolver.GetReturnTypeFor (bindingRange.ToProxy ()) false
+            resolver.GetReturnTypeFor bindingRange.Proxy false
             |> mkSynTypeOfParameterTypeName
             |> removeParensInType
             |> TypesFromPattern.HasWildCard
@@ -344,7 +347,7 @@ and mkSynValSig
         | _, SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
             synIdent, ident.idRange, TypesFromPattern.HasNoParameters, vis
 
-        | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.ToProxy ()}"
+        | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
 
     let returnType =
         match synBindingReturnInfoOption with
@@ -356,7 +359,7 @@ and mkSynValSig
                 | TypesFromPattern.HasWildCard _ -> false
                 | TypesFromPattern.HasParameters _ -> true
 
-            resolver.GetReturnTypeFor (mBindingName.ToProxy ()) hasParameters
+            resolver.GetReturnTypeFor mBindingName.Proxy hasParameters
             |> mkSynTypeOfParameterTypeName
         |> wrapInParenWhenFunType
 
@@ -405,7 +408,7 @@ and mkSynTypeDefnSig
     (SynTypeDefn (SynComponentInfo (longId = typeInfo) as componentInfo,
                   typeRepr,
                   members,
-                  _implicitConstructor,
+                  implicitConstructor,
                   _range,
                   trivia))
     : SynTypeDefnSig
@@ -428,6 +431,58 @@ and mkSynTypeDefnSig
         | _ -> trivia.WithKeyword
 
     let members = members |> List.choose (mkSynMemberSig resolver typeInfo)
+
+    let componentInfo =
+        match typeRepr with
+        | SynTypeDefnRepr.ObjectModel(kind = SynTypeDefnKind.Unspecified) when implicitConstructor.IsNone ->
+            // To overcome
+            // "typecheck error The representation of this type is hidden by the signature."
+            // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
+            match componentInfo with
+            | SynComponentInfo (synAttributeLists,
+                                synTyparDeclsOption,
+                                synTypeConstraints,
+                                longId,
+                                preXmlDoc,
+                                preferPostfix,
+                                synAccessOption,
+                                range) ->
+                let attributes =
+                    match longId with
+                    | [ singleIdent ] ->
+                        let typeInfo = resolver.GetTypeInfo singleIdent.idRange.Proxy
+
+                        if typeInfo.IsClass then
+                            ({
+                                Attributes =
+                                    [
+                                        {
+                                            TypeName = mkSynLongIdent "Class"
+                                            ArgExpr = unitExpr
+                                            Target = None
+                                            AppliesToGetterAndSetter = false
+                                            Range = zeroRange
+                                        }
+                                    ]
+                                Range = zeroRange
+                            } : SynAttributeList)
+                            :: synAttributeLists
+                        else
+                            synAttributeLists
+                    | _ -> synAttributeLists
+
+                SynComponentInfo (
+                    attributes,
+                    synTyparDeclsOption,
+                    synTypeConstraints,
+                    longId,
+                    preXmlDoc,
+                    preferPostfix,
+                    synAccessOption,
+                    range
+                )
+
+        | _ -> componentInfo
 
     SynTypeDefnSig (
         componentInfo,
@@ -530,4 +585,4 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
     | SynMemberDefn.AutoProperty _
     | SynMemberDefn.GetSetMember _
     | SynMemberDefn.ImplicitInherit _
-    | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.ToProxy ()}"
+    | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"

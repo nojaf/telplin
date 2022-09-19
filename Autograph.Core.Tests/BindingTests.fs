@@ -5,13 +5,12 @@ open TestHelper
 
 [<Test>]
 let ``initial test`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a b = b + 1
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -20,13 +19,12 @@ val a: b: int -> int
 
 [<Test>]
 let ``simple value`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a = 1
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -35,13 +33,12 @@ val a: int
 
 [<Test>]
 let ``tupled argument`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a (b: int, c) = printfn "%s" c ; b
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -50,13 +47,12 @@ val a: b: int * c: string -> int
 
 [<Test>]
 let ``function return type`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a (b:string) : int -> int = failwith "not implemented"
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -65,13 +61,12 @@ val a: b: string -> (int -> int)
 
 [<Test>]
 let ``re-use existing type information is present`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a (b:string list) : seq<int> = failwith "not implemented"
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -80,7 +75,7 @@ val a: b: string list -> seq<int>
 
 [<Test>]
 let ``open statements are re-used from source`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
@@ -89,7 +84,6 @@ open System.Collections
 
 let a = DateTime.Now
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -101,13 +95,12 @@ val a: DateTime
 
 [<Test>]
 let ``private access modifier`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let private x = 0
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -116,13 +109,12 @@ val private x: int
 
 [<Test>]
 let ``internal access modifier`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let internal x = 0
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -131,13 +123,12 @@ val internal x: int
 
 [<Test>]
 let ``inline private`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let inline private a (b:int) = b - 1
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -146,13 +137,12 @@ val inline private a: b: int -> int
 
 [<Test>]
 let ``function with tuple parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let x (y:int , z:int) = y + z
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -161,13 +151,12 @@ val x: y: int * z: int -> int
 
 [<Test>]
 let ``generic function with annotations`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let g<'t> (h: 't list) = List.length h
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -176,13 +165,12 @@ val g: h: 't list -> int
 
 [<Test>]
 let ``generic function without annotations`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let k l m n o = l m n o
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -191,7 +179,7 @@ val k: l: ('a -> 'b -> 'c -> 'd) -> m: 'a -> n: 'b -> o: 'c -> 'd
 
 [<Test>]
 let ``generic function with generic type in parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
@@ -201,7 +189,6 @@ type Teq<'a, 'b> =
 
 let map (f: 'b -> 'c) (t: Teq<'a, 'b>) : Teq<'a, 'c> = failwith "todo"
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -214,13 +201,12 @@ val map: f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
 
 [<Test>]
 let ``statically resolved type parameters`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let inline fmap (f: ^a -> ^b) (a: ^a list) = List.map f a
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -229,13 +215,12 @@ val inline fmap: f: (^a -> ^b) -> a: ^a list -> ^b list
 
 [<Test>]
 let ``tuple value`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
 let v = 1, ""
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -244,14 +229,13 @@ val v: int * string
 
 [<Test>]
 let ``recursive functions`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
 let rec a (b: int) = b + 1
 and c (d:int) = d - 1
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -261,13 +245,12 @@ val c: d: int -> int
 
 [<Test>]
 let ``active pattern with parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
 let (|Foo|) (a:string) = a
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -276,13 +259,12 @@ val (|Foo|): a: string -> string
 
 [<Test>]
 let ``active pattern without parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
 let (|Foo|) = function | 1 -> 2 | x -> x
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -291,7 +273,7 @@ val (|Foo|): (int -> int)
 
 [<Test>]
 let ``unwrapped discriminated union value`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
@@ -299,7 +281,6 @@ type B = | B of string * int
 
 let c (B(d,e)) = 4
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -309,13 +290,12 @@ val c: B -> int
 
 [<Test>]
 let ``type with generic arguments`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
 let collectInfoFromSynArgPats (argPats : obj) =  Map.empty<string, obj>
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -324,7 +304,7 @@ val collectInfoFromSynArgPats: argPats: obj -> Map<string, obj>
 
 [<Test>]
 let ``postfix type in tuple return type`` () =
-    mkSignature
+    assertSignature
         """
 module SourceParser
 
@@ -333,7 +313,6 @@ type SynValTyparDecls =
 
 let inline (|ValTyparDecls|) (SynValTyparDecls (tds, b)) = (Some tds, b)
 """
-    |> shouldEqualWithPrepend
         """
 module SourceParser
 
@@ -343,7 +322,7 @@ val inline (|ValTyparDecls|): SynValTyparDecls -> int option * int
 
 [<Test>]
 let ``active pattern choice return type`` () =
-    mkSignature
+    assertSignature
         """
 module Colour
 
@@ -355,7 +334,7 @@ let (|Red|Blue|Yellow|) b =
     | 1 -> Blue(9., [| 'a' |])
     | _ -> Yellow [ 1uy ]
 """
-    |> shouldEqualWithPrepend
+
         """
 module Colour
 
@@ -365,13 +344,12 @@ val (|Red|Blue|Yellow|): b: int -> Choice<string * DateTime, float * char array,
 
 [<Test>]
 let ``array type`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let a = [| 0 |]
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -380,13 +358,12 @@ val a: int array
 
 [<Test>]
 let ``multiple postfixes`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let v = [ [| None; Some 1 |] ]
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -395,7 +372,7 @@ val v: int option array list
 
 [<Test>]
 let ``attributes in parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
@@ -404,7 +381,6 @@ type BAttribute() =
 
 let a ([<B>] c: int) : int = 0
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -417,7 +393,7 @@ val a: [<B>] c: int -> int
 
 [<Test>]
 let ``attributes in parameter with type`` () =
-    mkSignature
+    assertSignature
         """
 module Foo
 
@@ -426,7 +402,6 @@ type BAttribute() =
 
 let a ([<B>] c) : int = c + 1
 """
-    |> shouldEqualWithPrepend
         """
 module Foo
 
@@ -439,58 +414,58 @@ val a: [<B>] c: int -> int
 
 [<Test>]
 let ``optional parameter in member`` () =
-    mkSignature
+    assertSignature
         """
 namespace X
 
 type Meh =
     member this.Foo (?x) = defaultArg x 0
 """
-    |> shouldEqualWithPrepend
         """
 namespace X
 
+[<Class>]
 type Meh =
     member Foo: ?x: int -> int
 """
 
 [<Test>]
 let ``curried optional parameters in member`` () =
-    mkSignature
+    assertSignature
         """
 namespace X
 
 type Meh =
     member this.Foo (?x, ?y:int) = defaultArg x 0 + defaultArg y 0
 """
-    |> shouldEqualWithPrepend
         """
 namespace X
 
+[<Class>]
 type Meh =
     member Foo: ?x: int * ?y: int -> int
 """
 
 [<Test>]
 let ``optional function type in member`` () =
-    mkSignature
+    assertSignature
         """
-namespace X
+module X
 
 type Meh =
     member this.Foo (?x:int -> int) = 0
 """
-    |> shouldEqualWithPrepend
         """
-namespace X
+module X
 
+[<Class>]
 type Meh =
     member Foo: ?x: (int -> int) -> int
 """
 
 [<Test>]
 let ``typed single discrimination union`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
@@ -498,7 +473,6 @@ type Folder = Folder of path: string
 
 let private runToolListCmd (Folder workingDir: Folder) (globalFlag: bool) = ()
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -508,7 +482,7 @@ val private runToolListCmd: Folder -> globalFlag: bool -> unit
 
 [<Test>]
 let ``aliased pattern parameter`` () =
-    mkSignature
+    assertSignature
         """
 module Hej
 
@@ -516,7 +490,6 @@ type DU = DU of one: string * two:int
 
 let (|Two|) (DU.DU(one, two) as du) = two
 """
-    |> shouldEqualWithPrepend
         """
 module Hej
 
@@ -526,7 +499,7 @@ val (|Two|): DU -> int
 
 [<Test>]
 let ``wildcard pattern`` () =
-    mkSignature
+    assertSignature
         """
 module W
 
@@ -536,7 +509,7 @@ do
     match "", true with
     | Fst s -> printfn "%s" s
 """
-    |> shouldEqualWithPrepend
+
         """
 module W
 
@@ -545,13 +518,12 @@ val (|Fst|): 'a * 'b -> 'a
 
 [<Test>]
 let ``tuple return type in partial active pattern`` () =
-    mkSignature
+    assertSignature
         """
 module A
 
 let (|Twice|_|) (a:int) = Some (a, a) 
 """
-    |> shouldEqualWithPrepend
         """
 module A
 
@@ -560,7 +532,7 @@ val (|Twice|_|): a: int -> (int * int) option
 
 [<Test>]
 let ``nested tuples`` () =
-    mkSignature
+    assertSignature
         """
 module T
 
@@ -568,7 +540,6 @@ open System
 
 let a = ("", ('c', true)), DateTime.Now
 """
-    |> shouldEqualWithPrepend
         """
 module T
 
@@ -578,16 +549,15 @@ val a: (string * (char * bool)) * DateTime
 
 [<Test>]
 let ``extension type property`` () =
-    mkSignature
+    assertSignature
         """
-namespace P
+module P
 
 type System.Object with
     member this.Range = 0
 """
-    |> shouldEqualWithPrepend
         """
-namespace P
+module P
 
 type System.Object with
 
@@ -596,21 +566,16 @@ type System.Object with
 
 [<Test>]
 let ``literal value should contain default value`` () =
-    mkSignature
+    assertSignature
         """
 module L
 
 [<Literal>]
 let MaxLength = 512
 """
-    |> shouldEqualWithPrepend
         """
 module L
 
 [<Literal>]
 val MaxLength: int = 512
 """
-
-type System.Object with
-
-    member this.Range = 0

@@ -5,13 +5,12 @@ open TestHelper
 
 [<Test>]
 let ``single namespace`` () =
-    mkSignature
+    assertSignature
         """
 namespace A
 
 type Foo = int
 """
-    |> shouldEqualWithPrepend
         """
 namespace A
 
@@ -20,25 +19,28 @@ type Foo = int
 
 [<Test>]
 let ``module abbreviation`` () =
-    mkSignature
+    assertSignature
         """
-module A
+namespace Root
 
-let a = 0
+module A =
+
+    let a = 0
 
 module B = A
 """
-    |> shouldEqualWithPrepend
         """
-module A
+namespace Root
 
-val a: int
+module A =
+    val a: int
+
 module B = A
 """
 
 [<Test>]
 let ``nested module`` () =
-    mkSignature
+    assertSignature
         """
 namespace Company
 
@@ -46,7 +48,6 @@ module A =
 
     let a = 0
 """
-    |> shouldEqualWithPrepend
         """
 namespace Company
 

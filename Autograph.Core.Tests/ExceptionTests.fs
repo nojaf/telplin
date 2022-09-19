@@ -5,14 +5,13 @@ open TestHelper
 
 [<Test>]
 let ``single namespace`` () =
-    mkSignature
+    assertSignature
         """
 namespace A
 
 exception MyFSharpError1 of string
 exception MyFSharpError2 of string * int
 """
-    |> shouldEqualWithPrepend
         """
 namespace A
 
@@ -22,13 +21,12 @@ exception MyFSharpError2 of string * int
 
 [<Test>]
 let ``exception with member`` () =
-    mkSignature
+    assertSignature
         """
 namespace A
 
 exception MyFSharpError1 of string with member this.Test a b = a + b
 """
-    |> shouldEqualWithPrepend
         """
 namespace A
 

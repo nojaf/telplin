@@ -13,7 +13,6 @@
     <Compile Include="TypeTests.fs" />
     <Compile Include="ModuleOrNamespaceTests.fs" />
     <Compile Include="ExceptionTests.fs" />
-    <Compile Include="PlaygroundTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
