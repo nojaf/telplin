@@ -1,5 +1,6 @@
 ﻿module Autograph.UntypedTree.Writer
 
+open System
 open System.IO
 open FSharp.Compiler.Syntax
 open FSharp.Compiler.SyntaxTrivia
@@ -43,42 +44,9 @@ let mkSynTypeTuple mkType ts =
 
         SynType.Tuple (false, types, zeroRange)
 
-let rec mkSynTypeOfParameterTypeName (p : ParameterTypeName) =
-    match p with
-    | ParameterTypeName.SingleIdentifier displayName ->
-        SynType.LongIdent (SynLongIdent ([ Ident (displayName, zeroRange) ], [], [ None ]))
-    | ParameterTypeName.FunctionType types ->
-        List.map mkSynTypeOfParameterTypeName types |> mkSynTypeFun |> mkSynTypeParen
-    | ParameterTypeName.GenericParameter (name, isSolveAtCompileTime) ->
-        let typarStaticReq =
-            if isSolveAtCompileTime then
-                TyparStaticReq.HeadType
-            else
-                TyparStaticReq.None
+let mkIdent text = Ident (text, zeroRange)
 
-        SynType.Var (SynTypar.SynTypar (Ident (name, zeroRange), typarStaticReq, false), zeroRange)
-    | ParameterTypeName.PostFix (mainType, postType) ->
-        SynType.App (
-            mkSynTypeOfParameterTypeName postType,
-            None,
-            [ wrapInParenIfTuple mainType ],
-            [],
-            None,
-            true,
-            zeroRange
-        )
-    | ParameterTypeName.WithGenericArguments (name, parameterTypeNames) ->
-        let args = List.map mkSynTypeOfParameterTypeName parameterTypeNames
-        SynType.App (mkSynTypeOfParameterTypeName name, Some zeroRange, args, [], Some zeroRange, false, zeroRange)
-    | ParameterTypeName.Tuple ts -> mkSynTypeTuple wrapInParenIfTuple ts
-
-and wrapInParenIfTuple (p : ParameterTypeName) : SynType =
-    match p with
-    | ParameterTypeName.Tuple _ -> mkSynTypeOfParameterTypeName p |> mkSynTypeParen
-    | _ -> mkSynTypeOfParameterTypeName p
-
-let mkSynIdent text =
-    SynIdent (Ident (text, zeroRange), None)
+let mkSynIdent text = SynIdent (mkIdent text, None)
 
 let mkSynLongIdent text =
     SynLongIdent ([ Ident (text, zeroRange) ], [], [ None ])
@@ -121,15 +89,25 @@ let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
         else
             resolvedType
 
-    match typeInSource, resolvedType with
-    | SynType.App(typeName = LongIdentType originalName as otn),
-      SynType.App (LongIdentType resolvedName as rtn, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range) ->
-        let typeName = resolveNameDifference originalName resolvedName otn rtn
-        SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range)
+    let rec visit tis rt =
+        match tis, rt with
+        | SynType.App (typeName = otn ; typeArgs = oArgs),
+          SynType.App (rtn, rangeOption, rArgs, commaRanges, greaterRange, isPostfix, range) ->
+            let typeName = visit otn rtn
 
-    | LongIdentType originalName, LongIdentType resolvedName ->
-        resolveNameDifference originalName resolvedName typeInSource resolvedType
-    | _ -> resolvedType
+            let typeArgs =
+                if oArgs.Length <> rArgs.Length then
+                    rArgs
+                else
+                    List.zip oArgs rArgs |> List.map (fun (o, r) -> visit o r)
+
+            SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range)
+
+        | LongIdentType originalName, LongIdentType resolvedName ->
+            resolveNameDifference originalName resolvedName tis rt
+        | _ -> rt
+
+    visit typeInSource resolvedType
 
 type Range with
 
@@ -263,21 +241,25 @@ and mkSynValSig
                  _synBindingTrivia))
     : SynValSig
     =
-    let ident, mBindingName, argPats, vis =
+    let ident, mBindingName, argPats, constraintsFromSource, vis =
         match headPat with
-        | SynPat.LongIdent (longDotId = longDotId ; argPats = SynArgPats.Pats argPats ; accessibility = vis) ->
+        | SynPat.LongIdent (longDotId = longDotId
+                            argPats = SynArgPats.Pats argPats
+                            typarDecls = constraints
+                            accessibility = vis) ->
             let identTrivia = List.tryLast longDotId.Trivia
             let lastIdent = (List.last longDotId.LongIdent)
             let mBindingName = lastIdent.idRange
 
-            SynIdent (lastIdent, identTrivia), mBindingName, argPats, vis
+            SynIdent (lastIdent, identTrivia), mBindingName, argPats, constraints, vis
 
         | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
-            synIdent, ident.idRange, [], vis
+            synIdent, ident.idRange, [], None, vis
 
         | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
 
-    let returnTypeText = resolver.GetFullForBinding mBindingName.Proxy
+    let returnTypeText, resolvedConstraints =
+        resolver.GetFullForBinding mBindingName.Proxy
 
     let returnTypeInImpl : (SynType list * SynType) option =
         match synBindingReturnInfoOption with
@@ -347,8 +329,9 @@ and mkSynValSig
                 | ParenPat (TypedPat (NamedPat ident, st)) ->
                     SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
 
-                | ParenPat (SynPat.Typed(pat = SynPat.OptionalVal (ident, _))) ->
-                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
+                | ParenPat (TypedPat (SynPat.OptionalVal (ident, _), tis)) ->
+                    let t = prefixType tis (stripOptionType t)
+                    SynType.SignatureParameter ([], true, Some ident, t, zeroRange)
                 | ParenPat (SynPat.Attrib (attributes = attributes
                                            pat = (SynPat.Typed(pat = NamedPat ident) | NamedPat ident))) ->
                     SynType.SignatureParameter (attributes, false, Some ident, t, zeroRange)
@@ -357,6 +340,65 @@ and mkSynValSig
                 | _ -> t
         )
         |> mkSynTypeFun
+
+    let tWithConstraints =
+        if resolvedConstraints.IsEmpty then
+            t
+        else
+
+        let existingTypars =
+            match constraintsFromSource with
+            | Some (SynValTyparDecls(typars = Some typar)) ->
+                typar.Constraints
+                |> List.choose (
+                    function
+                    | TyparInConstraint typar -> Some typar
+                    | _ -> None
+                )
+            | _ -> []
+
+        // This isn't bullet proof but good enough for now.
+        let typarComparer =
+            { new System.Collections.Generic.IEqualityComparer<SynTypar> with
+                member this.Equals (x, y) =
+                    match x, y with
+                    | SynTypar (identX, typarStaticReqX, isCompGenX), SynTypar (identY, typarStaticReqY, isCompGenY) ->
+                        identX.idText = identY.idText
+                        && typarStaticReqX = typarStaticReqY
+                        && isCompGenX = isCompGenY
+
+                member this.GetHashCode (SynTypar (identX, typarStaticReqX, isCompGenX)) =
+                    HashCode.Combine (identX, typarStaticReqX, isCompGenX)
+            }
+
+        let constraints =
+            resolvedConstraints
+            |> List.collect (fun rc ->
+                let typarStaticReq =
+                    if rc.IsHeadType then
+                        TyparStaticReq.HeadType
+                    else
+                        TyparStaticReq.None
+
+                let typar =
+                    SynTypar (mkIdent rc.ParameterName, typarStaticReq, rc.IsCompilerGenerated)
+
+                if System.Linq.Enumerable.Contains (existingTypars, typar, typarComparer) then
+                    []
+                else
+
+                rc.Constraints
+                |> List.choose (fun c ->
+                    if c.IsEqualityConstraint then
+                        Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
+                    elif c.IsReferenceTypeConstraint then
+                        Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
+                    else
+                        None
+                )
+            )
+
+        SynType.WithGlobalConstraints (t, constraints, zeroRange)
 
     let expr =
         match synAttributeLists with
@@ -367,11 +409,16 @@ and mkSynValSig
             } ] when literalIdent.idText = "Literal" -> Some synExpr
         | _ -> None
 
+    let synValTyparDecls =
+        match constraintsFromSource with
+        | Some c -> c
+        | None -> SynValTyparDecls (None, false)
+
     SynValSig (
         synAttributeLists,
         ident,
-        SynValTyparDecls (None, false),
-        t,
+        synValTyparDecls,
+        tWithConstraints,
         // This isn't correct but doesn't matter for Fantomas
         synValData.SynValInfo,
         isInline,
@@ -524,7 +571,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
         let t =
             mkSynTypeFun
                 [
-                    mkSynTypeOfParameterTypeName (ParameterTypeName.SingleIdentifier "unit")
+                    mkSynTypeLongIdent "unit"
                     SynType.LongIdent (SynLongIdent (typeIdent, [], List.replicate typeIdent.Length None))
                 ]
 

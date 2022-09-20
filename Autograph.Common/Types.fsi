@@ -1,14 +1,5 @@
 namespace Autograph.Common
 
-[<RequireQualifiedAccess>]
-type ParameterTypeName =
-    | SingleIdentifier of name : string
-    | FunctionType of types : ParameterTypeName list
-    | GenericParameter of name : string * isSolveAtCompileTime : bool
-    | PostFix of mainType : ParameterTypeName * postType : ParameterTypeName
-    | WithGenericArguments of name : ParameterTypeName * args : ParameterTypeName list
-    | Tuple of types : ParameterTypeName list
-
 type RangeProxy =
     struct
         val StartLine : int
@@ -19,14 +10,22 @@ type RangeProxy =
         override ToString : unit -> string
     end
 
-type ReturnTypeResponse =
+type TypeInfoResponse = { IsClass : bool }
+
+type GenericConstraintForParameter =
     {
-        FullType : ParameterTypeName
-        ReturnParameter : ParameterTypeName
+        ParameterName : string
+        IsHeadType : bool
+        IsCompilerGenerated : bool
+        Constraints : GenericConstraint list
     }
 
-type TypeInfoResponse = { IsClass : bool }
+and GenericConstraint =
+    {
+        IsEqualityConstraint : bool
+        IsReferenceTypeConstraint : bool
+    }
 
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
-    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> string
+    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> string * GenericConstraintForParameter list

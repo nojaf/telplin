@@ -2,7 +2,6 @@
 
 open FSharp.Compiler.Syntax
 open FSharp.Compiler.SyntaxTrivia
-open FSharp.Compiler.Text
 
 let (|StaticMemberFlags|_|) (memberFlags : SynMemberFlags) =
     match memberFlags.Trivia with
@@ -76,3 +75,19 @@ let (|TypedPat|_|) p =
     match p with
     | SynPat.Typed (synPat, targetType, range) -> Some (synPat, targetType)
     | _ -> None
+
+let (|TyparInConstraint|_|) tc =
+    match tc with
+    | SynTypeConstraint.WhereTyparIsEquatable (typar = typar)
+    | SynTypeConstraint.WhereTyparIsValueType (typar = typar)
+    | SynTypeConstraint.WhereTyparIsReferenceType (typar = typar)
+    | SynTypeConstraint.WhereTyparIsUnmanaged (typar = typar)
+    | SynTypeConstraint.WhereTyparSupportsNull (typar = typar)
+    | SynTypeConstraint.WhereTyparIsComparable (typar = typar)
+    | SynTypeConstraint.WhereTyparIsEquatable (typar = typar)
+    | SynTypeConstraint.WhereTyparDefaultsToType (typar = typar)
+    | SynTypeConstraint.WhereTyparSubtypeOfType (typar = typar)
+    | SynTypeConstraint.WhereTyparIsEnum (typar = typar)
+    | SynTypeConstraint.WhereTyparIsDelegate (typar = typar) -> Some typar
+    | SynTypeConstraint.WhereTyparSupportsMember _
+    | SynTypeConstraint.WhereSelfConstrained _ -> None

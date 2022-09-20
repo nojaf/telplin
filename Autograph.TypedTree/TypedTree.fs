@@ -77,7 +77,33 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                         )
                         |> String.concat ""
 
-                    s
+                    let genericParameters =
+                        valSymbol.GenericParameters
+                        |> Seq.choose (fun gp ->
+                            if Seq.isEmpty gp.Constraints then
+                                None
+                            else
+                                let constraints =
+                                    gp.Constraints
+                                    |> Seq.map (fun c ->
+                                        {
+                                            IsEqualityConstraint = c.IsEqualityConstraint
+                                            IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
+                                        }
+                                    )
+                                    |> Seq.toList
+
+                                Some
+                                    {
+                                        ParameterName = gp.DisplayName
+                                        IsHeadType = gp.IsSolveAtCompileTime
+                                        IsCompilerGenerated = gp.IsCompilerGenerated
+                                        Constraints = constraints
+                                    }
+                        )
+                        |> Seq.toList
+
+                    s, genericParameters
                 with ex ->
                     printException ex bindingNameRange
                     raise ex

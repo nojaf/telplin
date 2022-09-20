@@ -16,3 +16,4 @@ val (|IdentType|_|) : text : string -> t : SynType -> SynType option
 val (|LongIdentType|_|) : t : SynType -> LongIdent option
 val (|ParenPat|_|) : p : SynPat -> SynPat option
 val (|TypedPat|_|) : p : SynPat -> (SynPat * SynType) option
+val (|TyparInConstraint|_|) : tc : SynTypeConstraint -> SynTypar option

@@ -160,7 +160,7 @@ let g<'t> (h: 't list) = List.length h
         """
 module Foo
 
-val g: h: 't list -> int
+val g<'t> : h: 't list -> int
 """
 
 [<Test>]
@@ -743,3 +743,80 @@ namespace Utils
 module Dict =
     val tryGet: k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
 """
+
+[<Test>]
+let ``use full type when available, with post fix`` () =
+    assertSignature
+        """
+module T
+
+let fn (r: System.Text.RegularExpressions.Regex option) = ""
+"""
+        """
+module T
+
+val fn: r: System.Text.RegularExpressions.Regex option -> string
+"""
+
+[<Test>]
+let ``use full type when available, for optional type`` () =
+    assertSignature
+        """
+module T
+
+type V() =
+    member this.XY (?r: System.Text.RegularExpressions.Regex) = ""
+"""
+        """
+module T
+
+type V =
+    new: unit -> V
+    member XY: ?r: System.Text.RegularExpressions.Regex -> string
+"""
+
+[<Test>]
+let ``generic constraint in binding`` () =
+    assertSignature
+        """
+module G
+
+let alreadyVisited<'key when 'key: not struct> () =
+    let cache = System.Collections.Generic.HashSet<'key>([], HashIdentity.Reference)
+
+    fun key ->
+        if cache.Contains key then
+            true
+        else
+            cache.Add key |> ignore
+            false
+"""
+        """
+module G
+
+val alreadyVisited<'key when 'key: not struct> : unit -> ('key -> bool)
+"""
+
+[<Test>]
+let ``implicit constraint in binding`` () =
+    assertSignature
+        """
+module I
+
+let memoizeBy (g: 'a -> 'c) (f: 'a -> 'b) =
+    let cache =
+        System.Collections.Concurrent.ConcurrentDictionary<_, _>(HashIdentity.Structural)
+
+    fun x -> cache.GetOrAdd(Some(g x), lazy (f x)).Force()
+"""
+        """
+module I
+
+val memoizeBy: g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b) when 'c: equality
+"""
+
+let memoizeBy (g : 'a -> 'c) (f : 'a -> 'b) =
+    let cache =
+        System.Collections.Concurrent.ConcurrentDictionary<_, _> (HashIdentity.Structural)
+
+    fun x -> cache.GetOrAdd(Some (g x), lazy (f x)).Force ()
