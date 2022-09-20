@@ -1,24 +1,12 @@
-﻿open Suave
+﻿open System.Net
+open Suave
 open Suave.Filters
 open Suave.Operators
 open Suave.Successful
-open System.Net
 open Suave.Writers
 open Suave.RequestErrors
 open Suave.ServerErrors
-open Autograph.Core
 open Autograph.Lambda
-
-[<RequireQualifiedAccess>]
-module HeaderValues =
-    [<Literal>]
-    let ApplicationText = "application/text"
-
-    [<Literal>]
-    let TextPlain = "text/plain"
-
-    [<Literal>]
-    let ApplicationJson = "application/json"
 
 let setCORSHeaders =
     addHeader "Access-Control-Allow-Origin" "*"
@@ -45,24 +33,13 @@ let main argv =
                 async {
                     let implementation = ctx.request.rawForm |> System.Text.Encoding.UTF8.GetString
 
-                    try
-                        let signatureContent = AutographApi.MkSignature implementation
-
-                        let verification =
-                            AutographApi.VerifySignatureWithImplementation (implementation, signatureContent)
-
-                        match verification with
-                        | SignatureVerificationResult.ValidSignature -> return! (textPlain >=> OK signatureContent) ctx
-                        | SignatureVerificationResult.InvalidImplementationFile diags ->
-                            let json = encodeInvalidImplementationFile diags |> mkBytes
-                            return! bad_request json ctx
-                        | SignatureVerificationResult.InvalidSignatureFile diags ->
-                            let json = encodeInvalidSignatureFile diags signatureContent |> mkBytes
-                            return! bad_request json ctx
-
-                    with ex ->
-                        let body = System.Text.Encoding.UTF8.GetBytes ex.Message
-                        return! internal_error body ctx
+                    return!
+                        mkProcessRequest
+                            (fun signatureContent -> (textPlain >=> OK signatureContent) ctx)
+                            (fun json -> bad_request (mkBytes json) ctx)
+                            (fun json -> bad_request (mkBytes json) ctx)
+                            (fun error -> internal_error (mkBytes error) ctx)
+                            implementation
                 }
             )
         ]
