@@ -268,7 +268,7 @@ let (|Foo|) = function | 1 -> 2 | x -> x
         """
 module Hej
 
-val (|Foo|): (int -> int)
+val (|Foo|): int -> int
 """
 
 [<Test>]
@@ -339,7 +339,7 @@ let (|Red|Blue|Yellow|) b =
 module Colour
 
 open System
-val (|Red|Blue|Yellow|): b: int -> Choice<string * DateTime, float * char array, byte list>
+val (|Red|Blue|Yellow|): b: int -> Choice<(string * DateTime), (float * char[]), byte list>
 """
 
 [<Test>]
@@ -513,7 +513,7 @@ do
         """
 module W
 
-val (|Fst|): 'a * 'b -> 'a
+val (|Fst|): a: 'a * 'b -> 'a
 """
 
 [<Test>]
@@ -652,7 +652,5 @@ let f (a : string) (b : char) = fun (c : float) -> 2.0
         """
 module L
 
-val f: a: string -> b: char -> float -> float
+val f: a: string -> b: char -> (float -> float)
 """
-
-let f (a : string) (b : char) = fun (c : float) -> 2.0

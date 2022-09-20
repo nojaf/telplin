@@ -22,6 +22,14 @@ let rec mkSynTypeFun (types : SynType list) : SynType =
     | [ t ] -> t
     | t :: rest -> SynType.Fun (t, mkSynTypeFun rest, zeroRange, { ArrowRange = zeroRange })
 
+let stripOptionType t =
+    match t with
+    | SynType.App (typeName = SynType.LongIdent(longDotId = SynLongIdent(id = [ optionIdent ])) ; typeArgs = [ t ]) when
+        optionIdent.idText = "option"
+        ->
+        t
+    | _ -> t
+
 let mkSynTypeParen (t : SynType) : SynType = SynType.Paren (t, zeroRange)
 
 let mkSynTypeTuple mkType ts =
@@ -75,6 +83,24 @@ let mkSynIdent text =
 let mkSynLongIdent text =
     SynLongIdent ([ Ident (text, zeroRange) ], [], [ None ])
 
+let mkSynTypeLongIdent text = SynType.LongIdent (mkSynLongIdent text)
+
+let rec sanitizeType (synType : SynType) : SynType =
+    match synType with
+    | IdentType "Int32" _ -> mkSynTypeLongIdent "int"
+    | SynType.Array (1, t, _) -> SynType.App (mkSynTypeLongIdent "array", None, [ t ], [], None, true, zeroRange)
+    | SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range) ->
+        SynType.App (
+            sanitizeType typeName,
+            rangeOption,
+            List.map sanitizeType typeArgs,
+            commaRanges,
+            greaterRange,
+            isPostfix,
+            range
+        )
+    | t -> t
+
 type Range with
 
     member r.Proxy : RangeProxy =
@@ -100,116 +126,6 @@ let removeParensInType (t : SynType) : SynType =
         | _ -> t
 
     visit t
-
-let rec mkTypeFromPat
-    (resolver : TypedTreeInfoResolver)
-    (bindingRange : range)
-    (useName : bool)
-    (pat : SynPat)
-    : SynType
-    =
-    match removeParensInPat pat with
-    | SynPat.Typed (SynPat.Named(ident = SynIdent (ident, _)), synType, _) when useName ->
-        SynType.SignatureParameter ([], false, Some ident, wrapInParenWhenFunType synType, zeroRange)
-    | SynPat.Named(ident = SynIdent (ident, _)) ->
-        let t =
-            resolver.GetTypeNameFor ident.idRange.Proxy bindingRange.Proxy
-            |> mkSynTypeOfParameterTypeName
-            |> wrapInParenWhenFunType
-
-        SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
-    | SynPat.Tuple (_, pats, _) ->
-        let ts =
-            List.map
-                (fun pat ->
-                    let useName =
-                        useName
-                        && match pat with
-                           | SynPat.Paren(pat = SynPat.Tuple _) -> false
-                           | _ -> true
-
-                    mkTypeFromPat resolver bindingRange useName pat
-                )
-                pats
-
-        mkSynTypeTuple id ts
-    | SynPat.LongIdent (range = m) ->
-        resolver.GetTypeNameFor m.Proxy bindingRange.Proxy
-        |> mkSynTypeOfParameterTypeName
-        |> wrapInParenWhenFunType
-    | SynPat.Const (SynConst.Unit, _) -> ParameterTypeName.SingleIdentifier "unit" |> mkSynTypeOfParameterTypeName
-    | SynPat.Attrib (pat, attrs, _range) ->
-        match removeParensInType (mkTypeFromPat resolver bindingRange useName pat) with
-        | SynType.SignatureParameter (_, optional, ident, t, range) ->
-            SynType.SignatureParameter (attrs, optional, ident, t, range)
-        | t -> SynType.SignatureParameter (attrs, false, None, t, zeroRange)
-        |> wrapInParenWhenFunType
-    | SynPat.OptionalVal (ident, _range) ->
-        let t =
-            resolver.GetTypeNameFor ident.idRange.Proxy bindingRange.Proxy
-            |> mkSynTypeOfParameterTypeName
-            |> wrapInParenWhenFunType
-
-        // This returns an optional type, we need to unwrap it
-        let t =
-            match t with
-            | SynType.App (SynType.LongIdent(longDotId = SynLongIdent(id = [ optionIdent ])),
-                           lessRange,
-                           typeArgs,
-                           commaRanges,
-                           greaterRange,
-                           isPostfix,
-                           range) when optionIdent.idText = "option" ->
-                match typeArgs with
-                | [] -> failwith "invalid AST in SynType.App"
-                | [ single ] -> wrapInParenWhenFunType single
-                | head :: tail -> SynType.App (head, lessRange, tail, commaRanges, greaterRange, isPostfix, range)
-            | t -> t
-
-        SynType.SignatureParameter ([], true, Some ident, t, zeroRange)
-    | SynPat.Typed (SynPat.OptionalVal (ident, _range), synType, _) ->
-        SynType.SignatureParameter ([], true, Some ident, wrapInParenWhenFunType synType, zeroRange)
-    | SynPat.Typed (_, synType, _) -> wrapInParenWhenFunType synType
-    | SynPat.As (SynPat.LongIdent (longDotId = synIdent), _rhs, _range) ->
-        resolver.GetTypeNameFor synIdent.Range.Proxy bindingRange.Proxy
-        |> mkSynTypeOfParameterTypeName
-    | pat -> failwith $"todo 233BA311-87C9-49DA-BFE0-9BDFAB0B09BB, {pat}"
-
-let collectParametersFromSynArgPats
-    (resolver : TypedTreeInfoResolver)
-    (bindingRange : range)
-    (argPats : SynArgPats)
-    : TypesFromPattern
-    =
-    match argPats with
-    | SynArgPats.Pats [] -> TypesFromPattern.HasNoParameters
-    | SynArgPats.Pats pats ->
-        try
-            List.map (mkTypeFromPat resolver bindingRange true) pats
-            |> TypesFromPattern.HasParameters
-        with ex ->
-            // TODO: if return type is a function type
-
-            // If a parameter didn't resolve we should just try and resolve the fullType instead as a last resort
-            // We want to inspect the `FullType` anyways
-            let response = resolver.GetReturnTypeFor bindingRange.Proxy
-
-            let parameterType =
-                match response.FullType, response.ReturnParameter with
-                | ParameterTypeName.FunctionType fullType,
-                  (ParameterTypeName.FunctionType returnType as returnTypeParameterType) ->
-                    // If both types are function types we need to consider the return type as one argument
-                    let actualParameters = List.take (fullType.Length - returnType.Length) fullType
-
-                    [ yield! actualParameters ; yield returnTypeParameterType ]
-                    |> ParameterTypeName.FunctionType
-                | _ -> response.FullType
-
-            parameterType
-            |> mkSynTypeOfParameterTypeName
-            |> removeParensInType
-            |> TypesFromPattern.FailedToResolve
-    | SynArgPats.NamePatPairs _ -> failwith "todo C4E1220D-B309-4E34-A972-C0CD8431DE70"
 
 let rec mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string =
     let input, _ = Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) []
@@ -308,7 +224,7 @@ and mkSynValSig
                  isMutable,
                  synAttributeLists,
                  preXmlDoc,
-                 (SynValData (memberFlags = memberFlags) as synValData),
+                 synValData,
                  headPat,
                  synBindingReturnInfoOption,
                  synExpr,
@@ -317,95 +233,98 @@ and mkSynValSig
                  _synBindingTrivia))
     : SynValSig
     =
-    let ident, mBindingName, parameterTypes, vis =
-        match memberFlags, headPat with
-        // new
-        | NewConstructorPattern (longDotId, argPats, vis) ->
-            let identTrivia = List.tryHead longDotId.Trivia
-            let mBindingName = longDotId.LongIdent.[0].idRange
+    let ident, mBindingName, argPats, vis =
+        match headPat with
+        | SynPat.LongIdent (longDotId = longDotId ; argPats = SynArgPats.Pats argPats ; accessibility = vis) ->
+            let identTrivia = List.tryLast longDotId.Trivia
+            let lastIdent = (List.last longDotId.LongIdent)
+            let mBindingName = lastIdent.idRange
 
-            SynIdent (longDotId.LongIdent.[0], identTrivia),
-            longDotId.LongIdent.[0].idRange,
-            collectParametersFromSynArgPats resolver mBindingName argPats,
-            vis
-        | Some _,
-          SynPat.LongIdent (longDotId = SynLongIdent (id = [ _ ; ident ] ; trivia = [ _ ; identTrivia ])
-                            argPats = argPats
-                            accessibility = vis) ->
-            let mBindingName = ident.idRange
+            SynIdent (lastIdent, identTrivia), mBindingName, argPats, vis
 
-            SynIdent (ident, identTrivia),
-            mBindingName,
-            collectParametersFromSynArgPats resolver mBindingName argPats,
-            vis
-
-        // static member without property
-        | Some _,
-          SynPat.LongIdent (longDotId = (SynLongIdent (id = [ ident ] ; trivia = [ identTrivia ]))
-                            argPats = argPats
-                            accessibility = vis) ->
-            let mBindingName = ident.idRange
-
-            SynIdent (ident, identTrivia),
-            mBindingName,
-            collectParametersFromSynArgPats resolver mBindingName argPats,
-            vis
-
-        | None, SynPat.LongIdent (longDotId = longDotId ; argPats = argPats ; accessibility = vis) ->
-            let identTrivia = List.tryHead longDotId.Trivia
-            let mBindingName = longDotId.LongIdent.[0].idRange
-
-            SynIdent (longDotId.LongIdent.[0], identTrivia),
-            mBindingName,
-            collectParametersFromSynArgPats resolver mBindingName argPats,
-            vis
-
-        | _, SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
-            synIdent, ident.idRange, TypesFromPattern.HasNoParameters, vis
+        | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
+            synIdent, ident.idRange, [], vis
 
         | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
 
-    let returnType =
+    let returnTypeText = resolver.GetFullForBinding mBindingName.Proxy
+
+    let returnTypeInImpl : (SynType list * SynType) option =
         match synBindingReturnInfoOption with
-        | Some (SynBindingReturnInfo (typeName = t)) -> t
-        | None ->
-            let knownParameterCount =
-                match parameterTypes with
-                | TypesFromPattern.HasNoParameters _ -> 0
-                | TypesFromPattern.FailedToResolve _ -> -1
-                | TypesFromPattern.HasParameters ps -> ps.Length
-
-            let response = resolver.GetReturnTypeFor mBindingName.Proxy
-
-            if knownParameterCount > 0 then
-                match response.FullType with
-                | ParameterTypeName.FunctionType fts ->
-                    // Only rely on ReturnParameter if it is not a function itself
-                    if fts.Length = knownParameterCount + 1 then
-                        response.ReturnParameter
-                    else
-                        let actualReturnType = List.skip knownParameterCount fts
-                        ParameterTypeName.FunctionType actualReturnType
-                | _ -> response.ReturnParameter
-            elif knownParameterCount = -1 then
-                response.FullType
-            else
-                response.FullType
-            |> mkSynTypeOfParameterTypeName
-        |> wrapInParenWhenFunType
+        | Some (SynBindingReturnInfo(typeName = TFuns ts as t)) -> Some (ts, t)
+        | _ -> None
 
     let t =
-        match parameterTypes with
-        | TypesFromPattern.HasNoParameters ->
-            match memberFlags, returnType with
-            | Some { IsInstance = true },
-              SynType.Paren(innerType = SynType.Fun (argType = SynType.LongIdent _
-                                                     returnType = SynType.Fun (returnType = t))) -> t
-            | Some { IsInstance = false },
-              SynType.Paren(innerType = SynType.Fun (argType = UnitType _ ; returnType = t)) -> t
-            | _ -> returnType
-        | TypesFromPattern.FailedToResolve fullType -> fullType
-        | TypesFromPattern.HasParameters ts -> mkSynTypeFun [ yield! ts ; yield returnType ]
+        let aliasAST, _ =
+            Fantomas.FCS.Parse.parseFile false (SourceText.ofString $"type Alias = {returnTypeText}") []
+
+        let ts =
+            match aliasAST with
+            | ParsedInput.ImplFile (ParsedImplFileInput(modules = [ SynModuleOrNamespace(decls = [ SynModuleDecl.Types ([ SynTypeDefn(typeRepr = SynTypeDefnRepr.Simple(simpleRepr = SynTypeDefnSimpleRepr.TypeAbbrev(rhsType = TFuns ts))) ],
+                                                                                                                        _) ]) ])) ->
+                ts |> List.map sanitizeType
+            | _ -> failwith "should not fail"
+
+        let ts =
+            match returnTypeInImpl with
+            | Some (rts, rt) when rts.Length > 1 ->
+                let skipEnd = List.take (ts.Length - rts.Length) ts
+                [ yield! skipEnd ; wrapInParenWhenFunType rt ]
+            | _ ->
+                if argPats.Length = 0 || ts.Length = argPats.Length + 1 then
+                    ts
+                else
+                    let parameterTypes = List.take argPats.Length ts
+
+                    let returnType =
+                        List.skip argPats.Length ts |> mkSynTypeFun |> wrapInParenWhenFunType
+
+                    [ yield! parameterTypes ; yield returnType ]
+
+        let ps =
+            [
+                yield! List.map Some argPats
+                yield! List.replicate (ts.Length - argPats.Length) None
+            ]
+
+        List.zip ts ps
+        |> List.map (fun (t, p) ->
+            match p with
+            | None -> t
+            | Some p ->
+                match p with
+                | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+                | ParenPat (SynPat.Tuple (elementPats = ps)) ->
+                    match t with
+                    | SynType.Tuple(path = TupleTypes ts) ->
+                        let ts =
+                            List.zip ts ps
+                            |> List.map (fun (t, p) ->
+                                match p with
+                                | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+                                | TypedPat (NamedPat ident, _) ->
+                                    SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+                                | SynPat.OptionalVal (ident, _)
+                                | TypedPat (SynPat.OptionalVal (ident, _), _) ->
+                                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
+                                | _ -> t
+                            )
+
+                        mkSynTypeTuple id ts
+                    | _ -> t
+                | ParenPat (SynPat.Typed(pat = SynPat.Named(ident = SynIdent (ident, _)))) ->
+                    SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+
+                | ParenPat (SynPat.Typed(pat = SynPat.OptionalVal (ident, _))) ->
+                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
+                | ParenPat (SynPat.Attrib (attributes = attributes
+                                           pat = (SynPat.Typed(pat = NamedPat ident) | NamedPat ident))) ->
+                    SynType.SignatureParameter (attributes, false, Some ident, t, zeroRange)
+                | ParenPat (SynPat.OptionalVal (ident, _)) ->
+                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
+                | _ -> t
+        )
+        |> mkSynTypeFun
 
     let expr =
         match synAttributeLists with

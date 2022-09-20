@@ -37,6 +37,5 @@ type ReturnTypeResponse =
 type TypeInfoResponse = { IsClass : bool }
 
 type TypedTreeInfoResolver =
-    abstract member GetTypeNameFor : parameterRange : RangeProxy -> bindingRange : RangeProxy -> ParameterTypeName
-    abstract member GetReturnTypeFor : range : RangeProxy -> ReturnTypeResponse
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
+    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> string
