@@ -26,8 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Autograph.TypedTree\Autograph.TypedTree.fsproj" />
-    <ProjectReference Include="..\Autograph.UntypedTree\Autograph.UntypedTree.fsproj" />
+    <ProjectReference Include="..\..\src\Autograph.Core\Autograph.Core.fsproj" />
   </ItemGroup>
 
 </Project>

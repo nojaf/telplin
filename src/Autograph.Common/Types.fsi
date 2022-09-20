@@ -1,4 +1,4 @@
-﻿namespace Autograph.Common
+namespace Autograph.Common
 
 type RangeProxy =
     struct
@@ -6,17 +6,8 @@ type RangeProxy =
         val StartColumn : int
         val EndLine : int
         val EndColumn : int
-
-        new(startLine : int, startColumn : int, endLine : int, endColumn : int) =
-            {
-                StartLine = startLine
-                StartColumn = startColumn
-                EndLine = endLine
-                EndColumn = endColumn
-            }
-
-        override this.ToString () =
-            $"({this.StartLine}, {this.StartColumn}) ({this.EndLine},{this.EndColumn})"
+        new : startLine : int * startColumn : int * endLine : int * endColumn : int -> RangeProxy
+        override ToString : unit -> string
     end
 
 type GenericConstraintForParameter =
@@ -44,3 +35,15 @@ type TypeInfoResponse =
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
     abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo
+
+type FSharpDiagnosticInfoSeverity =
+    | Warning = 0
+    | Error = 1
+
+type FSharpDiagnosticInfo =
+    {
+        Severity : FSharpDiagnosticInfoSeverity
+        Message : string
+        ErrorNumber : string
+        Range : RangeProxy
+    }

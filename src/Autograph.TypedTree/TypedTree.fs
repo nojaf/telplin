@@ -1,6 +1,7 @@
 ﻿module Autograph.TypedTree.Resolver
 
 open System
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
@@ -151,7 +152,50 @@ let mkResolverForCode (code : string) : TypedTreeInfoResolver =
 
     mkResolverFor sourceFileName sourceText projectOptions
 
-let assertTypeCheckFor implementationPath signaturePath =
+let mapDiagnostics diagnostics =
+    diagnostics
+    |> Array.choose (fun (d : FSharpDiagnostic) ->
+        match d.Severity with
+        | FSharpDiagnosticSeverity.Error ->
+            {
+                Severity = FSharpDiagnosticInfoSeverity.Error
+                Message = d.Message
+                ErrorNumber = d.ErrorNumberText
+                Range = RangeProxy (d.StartLine, d.StartColumn, d.EndLine, d.EndColumn)
+            }
+            |> Some
+        | FSharpDiagnosticSeverity.Warning ->
+            {
+                Severity = FSharpDiagnosticInfoSeverity.Warning
+                Message = d.Message
+                ErrorNumber = d.ErrorNumberText
+                Range = RangeProxy (d.StartLine, d.StartColumn, d.EndLine, d.EndColumn)
+            }
+            |> Some
+        | FSharpDiagnosticSeverity.Info
+        | FSharpDiagnosticSeverity.Hidden -> None
+    )
+
+let typeCheckForImplementation implementationPath =
+    let projectOptions : FSharpProjectOptions =
+        {
+            ProjectFileName = "A"
+            ProjectId = None
+            SourceFiles = [| implementationPath |]
+            OtherOptions = [||]
+            ReferencedProjects = [||]
+            IsIncompleteTypeCheckEnvironment = false
+            UseScriptResolutionRules = false
+            LoadTime = DateTime.Now
+            UnresolvedReferences = None
+            OriginalLoadReferences = []
+            Stamp = None
+        }
+
+    let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+    mapDiagnostics result.Diagnostics
+
+let typeCheckForPair implementationPath signaturePath =
     let projectOptions : FSharpProjectOptions =
         {
             ProjectFileName = "A"
@@ -169,6 +213,4 @@ let assertTypeCheckFor implementationPath signaturePath =
 
     let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
 
-    if not (Array.isEmpty result.Diagnostics) then
-        Array.iter (fun d -> printfn "%A" d) result.Diagnostics
-        failwith "Could not compile source with signature file"
+    mapDiagnostics result.Diagnostics
