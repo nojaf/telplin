@@ -654,3 +654,31 @@ module L
 
 val f: a: string -> b: char -> (float -> float)
 """
+
+[<Test>]
+let ``function types as parameters with explicit function return type`` () =
+    assertSignature
+        """
+module F
+
+let f (v : int -> int) (x : int -> int) : int -> int = fun z -> z + 1
+"""
+        """
+module F
+
+val f: v: (int -> int) -> x: (int -> int) -> (int -> int)
+"""
+
+[<Test>]
+let ``function types as parameters without explicit function return type`` () =
+    assertSignature
+        """
+module F
+
+let f (v : int -> int) (x : int -> int) = fun z -> z + 1
+"""
+        """
+module F
+
+val f: v: (int -> int) -> x: (int -> int) -> (int -> int)
+"""
