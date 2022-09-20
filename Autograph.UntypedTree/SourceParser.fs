@@ -62,6 +62,11 @@ let (|IdentType|_|) text t =
     | SynType.LongIdent (SynLongIdent(id = [ ident ])) when ident.idText = text -> Some t
     | _ -> None
 
+let (|LongIdentType|_|) t =
+    match t with
+    | SynType.LongIdent (SynLongIdent (id = id)) -> Some id
+    | _ -> None
+
 let (|ParenPat|_|) p =
     match p with
     | SynPat.Paren (pat = pat) -> Some pat

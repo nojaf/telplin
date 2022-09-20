@@ -268,7 +268,7 @@ let (|Foo|) = function | 1 -> 2 | x -> x
         """
 module Hej
 
-val (|Foo|): int -> int
+val (|Foo|): (int -> int)
 """
 
 [<Test>]
@@ -625,8 +625,6 @@ module X
 val a: (int * float) * z: string -> byte
 """
 
-let a ((x : int, y : float), z : string) = 1uy
-
 [<Test>]
 let ``binding with unresolvable parameter that return a function type`` () =
     assertSignature
@@ -681,4 +679,67 @@ let f (v : int -> int) (x : int -> int) = fun z -> z + 1
 module F
 
 val f: v: (int -> int) -> x: (int -> int) -> (int -> int)
+"""
+
+[<Test>]
+let ``value that returns a function type`` () =
+    assertSignature
+        """
+module V
+
+type Node = { Index : int }
+let sortChildren =
+    Array.sortBy (fun ({ Index = idx }: Node) -> idx)
+"""
+        """
+module V
+
+type Node = { Index: int }
+val sortChildren: (Node array -> Node array)
+"""
+
+[<Test>]
+let ``use full type when available`` () =
+    assertSignature
+        """
+module T
+
+let fn (r: System.Text.RegularExpressions.Regex) = ""
+"""
+        """
+module T
+
+val fn: r: System.Text.RegularExpressions.Regex -> string
+"""
+
+[<Test>]
+let ``use full type in tuple when available`` () =
+    assertSignature
+        """
+module T
+
+let fn (r: System.Text.RegularExpressions.Regex, v: string) = ""
+"""
+        """
+module T
+
+val fn: r: System.Text.RegularExpressions.Regex * v: string -> string
+"""
+
+[<Test>]
+let ``use full type when available, with generic args`` () =
+    assertSignature
+        """
+namespace Utils
+
+module Dict =
+    let tryGet k (d: System.Collections.Generic.IDictionary<_, _>) =
+        let r, x = d.TryGetValue k
+        if r then Some x else None
+"""
+        """
+namespace Utils
+
+module Dict =
+    val tryGet: k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
 """

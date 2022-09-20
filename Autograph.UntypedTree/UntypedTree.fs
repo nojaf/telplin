@@ -101,6 +101,36 @@ let rec sanitizeType (synType : SynType) : SynType =
         )
     | t -> t
 
+// The type in the source code could have been prefixed with a namespace
+let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
+    let resolveNameDifference
+        (originalName : Ident list)
+        (resolvedName : Ident list)
+        (originalType : SynType)
+        (resolvedType : SynType)
+        : SynType
+        =
+        let idText o =
+            Option.map (fun (i : Ident) -> i.idText) o
+
+        let originalNameEnd = List.tryLast originalName |> idText
+        let resolvedNameEnd = List.tryLast resolvedName |> idText
+
+        if originalName.Length > resolvedName.Length && originalNameEnd = resolvedNameEnd then
+            originalType
+        else
+            resolvedType
+
+    match typeInSource, resolvedType with
+    | SynType.App(typeName = LongIdentType originalName as otn),
+      SynType.App (LongIdentType resolvedName as rtn, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range) ->
+        let typeName = resolveNameDifference originalName resolvedName otn rtn
+        SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range)
+
+    | LongIdentType originalName, LongIdentType resolvedName ->
+        resolveNameDifference originalName resolvedName typeInSource resolvedType
+    | _ -> resolvedType
+
 type Range with
 
     member r.Proxy : RangeProxy =
@@ -271,7 +301,9 @@ and mkSynValSig
                 let skipEnd = List.take (ts.Length - rts.Length) ts
                 [ yield! skipEnd ; wrapInParenWhenFunType rt ]
             | _ ->
-                if argPats.Length = 0 || ts.Length = argPats.Length + 1 then
+                if argPats.Length = 0 then
+                    [ ts |> mkSynTypeFun |> wrapInParenWhenFunType ]
+                elif ts.Length = argPats.Length + 1 then
                     ts
                 else
                     let parameterTypes = List.take argPats.Length ts
@@ -302,8 +334,8 @@ and mkSynValSig
                             |> List.map (fun (t, p) ->
                                 match p with
                                 | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
-                                | TypedPat (NamedPat ident, _) ->
-                                    SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+                                | TypedPat (NamedPat ident, st) ->
+                                    SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
                                 | SynPat.OptionalVal (ident, _)
                                 | TypedPat (SynPat.OptionalVal (ident, _), _) ->
                                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
@@ -312,8 +344,8 @@ and mkSynValSig
 
                         mkSynTypeTuple id ts
                     | _ -> t
-                | ParenPat (SynPat.Typed(pat = SynPat.Named(ident = SynIdent (ident, _)))) ->
-                    SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
+                | ParenPat (TypedPat (NamedPat ident, st)) ->
+                    SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
 
                 | ParenPat (SynPat.Typed(pat = SynPat.OptionalVal (ident, _))) ->
                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
