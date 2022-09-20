@@ -239,3 +239,24 @@ type ASTContext =
 
     static member Default: ASTContext
 """
+
+[<Test>]
+let ``construct with single argument`` () =
+    assertSignature
+        """
+namespace FormatConfig
+
+open System
+
+type FormatException(msg: string) =
+    inherit Exception(msg)
+"""
+        """
+namespace FormatConfig
+
+open System
+
+type FormatException =
+    new: string -> FormatException
+    inherit Exception
+"""

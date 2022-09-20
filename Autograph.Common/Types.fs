@@ -19,8 +19,6 @@ type RangeProxy =
             $"({this.StartLine}, {this.StartColumn}) ({this.EndLine},{this.EndColumn})"
     end
 
-type TypeInfoResponse = { IsClass : bool }
-
 type GenericConstraintForParameter =
     {
         ParameterName : string
@@ -35,6 +33,14 @@ and GenericConstraint =
         IsReferenceTypeConstraint : bool
     }
 
+type BindingInfo = string * GenericConstraintForParameter list
+
+type TypeInfoResponse =
+    {
+        IsClass : bool
+        ConstructorInfo : BindingInfo option
+    }
+
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
-    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> string * GenericConstraintForParameter list
+    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo

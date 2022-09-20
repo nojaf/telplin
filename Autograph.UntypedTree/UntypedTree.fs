@@ -33,14 +33,14 @@ let stripOptionType t =
 
 let mkSynTypeParen (t : SynType) : SynType = SynType.Paren (t, zeroRange)
 
-let mkSynTypeTuple mkType ts =
+let mkSynTypeTuple ts =
     match ts with
     | []
     | [ _ ] -> failwith "ts cannot have a single or zero types"
     | h :: rest ->
         let types =
-            SynTupleTypeSegment.Type (mkType h)
-            :: List.collect (fun t -> [ SynTupleTypeSegment.Star zeroRange ; SynTupleTypeSegment.Type (mkType t) ]) rest
+            SynTupleTypeSegment.Type h
+            :: List.collect (fun t -> [ SynTupleTypeSegment.Star zeroRange ; SynTupleTypeSegment.Type t ]) rest
 
         SynType.Tuple (false, types, zeroRange)
 
@@ -49,10 +49,12 @@ let mkIdent text = Ident (text, zeroRange)
 let mkSynIdent text = SynIdent (mkIdent text, None)
 
 let mkSynLongIdent text =
-    SynLongIdent ([ Ident (text, zeroRange) ], [], [ None ])
+    SynLongIdent ([ mkIdent text ], [], [ None ])
 
 let mkSynTypeLongIdent text = SynType.LongIdent (mkSynLongIdent text)
 
+/// Clean up some less nice results from the typed tree.
+/// Change `Int32` to `int`, or `int[]` to `int array`.
 let rec sanitizeType (synType : SynType) : SynType =
     match synType with
     | IdentType "Int32" _ -> mkSynTypeLongIdent "int"
@@ -69,7 +71,8 @@ let rec sanitizeType (synType : SynType) : SynType =
         )
     | t -> t
 
-// The type in the source code could have been prefixed with a namespace
+/// The type in the source code could have been prefixed with a namespace
+/// `Regex` was resolved by the typed tree, but the untyped tree had `System.Text.RegularExpressions.Regex`
 let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
     let resolveNameDifference
         (originalName : Ident list)
@@ -108,6 +111,16 @@ let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
         | _ -> rt
 
     visit typeInSource resolvedType
+
+let rec convertToSynPat (simplePat : SynSimplePat) : SynPat =
+    match simplePat with
+    | SynSimplePat.Attrib (pat, attributes, range) -> SynPat.Attrib (convertToSynPat pat, attributes, range)
+    | SynSimplePat.Id (ident = ident ; isThisVal = isThisVal ; isOptional = isOptional ; range = range) ->
+        if isOptional then
+            SynPat.OptionalVal (ident, range)
+        else
+            SynPat.Named (SynIdent (ident, None), isThisVal, None, range)
+    | SynSimplePat.Typed (pat, t, range) -> SynPat.Typed (convertToSynPat pat, t, range)
 
 type Range with
 
@@ -258,6 +271,15 @@ and mkSynValSig
 
         | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
 
+    let expr =
+        match synAttributeLists with
+        | [ {
+                Attributes = [ {
+                                   TypeName = SynLongIdent(id = [ literalIdent ])
+                               } ]
+            } ] when literalIdent.idText = "Literal" -> Some synExpr
+        | _ -> None
+
     let returnTypeText, resolvedConstraints =
         resolver.GetFullForBinding mBindingName.Proxy
 
@@ -266,6 +288,42 @@ and mkSynValSig
         | Some (SynBindingReturnInfo(typeName = TFuns ts as t)) -> Some (ts, t)
         | _ -> None
 
+    let t =
+        mkSynTypForSignature returnTypeText resolvedConstraints constraintsFromSource argPats returnTypeInImpl
+
+    let synValTyparDecls =
+        match constraintsFromSource with
+        | Some c -> c
+        | None -> SynValTyparDecls (None, false)
+
+    SynValSig (
+        synAttributeLists,
+        ident,
+        synValTyparDecls,
+        t,
+        // This isn't correct but doesn't matter for Fantomas
+        synValData.SynValInfo,
+        isInline,
+        isMutable,
+        preXmlDoc,
+        vis,
+        expr,
+        zeroRange,
+        {
+            ValKeyword = Some zeroRange
+            WithKeyword = None
+            EqualsRange = None
+        }
+    )
+
+and mkSynTypForSignature
+    returnTypeText
+    resolvedConstraints
+    constraintsFromSource
+    argPats
+    (returnTypeInImpl : (SynType list * SynType) option)
+    : SynType
+    =
     let t =
         let aliasAST, _ =
             Fantomas.FCS.Parse.parseFile false (SourceText.ofString $"type Alias = {returnTypeText}") []
@@ -324,7 +382,7 @@ and mkSynValSig
                                 | _ -> t
                             )
 
-                        mkSynTypeTuple id ts
+                        mkSynTypeTuple ts
                     | _ -> t
                 | ParenPat (TypedPat (NamedPat ident, st)) ->
                     SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
@@ -341,98 +399,63 @@ and mkSynValSig
         )
         |> mkSynTypeFun
 
-    let tWithConstraints =
-        if resolvedConstraints.IsEmpty then
-            t
-        else
+    if resolvedConstraints.IsEmpty then
+        t
+    else
 
-        let existingTypars =
-            match constraintsFromSource with
-            | Some (SynValTyparDecls(typars = Some typar)) ->
-                typar.Constraints
-                |> List.choose (
-                    function
-                    | TyparInConstraint typar -> Some typar
-                    | _ -> None
-                )
-            | _ -> []
-
-        // This isn't bullet proof but good enough for now.
-        let typarComparer =
-            { new System.Collections.Generic.IEqualityComparer<SynTypar> with
-                member this.Equals (x, y) =
-                    match x, y with
-                    | SynTypar (identX, typarStaticReqX, isCompGenX), SynTypar (identY, typarStaticReqY, isCompGenY) ->
-                        identX.idText = identY.idText
-                        && typarStaticReqX = typarStaticReqY
-                        && isCompGenX = isCompGenY
-
-                member this.GetHashCode (SynTypar (identX, typarStaticReqX, isCompGenX)) =
-                    HashCode.Combine (identX, typarStaticReqX, isCompGenX)
-            }
-
-        let constraints =
-            resolvedConstraints
-            |> List.collect (fun rc ->
-                let typarStaticReq =
-                    if rc.IsHeadType then
-                        TyparStaticReq.HeadType
-                    else
-                        TyparStaticReq.None
-
-                let typar =
-                    SynTypar (mkIdent rc.ParameterName, typarStaticReq, rc.IsCompilerGenerated)
-
-                if System.Linq.Enumerable.Contains (existingTypars, typar, typarComparer) then
-                    []
-                else
-
-                rc.Constraints
-                |> List.choose (fun c ->
-                    if c.IsEqualityConstraint then
-                        Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
-                    elif c.IsReferenceTypeConstraint then
-                        Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
-                    else
-                        None
-                )
-            )
-
-        SynType.WithGlobalConstraints (t, constraints, zeroRange)
-
-    let expr =
-        match synAttributeLists with
-        | [ {
-                Attributes = [ {
-                                   TypeName = SynLongIdent(id = [ literalIdent ])
-                               } ]
-            } ] when literalIdent.idText = "Literal" -> Some synExpr
-        | _ -> None
-
-    let synValTyparDecls =
+    let existingTypars =
         match constraintsFromSource with
-        | Some c -> c
-        | None -> SynValTyparDecls (None, false)
+        | Some (SynValTyparDecls(typars = Some typar)) ->
+            typar.Constraints
+            |> List.choose (
+                function
+                | TyparInConstraint typar -> Some typar
+                | _ -> None
+            )
+        | _ -> []
 
-    SynValSig (
-        synAttributeLists,
-        ident,
-        synValTyparDecls,
-        tWithConstraints,
-        // This isn't correct but doesn't matter for Fantomas
-        synValData.SynValInfo,
-        isInline,
-        isMutable,
-        preXmlDoc,
-        vis,
-        expr,
-        zeroRange,
-        {
-            ValKeyword = Some zeroRange
-            WithKeyword = None
-            EqualsRange = None
+    // This isn't bullet proof but good enough for now.
+    let typarComparer =
+        { new System.Collections.Generic.IEqualityComparer<SynTypar> with
+            member this.Equals (x, y) =
+                match x, y with
+                | SynTypar (identX, typarStaticReqX, isCompGenX), SynTypar (identY, typarStaticReqY, isCompGenY) ->
+                    identX.idText = identY.idText
+                    && typarStaticReqX = typarStaticReqY
+                    && isCompGenX = isCompGenY
+
+            member this.GetHashCode (SynTypar (identX, typarStaticReqX, isCompGenX)) =
+                HashCode.Combine (identX, typarStaticReqX, isCompGenX)
         }
-    )
+
+    let constraints =
+        resolvedConstraints
+        |> List.collect (fun rc ->
+            let typarStaticReq =
+                if rc.IsHeadType then
+                    TyparStaticReq.HeadType
+                else
+                    TyparStaticReq.None
+
+            let typar =
+                SynTypar (mkIdent rc.ParameterName, typarStaticReq, rc.IsCompilerGenerated)
+
+            if System.Linq.Enumerable.Contains (existingTypars, typar, typarComparer) then
+                []
+            else
+
+            rc.Constraints
+            |> List.choose (fun c ->
+                if c.IsEqualityConstraint then
+                    Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
+                elif c.IsReferenceTypeConstraint then
+                    Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
+                else
+                    None
+            )
+        )
+
+    SynType.WithGlobalConstraints (t, constraints, zeroRange)
 
 and mkSynTypeDefnSig
     resolver
@@ -567,13 +590,29 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
 
     | SynMemberDefn.Inherit (baseType, _identOption, _range) -> Some (SynMemberSig.Inherit (baseType, zeroRange))
 
-    | SynMemberDefn.ImplicitCtor (vis, synAttributeLists, _synSimplePats, _selfIdentifier, preXmlDoc, _range) ->
+    | SynMemberDefn.ImplicitCtor (vis, synAttributeLists, synSimplePats, _selfIdentifier, preXmlDoc, _range) ->
         let t =
-            mkSynTypeFun
-                [
-                    mkSynTypeLongIdent "unit"
-                    SynType.LongIdent (SynLongIdent (typeIdent, [], List.replicate typeIdent.Length None))
-                ]
+            let { ConstructorInfo = ctor } = resolver.GetTypeInfo typeIdent.Head.idRange.Proxy
+
+            let returnType =
+                SynType.LongIdent (SynLongIdent (typeIdent, [], List.replicate typeIdent.Length None))
+
+            match ctor with
+            | None -> mkSynTypeFun [ mkSynTypeLongIdent "unit" ; returnType ]
+            | Some (signatureText, resolvedGenericParameters) ->
+                let argPats : SynPat list =
+                    match synSimplePats with
+                    | SynSimplePats.SimplePats (pats = pats) -> pats |> List.map convertToSynPat
+
+                    | SynSimplePats.Typed _ -> []
+
+                mkSynTypForSignature
+                    signatureText
+                    resolvedGenericParameters
+                    None
+                    argPats
+                    (Some ([ returnType ], returnType))
+                |> removeParensInType
 
         let valSig =
             // This doesn't need to be correct for Fantomas

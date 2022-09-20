@@ -34,7 +34,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
             |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
             |> Option.map (fun symbol ->
                 match symbol.Symbol with
-                | :? FSharpMemberOrFunctionOrValue as valSymbol -> valSymbol
+                | :? FSharpMemberOrFunctionOrValue as valSymbol -> valSymbol, symbol.DisplayContext
                 | _ -> failwith $"Unexpected type of {symbol} for {proxyRange}"
             )
 
@@ -52,58 +52,77 @@ let mkResolverFor sourceFileName sourceText projectOptions =
             | None -> failwith $"Failed to resolve symbols for {proxyRange}"
             | Some symbol ->
                 match symbol.Symbol with
-                | :? FSharpEntity as typeSymbol -> typeSymbol
+                | :? FSharpEntity as typeSymbol -> typeSymbol, symbol.DisplayContext
                 | _ -> failwith $"Failed to resolve FSharpType for for {proxyRange}"
+
+        let taggedTextToString tags =
+            tags
+            |> Array.choose (fun (t : TaggedText) ->
+                match t.Tag with
+                | TextTag.UnknownEntity -> None
+                | _ -> Some t.Text
+            )
+            |> String.concat ""
+
+        let mkBindingInfo displayContext (valSymbol : FSharpMemberOrFunctionOrValue) =
+            let s = valSymbol.FormatLayout displayContext |> taggedTextToString
+
+            let genericParameters =
+                valSymbol.GenericParameters
+                |> Seq.choose (fun gp ->
+                    if Seq.isEmpty gp.Constraints then
+                        None
+                    else
+                        let constraints =
+                            gp.Constraints
+                            |> Seq.map (fun c ->
+                                {
+                                    IsEqualityConstraint = c.IsEqualityConstraint
+                                    IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
+                                }
+                            )
+                            |> Seq.toList
+
+                        Some
+                            {
+                                ParameterName = gp.DisplayName
+                                IsHeadType = gp.IsSolveAtCompileTime
+                                IsCompilerGenerated = gp.IsCompilerGenerated
+                                Constraints = constraints
+                            }
+                )
+                |> Seq.toList
+
+            s, genericParameters
 
         { new TypedTreeInfoResolver with
             member resolver.GetTypeInfo proxyRange =
                 try
-                    let symbol = findTypeSymbol proxyRange
-                    { IsClass = symbol.IsClass }
+                    let typeSymbol, displayContext = findTypeSymbol proxyRange
+
+                    let ctor =
+                        typeSymbol.TryGetMembersFunctionsAndValues ()
+                        |> Seq.choose (fun (valSymbol : FSharpMemberOrFunctionOrValue) ->
+                            if valSymbol.CompiledName = ".ctor" then
+                                Some (mkBindingInfo displayContext valSymbol)
+                            else
+                                None
+                        )
+                        |> Seq.tryHead // Assume one constructor for now
+
+                    {
+                        IsClass = typeSymbol.IsClass
+                        ConstructorInfo = ctor
+                    }
                 with ex ->
                     printException ex proxyRange
                     raise ex
 
             member resolver.GetFullForBinding bindingNameRange =
                 try
-                    let valSymbol = findSymbol bindingNameRange
+                    let valSymbol, displayContext = findSymbol bindingNameRange
+                    mkBindingInfo displayContext valSymbol
 
-                    let s =
-                        valSymbol.FormatLayout FSharpDisplayContext.Empty
-                        |> Array.choose (fun (t : TaggedText) ->
-                            match t.Tag with
-                            | TextTag.UnknownEntity -> None
-                            | _ -> Some t.Text
-                        )
-                        |> String.concat ""
-
-                    let genericParameters =
-                        valSymbol.GenericParameters
-                        |> Seq.choose (fun gp ->
-                            if Seq.isEmpty gp.Constraints then
-                                None
-                            else
-                                let constraints =
-                                    gp.Constraints
-                                    |> Seq.map (fun c ->
-                                        {
-                                            IsEqualityConstraint = c.IsEqualityConstraint
-                                            IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
-                                        }
-                                    )
-                                    |> Seq.toList
-
-                                Some
-                                    {
-                                        ParameterName = gp.DisplayName
-                                        IsHeadType = gp.IsSolveAtCompileTime
-                                        IsCompilerGenerated = gp.IsCompilerGenerated
-                                        Constraints = constraints
-                                    }
-                        )
-                        |> Seq.toList
-
-                    s, genericParameters
                 with ex ->
                     printException ex bindingNameRange
                     raise ex
