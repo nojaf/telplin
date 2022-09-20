@@ -8,14 +8,14 @@ open Autograph.OptionCE
 type CliArguments =
     | [<MainCommand>] Binary_log of path : string
     | Single_File of path : string
+    | Write
 
     interface IArgParserTemplate with
         member this.Usage =
             match this with
             | Binary_log _ -> "Binary log file to process"
             | Single_File _ -> "Process a single file in the current project. File path should be absolute"
-
-let isDryRun = true
+            | Write -> "Write signature files to disk"
 
 module Seq =
     let tryChooseHead f = Seq.choose f >> Seq.tryHead
@@ -90,14 +90,17 @@ let main args =
                 sourceFile, signature
             )
 
-        if isDryRun then
-            Array.iter
-                (fun (fileName, signature) ->
+        Array.iter
+            (fun (fileName, signature) ->
+                if arguments.Contains <@ Write @> then
+                    let signaturePath = Path.ChangeExtension (fileName, ".fsi")
+                    File.WriteAllText (signaturePath, signature)
+                else
                     printfn $"| %s{fileName} |"
                     printfn "%s" (String.init 100 (fun _ -> "-"))
                     printfn "%s" signature
-                )
-                signatures
+            )
+            signatures
 
         return 0
     }

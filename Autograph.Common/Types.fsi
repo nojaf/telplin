@@ -16,6 +16,7 @@ type RangeProxy =
         val EndLine : int
         val EndColumn : int
         new : startLine : int * startColumn : int * endLine : int * endColumn : int -> RangeProxy
+        override ToString : unit -> string
     end
 
 type ReturnTypeResponse =
