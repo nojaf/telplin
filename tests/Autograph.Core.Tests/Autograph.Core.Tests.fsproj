@@ -24,6 +24,10 @@
     <PackageReference Include="coverlet.collector" Version="3.1.2" />
   </ItemGroup>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="dotnet build $(MSBuildProjectDirectory)\..\SampleLibrary\SampleLibrary.fsproj /bl:sample.binlog --no-incremental" />
+  </Target>
+  
   <ItemGroup>
     <ProjectReference Include="..\..\src\Autograph.Core\Autograph.Core.fsproj" />
   </ItemGroup>
