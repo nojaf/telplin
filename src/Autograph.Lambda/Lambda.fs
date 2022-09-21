@@ -74,10 +74,11 @@ let mkProcessRequest<'t>
     implementation
     =
     try
-        let signatureContent = AutographApi.MkSignature implementation
+        let binlog : string = failwith "binlog file"
+        let signatureContent = AutographApi.MkSignature (implementation, binlog)
 
         let verification =
-            AutographApi.VerifySignatureWithImplementation (implementation, signatureContent)
+            AutographApi.VerifySignatureWithImplementation (implementation, signatureContent, binlog)
 
         match verification with
         | SignatureVerificationResult.ValidSignature -> onValidSignature signatureContent
