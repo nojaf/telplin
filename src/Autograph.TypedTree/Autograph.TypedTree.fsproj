@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="OptionCE.fs" />
         <Compile Include="Options.fsi" />
         <Compile Include="Options.fs" />
         <Compile Include="TypedTree.fsi" />
@@ -15,6 +16,7 @@
 
     <ItemGroup>
       <PackageReference Include="FSharp.Compiler.Service" Version="41.0.6" />
+      <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.669" />
     </ItemGroup>
 
     <ItemGroup>

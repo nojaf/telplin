@@ -1,6 +1,5 @@
 ﻿module Autograph.TypedTree.Resolver
 
-open System
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
@@ -130,22 +129,12 @@ let mkResolverFor sourceFileName sourceText projectOptions =
         }
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
-let mkResolverForCode (code : string) : TypedTreeInfoResolver =
+let mkResolverForCode projectOptions (code : string) : TypedTreeInfoResolver =
     let sourceFileName = "A.fs"
 
     let projectOptions : FSharpProjectOptions =
-        {
-            ProjectFileName = "A"
-            ProjectId = None
+        { projectOptions with
             SourceFiles = [| sourceFileName |]
-            OtherOptions = [||]
-            ReferencedProjects = [||]
-            IsIncompleteTypeCheckEnvironment = false
-            UseScriptResolutionRules = false
-            LoadTime = DateTime.Now
-            UnresolvedReferences = None
-            OriginalLoadReferences = []
-            Stamp = None
         }
 
     let sourceText = SourceText.ofString code
@@ -176,39 +165,19 @@ let mapDiagnostics diagnostics =
         | FSharpDiagnosticSeverity.Hidden -> None
     )
 
-let typeCheckForImplementation implementationPath =
+let typeCheckForImplementation projectOptions implementationPath =
     let projectOptions : FSharpProjectOptions =
-        {
-            ProjectFileName = "A"
-            ProjectId = None
+        { projectOptions with
             SourceFiles = [| implementationPath |]
-            OtherOptions = [||]
-            ReferencedProjects = [||]
-            IsIncompleteTypeCheckEnvironment = false
-            UseScriptResolutionRules = false
-            LoadTime = DateTime.Now
-            UnresolvedReferences = None
-            OriginalLoadReferences = []
-            Stamp = None
         }
 
     let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
     mapDiagnostics result.Diagnostics
 
-let typeCheckForPair implementationPath signaturePath =
+let typeCheckForPair projectOptions implementationPath signaturePath =
     let projectOptions : FSharpProjectOptions =
-        {
-            ProjectFileName = "A"
-            ProjectId = None
+        { projectOptions with
             SourceFiles = [| signaturePath ; implementationPath |]
-            OtherOptions = [||]
-            ReferencedProjects = [||]
-            IsIncompleteTypeCheckEnvironment = false
-            UseScriptResolutionRules = false
-            LoadTime = DateTime.Now
-            UnresolvedReferences = None
-            OriginalLoadReferences = []
-            Stamp = None
         }
 
     let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously

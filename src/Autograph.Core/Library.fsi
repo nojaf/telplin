@@ -1,5 +1,6 @@
 namespace Autograph.Core
 
+open FSharp.Compiler.CodeAnalysis
 open Autograph.Common
 
 [<RequireQualifiedAccess>]
@@ -10,6 +11,12 @@ type SignatureVerificationResult =
 
 [<Class>]
 type AutographApi =
-    static member MkSignature : implementation : string -> string
+    static member MkSignature : implementation : string * binlog : string -> string
     static member VerifySignatureWithImplementation :
-        implementation : string * signature : string -> SignatureVerificationResult
+        implementation : string * signature : string * binlog : string -> SignatureVerificationResult
+
+[<Class>]
+type internal AutographInternalApi =
+    static member MkSignature : implementation : string * options : FSharpProjectOptions -> string
+    static member VerifySignatureWithImplementation :
+        implementation : string * signature : string * options : FSharpProjectOptions -> SignatureVerificationResult

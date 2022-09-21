@@ -1,6 +1,7 @@
 ﻿module Autograph.Core.Tests.TestHelper
 
 open System
+open System.IO
 open NUnit.Framework
 open Autograph.Core
 
@@ -9,12 +10,16 @@ let private shouldEqualWithPrepend (other : string) (this : string) =
     let other = other.Replace ("\r", "")
     Assert.AreEqual (other, this)
 
+let options =
+    let sampleBinLog = Path.Combine (__SOURCE_DIRECTORY__, "sample.binlog")
+    Autograph.TypedTree.Options.mkOptions sampleBinLog
+
 let assertSignature implementation expectedSignature =
-    let actualSignature = AutographApi.MkSignature implementation
+    let actualSignature = AutographInternalApi.MkSignature (implementation, options)
     shouldEqualWithPrepend expectedSignature actualSignature
 
     let verificationResult =
-        AutographApi.VerifySignatureWithImplementation (implementation, actualSignature)
+        AutographInternalApi.VerifySignatureWithImplementation (implementation, actualSignature, options)
 
     match verificationResult with
     | SignatureVerificationResult.ValidSignature -> ()

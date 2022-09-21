@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Library.fsi" />
     <Compile Include="Library.fs" />
   </ItemGroup>

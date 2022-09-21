@@ -10,6 +10,13 @@ val mkResolverFor :
     projectOptions : FSharpProjectOptions ->
         TypedTreeInfoResolver
 
-val mkResolverForCode : code : string -> TypedTreeInfoResolver
-val typeCheckForPair : implementationPath : string -> signaturePath : string -> FSharpDiagnosticInfo array
-val typeCheckForImplementation : implementationPath : string -> FSharpDiagnosticInfo array
+val mkResolverForCode : projectOptions : FSharpProjectOptions -> code : string -> TypedTreeInfoResolver
+
+val typeCheckForPair :
+    projectOptions : FSharpProjectOptions ->
+    implementationPath : string ->
+    signaturePath : string ->
+        FSharpDiagnosticInfo array
+
+val typeCheckForImplementation :
+    projectOptions : FSharpProjectOptions -> implementationPath : string -> FSharpDiagnosticInfo array
