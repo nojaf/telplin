@@ -260,3 +260,31 @@ type FormatException =
     new: string -> FormatException
     inherit Exception
 """
+
+[<Test>]
+let ``member with constraint in parameter`` () =
+    assertSignature
+        """
+module FA
+
+open System
+
+[<Sealed>]
+type MaybeBuilder() =
+  member _.Using(resource: 'T :> IDisposable, body: _ -> _ option) : _ option =
+    try
+      body resource
+    finally
+      if not <| obj.ReferenceEquals(null, box resource) then
+        resource.Dispose()
+"""
+        """
+module FA
+
+open System
+
+[<Sealed>]
+type MaybeBuilder =
+    new: unit -> MaybeBuilder
+    member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> System.IDisposable
+"""

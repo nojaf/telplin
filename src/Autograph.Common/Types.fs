@@ -31,6 +31,7 @@ and GenericConstraint =
     {
         IsEqualityConstraint : bool
         IsReferenceTypeConstraint : bool
+        CoercesToTarget : string option
     }
 
 type BindingInfo = string * GenericConstraintForParameter list

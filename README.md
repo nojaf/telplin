@@ -217,3 +217,5 @@ docker build . -f .\lambda.Dockerfile -t autograph-lambda --no-cache --progress=
 --deterministic+
 --simpleresolution
 ```
+
+Telpin?

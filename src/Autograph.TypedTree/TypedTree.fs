@@ -79,6 +79,11 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                                 {
                                     IsEqualityConstraint = c.IsEqualityConstraint
                                     IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
+                                    CoercesToTarget =
+                                        if c.IsCoercesToConstraint then
+                                            Some c.CoercesToTarget.TypeDefinition.FullName
+                                        else
+                                            None
                                 }
                             )
                             |> Seq.toList

@@ -122,6 +122,16 @@ let rec convertToSynPat (simplePat : SynSimplePat) : SynPat =
             SynPat.Named (SynIdent (ident, None), isThisVal, None, range)
     | SynSimplePat.Typed (pat, t, range) -> SynPat.Typed (convertToSynPat pat, t, range)
 
+let getSynTypFromText (typeText : string) : SynType =
+    let aliasAST, _ =
+        Fantomas.FCS.Parse.parseFile true (SourceText.ofString $"val v: {typeText}") []
+
+    match aliasAST with
+    | ParsedInput.SigFile (ParsedSigFileInput(modules = [ SynModuleOrNamespaceSig(decls = [ SynModuleSigDecl.Val(valSig = SynValSig (synType = t)) ]) ])) ->
+        t
+
+    | _ -> failwith $"should not fail, but did for {typeText}"
+
 type Range with
 
     member r.Proxy : RangeProxy =
@@ -325,15 +335,10 @@ and mkSynTypForSignature
     : SynType
     =
     let t =
-        let aliasAST, _ =
-            Fantomas.FCS.Parse.parseFile false (SourceText.ofString $"type Alias = {returnTypeText}") []
-
         let ts =
-            match aliasAST with
-            | ParsedInput.ImplFile (ParsedImplFileInput(modules = [ SynModuleOrNamespace(decls = [ SynModuleDecl.Types ([ SynTypeDefn(typeRepr = SynTypeDefnRepr.Simple(simpleRepr = SynTypeDefnSimpleRepr.TypeAbbrev(rhsType = TFuns ts))) ],
-                                                                                                                        _) ]) ])) ->
-                ts |> List.map sanitizeType
-            | _ -> failwith "should not fail"
+            match getSynTypFromText returnTypeText with
+            | SynType.WithGlobalConstraints(typeName = TFuns ts)
+            | TFuns ts -> List.map sanitizeType ts
 
         let ts =
             match returnTypeInImpl with
@@ -450,6 +455,11 @@ and mkSynTypForSignature
                     Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
                 elif c.IsReferenceTypeConstraint then
                     Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
+                elif Option.isSome c.CoercesToTarget then
+                    c.CoercesToTarget
+                    |> Option.map (fun coercesToTarget ->
+                        SynTypeConstraint.WhereTyparSubtypeOfType (typar, getSynTypFromText coercesToTarget, zeroRange)
+                    )
                 else
                     None
             )
