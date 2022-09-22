@@ -58,3 +58,8 @@ let (|TyparInConstraint|_|) tc =
     | SynTypeConstraint.WhereTyparIsDelegate (typar = typar) -> Some typar
     | SynTypeConstraint.WhereTyparSupportsMember _
     | SynTypeConstraint.WhereSelfConstrained _ -> None
+
+let (|ForceMemberFlags|) (nodeName : string) (mf : SynMemberFlags option) =
+    match mf with
+    | None -> failwith $"{nodeName} does not have memberFlags, weird"
+    | Some mf -> mf

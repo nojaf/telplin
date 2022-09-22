@@ -10,3 +10,4 @@ val (|LongIdentType|_|) : t : SynType -> LongIdent option
 val (|ParenPat|_|) : p : SynPat -> SynPat option
 val (|TypedPat|_|) : p : SynPat -> (SynPat * SynType) option
 val (|TyparInConstraint|_|) : tc : SynTypeConstraint -> SynTypar option
+val (|ForceMemberFlags|) : nodeName : string -> mf : SynMemberFlags option -> SynMemberFlags

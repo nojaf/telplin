@@ -875,6 +875,8 @@ module FA
 
 type Debounce<'a> =
     new: timeout: int * fn: ('a -> Async<unit>) -> Debounce<'a>
+    /// Calls the function, after debouncing has been applied.
     member Bounce: arg: 'a -> unit
+    /// Timeout in ms
     member Timeout: int
 """

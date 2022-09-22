@@ -288,3 +288,43 @@ type MaybeBuilder =
     new: unit -> MaybeBuilder
     member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
 """
+
+[<Test>]
+let ``member with get only`` () =
+    assertSignature
+        """
+module FA
+
+type X() =
+    member x.Item
+        with get (m: int) = ""
+"""
+        """
+module FA
+
+type X =
+    new: unit -> X
+    member Item: m: int -> string with get
+"""
+
+// I'm not sure why but settings don't seem to have a signature.
+// Try this out in fsi, the setter won't be printed.
+
+[<Test>]
+let ``member with get/set`` () =
+    assertSignature
+        """
+module X
+
+type X() =
+    member x.Item
+        with get (m: int) = ""
+        and set (m:int) (y:int) = ()
+"""
+        """
+module X
+
+type X =
+    new: unit -> X
+    member Item: m: int -> string with get
+"""

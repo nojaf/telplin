@@ -372,6 +372,7 @@ and mkSynTypForSignature
             | None -> t
             | Some p ->
                 match p with
+                | ParenPat (NamedPat ident)
                 | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
                 | ParenPat (SynPat.Tuple (elementPats = ps)) ->
                     match t with
@@ -604,12 +605,11 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
     match md with
     | SynMemberDefn.ValField (fieldInfo, _range) -> Some (SynMemberSig.ValField (fieldInfo, zeroRange))
 
-    | SynMemberDefn.Member (SynBinding(valData = SynValData (memberFlags = memberFlags)) as binding, _range) ->
-        if Option.isNone memberFlags then
-            failwith "SynMemberDefn.Member does not have memberFlags"
-
+    | SynMemberDefn.Member (SynBinding(valData = SynValData(memberFlags = ForceMemberFlags "SynMemberDefn.Member"
+                                                                                           memberFlags)) as binding,
+                            _range) ->
         let valSig = mkSynValSig resolver binding
-        Some (SynMemberSig.Member (valSig, memberFlags.Value, zeroRange))
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
 
     | SynMemberDefn.AbstractSlot (synValSig, synMemberFlags, _range) ->
         Some (SynMemberSig.Member (synValSig, synMemberFlags, zeroRange))
@@ -637,7 +637,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                         match pats with
                         | []
                         | [ _ ] -> pats
-                        | pats -> [ SynPat.Tuple (false, pats, zeroRange) ]
+                        | pats -> [ SynPat.Paren (SynPat.Tuple (false, pats, zeroRange), zeroRange) ]
                     | SynSimplePats.Typed _ -> []
 
                 mkSynTypForSignature
@@ -692,7 +692,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                                   xmlDoc = xmlDoc
                                   accessibility = vis) ->
         let t =
-            let typeString, _ = resolver.GetFullForBinding (ident.idRange.Proxy)
+            let typeString, _ = resolver.GetFullForBinding ident.idRange.Proxy
             getSynTypFromText typeString
 
         let valSig =
@@ -712,6 +712,12 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
             )
 
         Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
-    | SynMemberDefn.GetSetMember _
+    | SynMemberDefn.GetSetMember (memberDefnForGet, _memberDefnForSet, _range, _trivia) ->
+        memberDefnForGet
+        |> Option.map (fun (SynBinding(valData = SynValData(memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember"
+                                                                                           memberFlags)) as binding) ->
+            let valSig = mkSynValSig resolver binding
+            SynMemberSig.Member (valSig, memberFlags, zeroRange)
+        )
     | SynMemberDefn.ImplicitInherit _
     | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"
