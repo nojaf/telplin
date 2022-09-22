@@ -286,5 +286,5 @@ open System
 [<Sealed>]
 type MaybeBuilder =
     new: unit -> MaybeBuilder
-    member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> System.IDisposable
+    member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
 """

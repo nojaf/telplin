@@ -81,7 +81,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                                     IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
                                     CoercesToTarget =
                                         if c.IsCoercesToConstraint then
-                                            Some c.CoercesToTarget.TypeDefinition.FullName
+                                            Some (c.CoercesToTarget.FormatLayout displayContext |> taggedTextToString)
                                         else
                                             None
                                 }

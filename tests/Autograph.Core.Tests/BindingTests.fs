@@ -815,8 +815,66 @@ module I
 val memoizeBy: g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b) when 'c: equality
 """
 
-let memoizeBy (g : 'a -> 'c) (f : 'a -> 'b) =
-    let cache =
-        System.Collections.Concurrent.ConcurrentDictionary<_, _> (HashIdentity.Structural)
+[<Test>]
+let ``parameter type with a #`` () =
+    assertSignature
+        """
+module FA
 
-    fun x -> cache.GetOrAdd(Some (g x), lazy (f x)).Force ()
+let intersperse separator (sequence: #seq<'a>) =
+    seq {
+      let mutable notFirst = false
+
+      for element in sequence do
+        if notFirst then
+          yield separator
+
+        yield element
+        notFirst <- true
+    }
+"""
+        """
+module FA
+
+val intersperse: separator: 'a -> sequence: #seq<'a> -> seq<'a>
+"""
+
+[<Test>]
+let ``multiple arguments in constructor`` () =
+    assertSignature
+        """
+module FA
+
+type Debounce<'a>(timeout, fn) as x =
+
+  let mailbox =
+    MailboxProcessor<'a>.Start
+      (fun agent ->
+        let rec loop ida idb arg =
+          async {
+            let! r = agent.TryReceive(x.Timeout)
+
+            match r with
+            | Some arg -> return! loop ida (idb + 1) (Some arg)
+            | None when ida <> idb ->
+              do! fn arg.Value
+              return! loop 0 0 None
+            | None -> return! loop 0 0 arg
+          }
+
+        loop 0 0 None)
+
+  /// Calls the function, after debouncing has been applied.
+  member _.Bounce(arg) = mailbox.Post(arg)
+
+  /// Timeout in ms
+  member val Timeout = timeout with get, set
+"""
+        """
+module FA
+
+type Debounce<'a> =
+    new: timeout: int * fn: ('a -> Async<unit>) -> Debounce<'a>
+    member Bounce: arg: 'a -> unit
+    member Timeout: int
+"""

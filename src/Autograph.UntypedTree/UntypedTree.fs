@@ -110,7 +110,9 @@ let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
             resolveNameDifference originalName resolvedName tis rt
         | _ -> rt
 
-    visit typeInSource resolvedType
+    match typeInSource, resolvedType with
+    | SynType.HashConstraint _, _ -> typeInSource
+    | _ -> visit typeInSource resolvedType
 
 let rec convertToSynPat (simplePat : SynSimplePat) : SynPat =
     match simplePat with
@@ -334,7 +336,7 @@ and mkSynTypForSignature
     (returnTypeInImpl : (SynType list * SynType) option)
     : SynType
     =
-    let t =
+    let fullType =
         let ts =
             match getSynTypFromText returnTypeText with
             | SynType.WithGlobalConstraints(typeName = TFuns ts)
@@ -405,7 +407,7 @@ and mkSynTypForSignature
         |> mkSynTypeFun
 
     if resolvedConstraints.IsEmpty then
-        t
+        fullType
     else
 
     let existingTypars =
@@ -424,10 +426,8 @@ and mkSynTypForSignature
         { new System.Collections.Generic.IEqualityComparer<SynTypar> with
             member this.Equals (x, y) =
                 match x, y with
-                | SynTypar (identX, typarStaticReqX, isCompGenX), SynTypar (identY, typarStaticReqY, isCompGenY) ->
-                    identX.idText = identY.idText
-                    && typarStaticReqX = typarStaticReqY
-                    && isCompGenX = isCompGenY
+                | SynTypar (identX, typarStaticReqX, _), SynTypar (identY, typarStaticReqY, _) ->
+                    identX.idText = identY.idText && typarStaticReqX = typarStaticReqY
 
             member this.GetHashCode (SynTypar (identX, typarStaticReqX, isCompGenX)) =
                 HashCode.Combine (identX, typarStaticReqX, isCompGenX)
@@ -456,6 +456,25 @@ and mkSynTypForSignature
                 elif c.IsReferenceTypeConstraint then
                     Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
                 elif Option.isSome c.CoercesToTarget then
+                    let isHashConstraints =
+                        argPats
+                        |> List.choose (
+                            function
+                            | TypedPat (_, t)
+                            | ParenPat (TypedPat (_, t)) -> Some t
+                            | _ -> None
+                        )
+                        |> List.exists (
+                            function
+                            | SynType.HashConstraint (SynType.App(typeArgs = [ SynType.Var (typar = hashTyPar) ]), _) ->
+                                typarComparer.Equals (hashTyPar, typar)
+                            | _ -> false
+                        )
+
+                    if isHashConstraints then
+                        None
+                    else
+
                     c.CoercesToTarget
                     |> Option.map (fun coercesToTarget ->
                         SynTypeConstraint.WhereTyparSubtypeOfType (typar, getSynTypFromText coercesToTarget, zeroRange)
@@ -465,7 +484,7 @@ and mkSynTypForSignature
             )
         )
 
-    SynType.WithGlobalConstraints (t, constraints, zeroRange)
+    SynType.WithGlobalConstraints (fullType, constraints, zeroRange)
 
 and mkSynTypeDefnSig
     resolver
@@ -612,8 +631,13 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
             | Some (signatureText, resolvedGenericParameters) ->
                 let argPats : SynPat list =
                     match synSimplePats with
-                    | SynSimplePats.SimplePats (pats = pats) -> pats |> List.map convertToSynPat
+                    | SynSimplePats.SimplePats (pats = pats) ->
+                        let pats = pats |> List.map convertToSynPat
 
+                        match pats with
+                        | []
+                        | [ _ ] -> pats
+                        | pats -> [ SynPat.Tuple (false, pats, zeroRange) ]
                     | SynSimplePats.Typed _ -> []
 
                 mkSynTypForSignature
@@ -662,7 +686,32 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
         Some (SynMemberSig.Inherit (inheritType, zeroRange))
     | SynMemberDefn.LetBindings _
     | SynMemberDefn.Open _ -> None
-    | SynMemberDefn.AutoProperty _
+    | SynMemberDefn.AutoProperty (attributes = attributes
+                                  ident = ident
+                                  memberFlags = memberFlags
+                                  xmlDoc = xmlDoc
+                                  accessibility = vis) ->
+        let t =
+            let typeString, _ = resolver.GetFullForBinding (ident.idRange.Proxy)
+            getSynTypFromText typeString
+
+        let valSig =
+            SynValSig (
+                attributes,
+                SynIdent (ident, None),
+                SynValTyparDecls (None, true),
+                t,
+                SynValInfo ([], SynArgInfo ([], false, None)),
+                false,
+                false,
+                xmlDoc,
+                vis,
+                None,
+                zeroRange,
+                SynValSigTrivia.Zero
+            )
+
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
     | SynMemberDefn.GetSetMember _
     | SynMemberDefn.ImplicitInherit _
     | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"
