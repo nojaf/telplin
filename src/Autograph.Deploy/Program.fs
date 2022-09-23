@@ -101,7 +101,7 @@ let infra () =
                         [
                             input "https://nojaf.github.io"
                             input "https://nojaf.com"
-                            input "http://localhost:8906"
+                            input "https://localhost:8900"
                         ]
             )
 

@@ -13,6 +13,18 @@
       "commands": [
         "dotnet-lambda"
       ]
+    },
+    "perla": {
+      "version": "0.24.1",
+      "commands": [
+        "perla"
+      ]
+    },
+    "fable": {
+      "version": "3.7.18",
+      "commands": [
+        "fable"
+      ]
     }
   }
 }
