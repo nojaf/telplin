@@ -55,8 +55,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Autograph.Core\Autograph.Core.fsproj" />
   </ItemGroup>
-
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(Configuration)' == 'Debug'">
-    <Exec Command="dotnet build $(MSBuildProjectDirectory)\..\..\tests\SampleLibrary\SampleLibrary.fsproj /bl:sample.binlog --no-incremental" />
-  </Target>
 </Project>
