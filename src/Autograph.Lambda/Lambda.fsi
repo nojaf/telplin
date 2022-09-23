@@ -1,5 +1,6 @@
-module Autograph.Lambda
+module Autograph.Lambda.Implementation
 
+open FSharp.Compiler.CodeAnalysis
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
 
@@ -19,6 +20,7 @@ val mkProcessRequest<'t> :
     onInvalidImplementationFile : (string -> 't) ->
     onInvalidSignatureFile : (string -> 't) ->
     onInternalError : (string -> 't) ->
+    projectOptions : FSharpProjectOptions ->
     implementation : string ->
         't
 

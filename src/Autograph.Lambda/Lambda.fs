@@ -1,7 +1,11 @@
-﻿module Autograph.Lambda
+﻿module Autograph.Lambda.Implementation
 
+open System
+open System.IO
 open System.Collections.Generic
 open System.Net
+open System.Reflection
+open FSharp.Compiler.CodeAnalysis
 open Microsoft.Net.Http.Headers
 open Thoth.Json.Net
 open Amazon.Lambda.APIGatewayEvents
@@ -71,14 +75,16 @@ let mkProcessRequest<'t>
     (onInvalidImplementationFile : string -> 't)
     (onInvalidSignatureFile : string -> 't)
     (onInternalError : string -> 't)
-    implementation
+    (projectOptions : FSharpProjectOptions)
+    (implementation : string)
+    : 't
     =
     try
-        let binlog : string = failwith "binlog file"
-        let signatureContent = AutographApi.MkSignature (implementation, binlog)
+        let signatureContent =
+            AutographInternalApi.MkSignature (implementation, projectOptions)
 
         let verification =
-            AutographApi.VerifySignatureWithImplementation (implementation, signatureContent, binlog)
+            AutographInternalApi.VerifySignatureWithImplementation (implementation, signatureContent, projectOptions)
 
         match verification with
         | SignatureVerificationResult.ValidSignature -> onValidSignature signatureContent
@@ -105,10 +111,66 @@ let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderVal
         Headers = createHeaders [ HeaderNames.ContentType, contentTypeHeaderValue ]
     )
 
+let resolvedAssemblies =
+    let dir =
+        Path.Combine (FileInfo(Assembly.GetExecutingAssembly().Location).Directory.FullName, "ref")
+
+    Directory.EnumerateFiles dir |> Seq.map (sprintf "-r:%s") |> Seq.toArray
+
+let projectOptions : FSharpProjectOptions =
+    {
+        ProjectFileName = "A"
+        ProjectId = None
+        SourceFiles = [| "A.fs" |]
+        OtherOptions =
+            [|
+                "-g"
+                "--debug:portable"
+                "--noframework"
+                "--define:TRACE"
+                "--define:DEBUG"
+                "--define:NET"
+                "--define:NET7_0"
+                "--define:NETCOREAPP"
+                "--define:NET5_0_OR_GREATER"
+                "--define:NET6_0_OR_GREATER"
+                "--define:NET7_0_OR_GREATER"
+                "--define:NETCOREAPP1_0_OR_GREATER"
+                "--define:NETCOREAPP1_1_OR_GREATER"
+                "--define:NETCOREAPP2_0_OR_GREATER"
+                "--define:NETCOREAPP2_1_OR_GREATER"
+                "--define:NETCOREAPP2_2_OR_GREATER"
+                "--define:NETCOREAPP3_0_OR_GREATER"
+                "--define:NETCOREAPP3_1_OR_GREATER"
+                "--optimize-"
+                "--tailcalls-"
+                yield! resolvedAssemblies
+                "--target:library"
+                "--nowarn:IL2121"
+                "--warn:3"
+                "--warnaserror:3239,FS0025"
+                "--fullpaths"
+                "--flaterrors"
+                "--highentropyva+"
+                "--targetprofile:netcore"
+                "--nocopyfsharpcore"
+                "--deterministic+"
+                "--simpleresolution"
+            |]
+        ReferencedProjects = [||]
+        IsIncompleteTypeCheckEnvironment = false
+        UseScriptResolutionRules = false
+        LoadTime = DateTime.UtcNow
+        UnresolvedReferences = None
+        OriginalLoadReferences = []
+        Stamp = None
+    }
+
 let PostSignature (request : APIGatewayProxyRequest) (_context : ILambdaContext) =
     mkProcessRequest
         (fun signature -> mkAPIGatewayProxyResponse (HttpStatusCode.OK, HeaderValues.ApplicationText, signature))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun error -> mkAPIGatewayProxyResponse (HttpStatusCode.InternalServerError, HeaderValues.TextPlain, error))
+        projectOptions
         request.Body

@@ -9,13 +9,22 @@ dotnet build -v n /m:1 --no-incremental --no-dependencies | dotnet fsi ..\script
 C:/Users/nojaf/Projects/autograph/src/Autograph/bin/Debug/net7.0/autograph.exe
 dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/autograph/src/Autograph/bin/Debug/net7.0/autograph.exe .\msbuild.binlog --write
 
-docker build . -f .\lambda.Dockerfile -t autograph-lambda --no-cache --progress=plain
 
 ## Ideas
 
 - Console runner
 - Setting to skip the `private` nodes?
 - Documentation limitations (conditional directives)
+
+## Lamdbda
+
+dotnet lambda package
+dotnet publish --output "C:\Users\nojaf\Projects\autograph\src\Autograph.Lambda\bin\Release\net7.0\publish" --configuration "Release" --framework "net7.0" --self-contained true /p:GenerateRuntimeConfigurationFiles=true --runtime linux-x64
+
+```http request
+POST https://5n56jxbgr5.execute-api.eu-west-3.amazonaws.com/autograph-main-stage-3adc4b3/autograph/signature
+Content-Type: text/plain
+```
 
 ## Resolved options inside SDK container:
 
@@ -218,4 +227,6 @@ docker build . -f .\lambda.Dockerfile -t autograph-lambda --no-cache --progress=
 --simpleresolution
 ```
 
-Telpin?
+Laurelin & Telperion
+
+Telplin?

@@ -7,6 +7,12 @@
       "commands": [
         "fantomas"
       ]
+    },
+    "amazon.lambda.tools": {
+      "version": "5.4.5",
+      "commands": [
+        "dotnet-lambda"
+      ]
     }
   }
 }
