@@ -22,8 +22,8 @@ jobs:
       - name: Check formatting
         run: dotnet fantomas . -r --check
       - name: Restore dependencies
-        run: dotnet restore ./autograph.sln
+        run: dotnet restore ./telplin.sln
       - name: Build
-        run: dotnet build --no-restore -c Release ./autograph.sln
+        run: dotnet build --no-restore -c Release ./telplin.sln
       - name: Tests
         run: dotnet test --no-restore --no-build -c Release

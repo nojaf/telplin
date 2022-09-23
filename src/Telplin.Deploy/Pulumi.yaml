@@ -1,0 +1,3 @@
+name: Telplin.Deploy
+description: A minimal AWS F# Pulumi program
+runtime: dotnet

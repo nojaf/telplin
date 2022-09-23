@@ -28,8 +28,8 @@ let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
     ofImport "default" "@monaco-editor/react" (keyValueList CaseRules.LowerFirst props) []
 
 let url =
-    //"https://5n56jxbgr5.execute-api.eu-west-3.amazonaws.com/autograph-main-stage-3adc4b3/autograph/signature"
-    "http://localhost:8906/autograph/signature"
+    "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206/telplin/signature"
+    //"http://localhost:8906/telplin/signature"
 
 type Model = {
     Implementation : string

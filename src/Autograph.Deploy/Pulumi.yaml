@@ -1,3 +1,0 @@
-name: Autograph.Deploy
-description: A minimal AWS F# Pulumi program
-runtime: dotnet
