@@ -15,7 +15,7 @@ let loweredProjectName = projectName.ToLower ()
 
 let sha256 filePath =
     File.ReadAllBytes (filePath)
-    |> SHA256Managed.Create().ComputeHash
+    |> SHA256.Create().ComputeHash
     |> System.Text.Encoding.UTF8.GetString
 
 let zipPath =
