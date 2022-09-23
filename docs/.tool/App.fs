@@ -29,7 +29,7 @@ let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
 
 let url =
     "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206/telplin/signature"
-    //"http://localhost:8906/telplin/signature"
+//"http://localhost:8906/telplin/signature"
 
 type Model = {
     Implementation : string
@@ -111,7 +111,6 @@ let App () =
                     ClassName $"{Bootstrap.Btn} {Bootstrap.BtnPrimary}"
                     OnClick (fun ev ->
                         ev.preventDefault ()
-                        printfn "button press"
                         dispatch FetchSignature
                     )
                 ] [ str "Get signature" ]
