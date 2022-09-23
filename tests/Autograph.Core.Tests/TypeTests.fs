@@ -307,11 +307,8 @@ type X =
     member Item: m: int -> string with get
 """
 
-// I'm not sure why but settings don't seem to have a signature.
-// Try this out in fsi, the setter won't be printed.
-
 [<Test>]
-let ``member with get/set`` () =
+let ``member with indexed get/set`` () =
     assertSignature
         """
 module X
@@ -319,12 +316,212 @@ module X
 type X() =
     member x.Item
         with get (m: int) = ""
-        and set (m:int) (y:int) = ()
+        and set (m:int) (y:string) = ()
 """
         """
 module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with get
+    member Item: m: int -> string with get, set
+"""
+
+[<Test>]
+let ``member with indexed set/get`` () =
+    assertSignature
+        """
+module X
+
+type X() =
+    member x.Item
+        with set (m:int) (y:string) = ()
+        and get (m: int) = ""
+"""
+        """
+module X
+
+type X =
+    new: unit -> X
+    member Item: m: int -> string with get, set
+"""
+
+[<Test>]
+let ``member with indexed get/set where the index is different for get and set`` () =
+    assertSignature
+        """
+module X
+
+type X() =
+    member x.Item
+        with get (a: int) = ""
+        and set (b:int) (c:string) = ()
+"""
+        """
+module X
+
+type X =
+    new: unit -> X
+    member Item: int -> string with get, set
+"""
+
+[<Test>]
+let ``member with get and unit`` () =
+    assertSignature
+        """
+module FA
+
+type D() =
+    let mutable disableInMemoryProjectReferences = false
+
+    member __.DisableInMemoryProjectReferences
+        with get () = disableInMemoryProjectReferences
+        and set (value) = disableInMemoryProjectReferences <- value
+"""
+        """
+module FA
+
+type D =
+    new: unit -> D
+    member DisableInMemoryProjectReferences: bool with get, set
+"""
+
+[<Test>]
+let ``multiple constraints`` () =
+    assertSignature
+        """
+namespace Foo
+
+open System
+
+[<Sealed>]
+type AsyncMaybeBuilder() =
+  member __.Using(resource: ('T :> IDisposable), body: _ -> Async<_ option>) : Async<_ option> =
+    try
+      body resource
+    finally
+      if not << isNull <| resource then
+        resource.Dispose()
+"""
+        """
+namespace Foo
+
+open System
+
+[<Sealed>]
+type AsyncMaybeBuilder =
+    new: unit -> AsyncMaybeBuilder
+    member Using: resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
+"""
+
+[<Test>]
+[<Ignore "A bit tricky to get right">]
+let ``generic type extension`` () =
+    assertSignature
+        """
+module FA
+
+open System.Collections.Concurrent
+
+type ConcurrentDictionary<'key, 'value> with
+
+  member x.TryFind key =
+    match x.TryGetValue key with
+    | true, value -> Some value
+    | _ -> None
+"""
+        """
+module FA
+
+open System.Collections.Concurrent
+
+type ConcurrentDictionary<'key, 'value> with
+
+    member TryFind: key:'key -> 'value option
+"""
+
+[<Test>]
+let ``overloads in type`` () =
+    assertSignature
+        """
+module FA
+
+open System
+
+type ColumnIndentedTextWriter() =
+
+    member __.Write(s: string) = ()
+
+    member __.Write(s: string, [<ParamArray>] objs: obj[]) = ()
+
+    member __.WriteLine(s: string) = ()
+
+    member __.WriteLine(s: string, [<ParamArray>] objs: obj[]) = ()
+
+    member x.WriteBlankLines (count:int) = ()
+
+    member __.Indent (i:int) = ()
+
+    member __.Unindent (i:int) = ()
+
+    member __.Dump() = ""
+
+    interface IDisposable with
+      member __.Dispose() =
+        ()
+"""
+        """
+module FA
+
+open System
+
+type ColumnIndentedTextWriter =
+    new: unit -> ColumnIndentedTextWriter
+    member Write: s: string -> unit
+    member Write: s: string * [<ParamArray>] objs: obj[] -> unit
+    member WriteLine: s: string -> unit
+    member WriteLine: s: string * [<ParamArray>] objs: obj[] -> unit
+    member WriteBlankLines: count: int -> unit
+    member Indent: i: int -> unit
+    member Unindent: i: int -> unit
+    member Dump: unit -> string
+    interface IDisposable
+"""
+
+[<Test>]
+let ``single setter`` () =
+    assertSignature
+        """
+namespace FA
+
+type Hej() =
+    let mutable disableInMemoryProjectReferences : bool = false
+    member __.DisableInMemoryProjectReferences
+        with set (value) = disableInMemoryProjectReferences <- value
+"""
+        """
+namespace FA
+
+type Hej =
+    new: unit -> Hej
+    member DisableInMemoryProjectReferences: bool with set
+"""
+
+[<Test>]
+let ``non indexed get/set`` () =
+    assertSignature
+        """
+namespace FA
+
+type Hej() =
+    let mutable disableInMemoryProjectReferences : bool = false
+    member __.DisableInMemoryProjectReferences
+        with get () = disableInMemoryProjectReferences
+        and set (value) = disableInMemoryProjectReferences <- value
+"""
+        """
+namespace FA
+
+type Hej =
+    new: unit -> Hej
+    member DisableInMemoryProjectReferences: bool with get, set
 """

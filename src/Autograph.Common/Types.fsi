@@ -22,6 +22,7 @@ and GenericConstraint =
     {
         IsEqualityConstraint : bool
         IsReferenceTypeConstraint : bool
+        IsSupportsNullConstraint : bool
         CoercesToTarget : string option
     }
 

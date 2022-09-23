@@ -79,6 +79,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                                 {
                                     IsEqualityConstraint = c.IsEqualityConstraint
                                     IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
+                                    IsSupportsNullConstraint = c.IsSupportsNullConstraint
                                     CoercesToTarget =
                                         if c.IsCoercesToConstraint then
                                             Some (c.CoercesToTarget.FormatLayout displayContext |> taggedTextToString)

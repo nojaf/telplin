@@ -71,9 +71,11 @@ let rec sanitizeType (synType : SynType) : SynType =
         )
     | t -> t
 
-/// The type in the source code could have been prefixed with a namespace
+/// The type in the source code could have had more information
+/// For example: it could have been prefixed with a namespace
 /// `Regex` was resolved by the typed tree, but the untyped tree had `System.Text.RegularExpressions.Regex`
-let prefixType (typeInSource : SynType) (resolvedType : SynType) : SynType =
+/// or have a different generic type argument name
+let enhanceResolvedType (typeInSource : SynType) (resolvedType : SynType) : SynType =
     let resolveNameDifference
         (originalName : Ident list)
         (resolvedName : Ident list)
@@ -124,7 +126,7 @@ let rec convertToSynPat (simplePat : SynSimplePat) : SynPat =
             SynPat.Named (SynIdent (ident, None), isThisVal, None, range)
     | SynSimplePat.Typed (pat, t, range) -> SynPat.Typed (convertToSynPat pat, t, range)
 
-let getSynTypFromText (typeText : string) : SynType =
+let mkSynTypFromText (typeText : string) : SynType =
     let aliasAST, _ =
         Fantomas.FCS.Parse.parseFile true (SourceText.ofString $"val v: {typeText}") []
 
@@ -338,7 +340,7 @@ and mkSynTypForSignature
     =
     let fullType =
         let ts =
-            match getSynTypFromText returnTypeText with
+            match mkSynTypFromText returnTypeText with
             | SynType.WithGlobalConstraints(typeName = TFuns ts)
             | TFuns ts -> List.map sanitizeType ts
 
@@ -383,23 +385,30 @@ and mkSynTypForSignature
                                 match p with
                                 | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
                                 | TypedPat (NamedPat ident, st) ->
-                                    SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
+                                    SynType.SignatureParameter (
+                                        [],
+                                        false,
+                                        Some ident,
+                                        enhanceResolvedType st t,
+                                        zeroRange
+                                    )
                                 | SynPat.OptionalVal (ident, _)
                                 | TypedPat (SynPat.OptionalVal (ident, _), _) ->
                                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
+                                | AttribPat (attrs, TypedPat (NamedPat ident, t)) ->
+                                    SynType.SignatureParameter (attrs, false, Some ident, stripOptionType t, zeroRange)
                                 | _ -> t
                             )
 
                         mkSynTypeTuple ts
                     | _ -> t
                 | ParenPat (TypedPat (NamedPat ident, st)) ->
-                    SynType.SignatureParameter ([], false, Some ident, prefixType st t, zeroRange)
+                    SynType.SignatureParameter ([], false, Some ident, enhanceResolvedType st t, zeroRange)
 
                 | ParenPat (TypedPat (SynPat.OptionalVal (ident, _), tis)) ->
-                    let t = prefixType tis (stripOptionType t)
+                    let t = enhanceResolvedType tis (stripOptionType t)
                     SynType.SignatureParameter ([], true, Some ident, t, zeroRange)
-                | ParenPat (SynPat.Attrib (attributes = attributes
-                                           pat = (SynPat.Typed(pat = NamedPat ident) | NamedPat ident))) ->
+                | ParenPat (AttribPat (attributes, (SynPat.Typed(pat = NamedPat ident) | NamedPat ident))) ->
                     SynType.SignatureParameter (attributes, false, Some ident, t, zeroRange)
                 | ParenPat (SynPat.OptionalVal (ident, _)) ->
                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
@@ -456,6 +465,8 @@ and mkSynTypForSignature
                     Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
                 elif c.IsReferenceTypeConstraint then
                     Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
+                elif c.IsSupportsNullConstraint then
+                    Some (SynTypeConstraint.WhereTyparSupportsNull (typar, zeroRange))
                 elif Option.isSome c.CoercesToTarget then
                     let isHashConstraints =
                         argPats
@@ -478,7 +489,7 @@ and mkSynTypForSignature
 
                     c.CoercesToTarget
                     |> Option.map (fun coercesToTarget ->
-                        SynTypeConstraint.WhereTyparSubtypeOfType (typar, getSynTypFromText coercesToTarget, zeroRange)
+                        SynTypeConstraint.WhereTyparSubtypeOfType (typar, mkSynTypFromText coercesToTarget, zeroRange)
                     )
                 else
                     None
@@ -685,7 +696,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
     | SynMemberDefn.ImplicitInherit (inheritType, _inheritArgs, _inheritAlias, _range) ->
         Some (SynMemberSig.Inherit (inheritType, zeroRange))
     | SynMemberDefn.LetBindings _
-    | SynMemberDefn.Open _ -> None
+    | SynMemberDefn.Open _
+    | SynMemberDefn.GetSetMember (None, None, _, _) -> None
     | SynMemberDefn.AutoProperty (attributes = attributes
                                   ident = ident
                                   memberFlags = memberFlags
@@ -693,7 +705,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                                   accessibility = vis) ->
         let t =
             let typeString, _ = resolver.GetFullForBinding ident.idRange.Proxy
-            getSynTypFromText typeString
+            mkSynTypFromText typeString
 
         let valSig =
             SynValSig (
@@ -712,12 +724,131 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
             )
 
         Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
-    | SynMemberDefn.GetSetMember (memberDefnForGet, _memberDefnForSet, _range, _trivia) ->
-        memberDefnForGet
-        |> Option.map (fun (SynBinding(valData = SynValData(memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember"
-                                                                                           memberFlags)) as binding) ->
+    | SynMemberDefn.GetSetMember (Some (SynBinding (valData = SynValData(memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember"
+                                                                                                        memberFlags)
+                                                    headPat = headPat) as binding),
+                                  None,
+                                  _range,
+                                  _trivia) ->
+        let binding =
+            // Transform getter with unit to Named
+            // `member __.DisableInMemoryProjectReferences with get () = disableInMemoryProjectReferences`
+            // becomes `member DisableInMemoryProjectReferences : bool`
+            match memberFlags.MemberKind, headPat with
+            | SynMemberKind.PropertyGet, GetMemberLongIdentPat (propertyNameIdent, vis) ->
+                let headPat =
+                    SynPat.Named (SynIdent (propertyNameIdent, None), false, vis, zeroRange)
+
+                let (SynBinding (a, k, il, is, attrs, xml, vd, _, rto, e, r, d, t)) = binding
+                SynBinding (a, k, il, is, attrs, xml, vd, headPat, rto, e, r, d, t)
+            | _ -> binding
+
+        let valSig = mkSynValSig resolver binding
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+
+    | SynMemberDefn.GetSetMember (None,
+                                  Some (SynBinding (headPat = headPat
+                                                    accessibility = vis
+                                                    attributes = attributes
+                                                    xmlDoc = xmlDoc
+                                                    valData = SynValData(memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember"
+                                                                                                        memberFlags) as synValData) as binding),
+                                  _range,
+                                  _trivia) ->
+        match headPat with
+        | SetMemberLongIdentPat nameIdent ->
+            let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
+            let t = text.Replace (" with set", "") |> mkSynTypFromText
+
+            let valSig =
+                SynValSig (
+                    attributes,
+                    SynIdent (nameIdent, None),
+                    SynValTyparDecls (None, false),
+                    t,
+                    // This isn't correct but doesn't matter for Fantomas
+                    synValData.SynValInfo,
+                    false,
+                    false,
+                    xmlDoc,
+                    vis,
+                    None,
+                    zeroRange,
+                    {
+                        ValKeyword = Some zeroRange
+                        WithKeyword = None
+                        EqualsRange = None
+                    }
+                )
+
+            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+        | _ ->
             let valSig = mkSynValSig resolver binding
-            SynMemberSig.Member (valSig, memberFlags, zeroRange)
-        )
+            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+
+    // member Name: type with get, set
+    | SimpleGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags) ->
+        let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
+        let t = mkSynTypFromText text
+
+        let valSig =
+            SynValSig (
+                attributes,
+                SynIdent (nameIdent, None),
+                SynValTyparDecls (None, false),
+                t,
+                valInfo,
+                false,
+                false,
+                xmlDoc,
+                vis,
+                None,
+                zeroRange,
+                {
+                    ValKeyword = Some zeroRange
+                    WithKeyword = None
+                    EqualsRange = None
+                }
+            )
+
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+
+    | IndexedGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags, indexArgName) ->
+        let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
+        let text = text.Replace (" with get", "")
+
+        let t =
+            match mkSynTypFromText text, indexArgName with
+            | SynType.Fun (argType, returnType, range, trivia), Some ident ->
+                SynType.Fun (
+                    SynType.SignatureParameter ([], false, Some ident, argType, zeroRange),
+                    returnType,
+                    range,
+                    trivia
+                )
+            | t, _ -> t
+
+        let valSig =
+            SynValSig (
+                attributes,
+                SynIdent (nameIdent, None),
+                SynValTyparDecls (None, false),
+                t,
+                valInfo,
+                false,
+                false,
+                xmlDoc,
+                vis,
+                None,
+                zeroRange,
+                {
+                    ValKeyword = Some zeroRange
+                    WithKeyword = None
+                    EqualsRange = None
+                }
+            )
+
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+    | SynMemberDefn.GetSetMember _ -> failwith "todo EF1C9796-DA9D-4810-8BD6-B28983C6C259"
     | SynMemberDefn.ImplicitInherit _
     | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"
