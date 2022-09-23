@@ -5,8 +5,6 @@
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <WarningsAsErrors>FS0025</WarningsAsErrors>
-        <OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>
-        <DotnetFscCompilerPath>C:\Users\nojaf\Projects\fsharp\artifacts\bin\fsc\Release\net7.0\fsc.dll</DotnetFscCompilerPath>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="6.0.6" />
