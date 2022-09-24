@@ -81,3 +81,4 @@ if isWatch then
     printfn "Goodbye"
 else
     compileSass ()
+    exit 0
