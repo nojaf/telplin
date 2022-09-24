@@ -20,7 +20,4 @@
     <PackageReference Include="Zanaptak.TypedCssClasses" Version="1.*" />
   </ItemGroup>
 
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="dotnet fsi $(MSBuildProjectDirectory)\..\.style\style.fsx" />
-  </Target>
 </Project>

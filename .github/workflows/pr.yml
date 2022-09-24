@@ -25,6 +25,8 @@ jobs:
         run: dotnet tool restore
       - name: Check formatting
         run: dotnet fantomas . -r --check
+      - name: Compile CSS
+        run: dotnet fsi docs/.style/style.fsx
       - name: Restore dependencies
         run: dotnet restore ./telplin.sln
       - name: Build
