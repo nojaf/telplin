@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: |
-            7.0.100-rc.x
+            7.0.100-rc.1.22431.12
             6.0.x
       - name: Restore tools
         run: dotnet tool restore
