@@ -18,8 +18,14 @@ pipeline "Build" {
 
     stage "build" {
         stage "sass" {
-            workingDir (Path.Combine (__SOURCE_DIRECTORY__, "docs"))
-            run "dotnet fsi ./.style/style.fsx"
+            run (fun _ ->
+                async {
+                    let p = System.Diagnostics.Process.Start ("dotnet", "fsi ./docs/.style/style.fsx")
+                    p.WaitForExit ()
+                    printfn "exit was %i" p.ExitCode
+                    return (if p.ExitCode = 0 || p.ExitCode = 139 then 0 else 1)
+                }
+            )
         }
 
         run "dotnet restore ./telplin.sln"

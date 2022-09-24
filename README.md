@@ -19,6 +19,15 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 - Setting to skip the `private` nodes?
 - Documentation limitations (conditional directives)
 
+## TODO
+
+- docs website
+- keep a changelog
+- license
+- funding yml
+- `--files` in ci tool
+- Push to nuget
+
 ## Lamdbda
 
 dotnet lambda package
