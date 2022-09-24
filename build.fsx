@@ -17,7 +17,11 @@ pipeline "Build" {
     }
 
     stage "build" {
-        run "dotnet fsi ./docs/.style/style.fsx"
+        stage "sass" {
+            workingDir (Path.Combine (__SOURCE_DIRECTORY__, "docs"))
+            run "dotnet fsi ./.style/style.fsx"
+        }
+
         run "dotnet restore ./telplin.sln"
         run "dotnet build --no-restore -c Release ./telplin.sln"
 
@@ -25,7 +29,7 @@ pipeline "Build" {
             workingDir (Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool"))
             run "dotnet perla b"
 
-            run (fun ctx ->
+            run (fun _ ->
                 let dist = Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool", "dist")
 
                 System.IO.Directory.EnumerateFiles (dist, "*.*")

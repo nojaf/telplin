@@ -14,6 +14,7 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 
 ## Ideas
 
+- If the entire signature is typed, just use it from untyped tree.
 - Console runner
 - Setting to skip the `private` nodes?
 - Documentation limitations (conditional directives)
