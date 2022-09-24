@@ -15,6 +15,8 @@ pipeline "Watch" {
             workingDir (System.IO.Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool"))
             run "dotnet perla s"
         }
+
+        run "dotnet fsdocs watch --port 7890"
     }
 
     runImmediate

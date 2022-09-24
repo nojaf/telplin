@@ -18,7 +18,7 @@ let inputFileToolpage = __SOURCE_DIRECTORY__ </> "online-tool.sass"
 let inputFileTemplate = __SOURCE_DIRECTORY__ </> "template.sass"
 let inputFolder = __SOURCE_DIRECTORY__
 let outputToolPage = __SOURCE_DIRECTORY__ </> ".." </> ".tool" </> "online-tool.css"
-let outputTemplate = __SOURCE_DIRECTORY__ </> "../content/" </> "template.css"
+let outputTemplate = __SOURCE_DIRECTORY__ </> "../assets/" </> "template.css"
 
 let compileSass () =
     try

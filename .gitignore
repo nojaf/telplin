@@ -487,3 +487,8 @@ docs/App.js
 docs/favicon.ico
 docs/logo.png
 docs/env.js
+
+# fsdocs output
+output/
+tmp/
+.fsdocs/

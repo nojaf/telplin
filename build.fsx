@@ -50,5 +50,7 @@ pipeline "Build" {
     }
 
     stage "test" { run "dotnet test --no-restore --no-build -c Release" }
+
+    stage "docs" { run "dotnet fsdocs build --nodefaultcontent --noapidocs" }
     runImmediate
 }
