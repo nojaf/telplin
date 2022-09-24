@@ -67,17 +67,22 @@ let options : FSharpProjectOptions =
     }
 
 let assertSignature implementation expectedSignature =
-    let actualSignature = TelplinInternalApi.MkSignature (implementation, options)
-    shouldEqualWithPrepend expectedSignature actualSignature
-
     let verificationResult =
-        TelplinInternalApi.VerifySignatureWithImplementation (implementation, actualSignature, options)
+        TelplinInternalApi.VerifySignatureWithImplementation (
+            implementation,
+            options,
+            assertSignature = shouldEqualWithPrepend expectedSignature
+        )
 
     match verificationResult with
-    | SignatureVerificationResult.ValidSignature -> ()
+    | SignatureVerificationResult.ValidSignature _ -> ()
+    | SignatureVerificationResult.ImplementationFileAborted ->
+        failwith "The implementation file could not be type checked."
+    | SignatureVerificationResult.FailedToCreateSignatureFile error ->
+        failwith $"Internal error when creating signature:\n{error}"
     | SignatureVerificationResult.InvalidImplementationFile diagnosticInfos ->
         Array.iter (fun d -> printfn "%A" d) diagnosticInfos
         failwith "Could not compile source implementation file"
-    | SignatureVerificationResult.InvalidSignatureFile diagnosticInfos ->
+    | SignatureVerificationResult.InvalidSignatureFile (_, diagnosticInfos) ->
         Array.iter (fun d -> printfn "%A" d) diagnosticInfos
         failwith "Could not compile source implementation file with signature file"

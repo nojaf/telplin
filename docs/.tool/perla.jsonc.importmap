@@ -1,6 +1,7 @@
 {
   "imports": {
     "@monaco-editor/react": "https://cdn.skypack.dev/pin/@monaco-editor/react@v4.4.5-jQ6Kd5D1EaLqv9zHxevU/mode=imports/optimized/@monaco-editor/react.js",
+    "lz-string": "https://cdn.skypack.dev/pin/lz-string@v1.4.4-hycJyBuAw3dCRBiW3DqU/mode=imports/optimized/lz-string.js",
     "monaco-editor": "https://cdn.skypack.dev/pin/monaco-editor@v0.34.0-0B86tQXIN3qIZ18zJC9R/mode=imports/optimized/monaco-editor.js",
     "react": "https://cdn.skypack.dev/pin/react@v17.0.1-yH0aYV1FOvoIPeKBbHxg/mode=imports/optimized/react.js",
     "react-dom": "https://cdn.skypack.dev/pin/react-dom@v17.0.1-oZ1BXZ5opQ1DbTh7nu9r/mode=imports/optimized/react-dom.js"

@@ -57,7 +57,7 @@ let isWatch =
 if isWatch then
     let fsw = new FileSystemWatcher (inputFolder)
     fsw.IncludeSubdirectories <- true
-    fsw.Filters.Add ("*.sass")
+    fsw.Filters.Add "*.sass"
     fsw.NotifyFilter <- NotifyFilters.FileName ||| NotifyFilters.Size
     fsw.EnableRaisingEvents <- true
 
@@ -79,6 +79,7 @@ if isWatch then
     subscriber.Dispose ()
 
     printfn "Goodbye"
+    exit 0
 else
     compileSass ()
     exit 0

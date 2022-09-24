@@ -70,50 +70,13 @@ module Encoding =
 [<assembly : LambdaSerializer(typeof<Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer>)>]
 ()
 
-let mkProcessRequest<'t>
-    (onValidSignature : string -> 't)
-    (onInvalidImplementationFile : string -> 't)
-    (onInvalidSignatureFile : string -> 't)
-    (onInternalError : string -> 't)
-    (projectOptions : FSharpProjectOptions)
-    (implementation : string)
-    : 't
-    =
-    try
-        let signatureContent =
-            TelplinInternalApi.MkSignature (implementation, projectOptions)
-
-        let verification =
-            TelplinInternalApi.VerifySignatureWithImplementation (implementation, signatureContent, projectOptions)
-
-        match verification with
-        | SignatureVerificationResult.ValidSignature -> onValidSignature signatureContent
-        | SignatureVerificationResult.InvalidImplementationFile diags ->
-            onInvalidImplementationFile (Encoding.encodeInvalidImplementationFile diags)
-        | SignatureVerificationResult.InvalidSignatureFile diags ->
-            onInvalidSignatureFile (Encoding.encodeInvalidSignatureFile diags signatureContent)
-    with ex ->
-        onInternalError ex.Message
-
-let createHeaders headers =
-    Seq.fold
-        (fun (acc : Dictionary<string, string>) (key, value) ->
-            acc.[key] <- value
-            acc
-        )
-        (Dictionary<string, string> ())
-        headers
-
-let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderValue : string, body : string) =
-    APIGatewayProxyResponse (
-        StatusCode = int statusCode,
-        Body = body,
-        Headers = createHeaders [ HeaderNames.ContentType, contentTypeHeaderValue ]
-    )
-
 let resolvedAssemblies =
     let dir =
+#if RELEASE
         Path.Combine (FileInfo(Assembly.GetExecutingAssembly().Location).Directory.FullName, "ref")
+#else
+        Path.Combine (__SOURCE_DIRECTORY__, "..", "..", "reference")
+#endif
 
     Directory.EnumerateFiles dir |> Seq.map (sprintf "-r:%s") |> Seq.toArray
 
@@ -166,11 +129,51 @@ let projectOptions : FSharpProjectOptions =
         Stamp = None
     }
 
+let mkProcessRequest<'t>
+    (onValidSignature : string -> 't)
+    (onInvalidImplementationFile : string -> 't)
+    (onInvalidSignatureFile : string -> 't)
+    (onInternalError : string -> 't)
+    (implementation : string)
+    : 't
+    =
+    try
+        let verification =
+            TelplinInternalApi.VerifySignatureWithImplementation (implementation, projectOptions)
+
+        match verification with
+        | SignatureVerificationResult.ValidSignature signatureContent -> onValidSignature signatureContent
+        | SignatureVerificationResult.InvalidImplementationFile diags ->
+            onInvalidImplementationFile (Encoding.encodeInvalidImplementationFile diags)
+        | SignatureVerificationResult.InvalidSignatureFile (signatureContent, diags) ->
+            onInvalidSignatureFile (Encoding.encodeInvalidSignatureFile diags signatureContent)
+        | SignatureVerificationResult.ImplementationFileAborted ->
+            onInternalError "Could not type check the implementation file. Type checking was aborted."
+        | SignatureVerificationResult.FailedToCreateSignatureFile error ->
+            onInternalError $"Internal error when creating signature file:\n{error}"
+    with ex ->
+        onInternalError ex.Message
+
+let createHeaders headers =
+    Seq.fold
+        (fun (acc : Dictionary<string, string>) (key, value) ->
+            acc.[key] <- value
+            acc
+        )
+        (Dictionary<string, string> ())
+        headers
+
+let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderValue : string, body : string) =
+    APIGatewayProxyResponse (
+        StatusCode = int statusCode,
+        Body = body,
+        Headers = createHeaders [ HeaderNames.ContentType, contentTypeHeaderValue ]
+    )
+
 let PostSignature (request : APIGatewayProxyRequest) (_context : ILambdaContext) =
     mkProcessRequest
         (fun signature -> mkAPIGatewayProxyResponse (HttpStatusCode.OK, HeaderValues.ApplicationText, signature))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun error -> mkAPIGatewayProxyResponse (HttpStatusCode.InternalServerError, HeaderValues.TextPlain, error))
-        projectOptions
         request.Body

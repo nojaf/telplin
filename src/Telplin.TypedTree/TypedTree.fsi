@@ -19,4 +19,4 @@ val typeCheckForPair :
         FSharpDiagnosticInfo array
 
 val typeCheckForImplementation :
-    projectOptions : FSharpProjectOptions -> implementationPath : string -> FSharpDiagnosticInfo array
+    projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnosticInfo array>

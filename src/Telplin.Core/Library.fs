@@ -7,9 +7,11 @@ open FSharp.Compiler.CodeAnalysis
 
 [<RequireQualifiedAccess>]
 type SignatureVerificationResult =
-    | ValidSignature
+    | ValidSignature of signature : string
+    | ImplementationFileAborted
+    | FailedToCreateSignatureFile of error : string
     | InvalidImplementationFile of diagnostics : FSharpDiagnosticInfo array
-    | InvalidSignatureFile of diagnostics : FSharpDiagnosticInfo array
+    | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnosticInfo array
 
 type internal TelplinInternalApi =
     static member MkSignature (implementation : string, options : FSharpProjectOptions) =
@@ -19,10 +21,21 @@ type internal TelplinInternalApi =
     static member VerifySignatureWithImplementation
         (
             implementation : string,
-            signature : string,
-            options : FSharpProjectOptions
+            options : FSharpProjectOptions,
+            ?assertSignature : string -> unit
         )
         =
+        let implCheckResult =
+            Telplin.TypedTree.Resolver.typeCheckForImplementation options implementation
+
+        match implCheckResult with
+        | Choice1Of2 _ -> SignatureVerificationResult.ImplementationFileAborted
+        | Choice2Of2 implCheckDiagnostics ->
+
+        if not (Array.isEmpty implCheckDiagnostics) then
+            SignatureVerificationResult.InvalidImplementationFile implCheckDiagnostics
+        else
+
         let randomName = Guid.NewGuid().ToString "N"
         let tempFolder = Path.Combine (Path.GetTempPath (), randomName)
 
@@ -32,12 +45,19 @@ type internal TelplinInternalApi =
             let implPath = Path.Combine (tempFolder, "A.fs")
             File.WriteAllText (implPath, implementation)
 
-            let implCheckDiagnostics =
-                Telplin.TypedTree.Resolver.typeCheckForImplementation options implPath
+            let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
 
-            if not (Array.isEmpty implCheckDiagnostics) then
-                SignatureVerificationResult.InvalidImplementationFile implCheckDiagnostics
-            else
+            let signature =
+                try
+                    Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation |> Result.Ok
+                with ex ->
+                    Result.Error ex.Message
+
+            match signature with
+            | Error error -> SignatureVerificationResult.FailedToCreateSignatureFile error
+            | Ok signature ->
+
+            Option.iter (fun assertSignature -> assertSignature signature) assertSignature
 
             let sigFPath = Path.Combine (tempFolder, "A.fsi")
             File.WriteAllText (sigFPath, signature)
@@ -46,9 +66,9 @@ type internal TelplinInternalApi =
                 Telplin.TypedTree.Resolver.typeCheckForPair options implPath sigFPath
 
             if not (Array.isEmpty pairCheckDiagnostics) then
-                SignatureVerificationResult.InvalidSignatureFile pairCheckDiagnostics
+                SignatureVerificationResult.InvalidSignatureFile (signature, pairCheckDiagnostics)
             else
-                SignatureVerificationResult.ValidSignature
+                SignatureVerificationResult.ValidSignature signature
         finally
             if Directory.Exists tempFolder then
                 Directory.Delete (tempFolder, true)
@@ -57,14 +77,3 @@ type TelplinApi =
     static member MkSignature (implementation : string, binlog : string) : string =
         let options = Telplin.TypedTree.Options.mkOptions binlog
         TelplinInternalApi.MkSignature (implementation, options)
-
-    static member VerifySignatureWithImplementation
-        (
-            implementation : string,
-            signature : string,
-            binlog : string
-        )
-        : SignatureVerificationResult
-        =
-        let options = Telplin.TypedTree.Options.mkOptions binlog
-        TelplinInternalApi.VerifySignatureWithImplementation (implementation, signature, options)

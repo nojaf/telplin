@@ -20,14 +20,12 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="aws-lambda-tools-defaults.json" />
     <Compile Include="Lambda.fsi" />
     <Compile Include="Lambda.fs" />
     <Compile Include="Function.fs" />
     <Compile Include="Program.fs" Condition="'$(Configuration)' == 'Debug'" />
     <None Include="$(MSBuildProjectDirectory)\..\..\reference\*.dll" CopyToPublishDirectory="PreserveNewest" LinkBase="ref\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="aws-lambda-tools-defaults.json" />
   </ItemGroup>
   <!-- 
   When publishing Lambda functions for ARM64 to the provided.al2 runtime a newer version of libicu needs to be included
@@ -45,12 +43,6 @@
     <PackageReference Include="Microsoft.Net.Http.Headers" Version="2.2.8" />
     <PackageReference Include="Thoth.Json.Net" Version="8.0.0" />
     <PackageReference Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="aws-lambda-tools-defaults.json" />
-    <Compile Include="Lambda.fs" />
-    <Compile Include="Lambda.fsi" />
-    <Compile Include="Program.fs" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Telplin.Core\Telplin.Core.fsproj" />

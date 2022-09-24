@@ -171,14 +171,19 @@ let mapDiagnostics diagnostics =
         | FSharpDiagnosticSeverity.Hidden -> None
     )
 
-let typeCheckForImplementation projectOptions implementationPath =
+let typeCheckForImplementation projectOptions sourceCode =
     let projectOptions : FSharpProjectOptions =
         { projectOptions with
-            SourceFiles = [| implementationPath |]
+            SourceFiles = [| "A.fs" |]
         }
 
-    let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
-    mapDiagnostics result.Diagnostics
+    let _, result =
+        checker.ParseAndCheckFileInProject ("A.fs", 1, SourceText.ofString sourceCode, projectOptions)
+        |> Async.RunSynchronously
+
+    match result with
+    | FSharpCheckFileAnswer.Aborted -> Choice1Of2 ()
+    | FSharpCheckFileAnswer.Succeeded checkFileResults -> mapDiagnostics checkFileResults.Diagnostics |> Choice2Of2
 
 let typeCheckForPair projectOptions implementationPath signaturePath =
     let projectOptions : FSharpProjectOptions =

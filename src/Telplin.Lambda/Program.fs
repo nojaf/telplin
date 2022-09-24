@@ -1,5 +1,4 @@
-﻿open System.IO
-open System.Net
+﻿open System.Net
 open Suave
 open Suave.Filters
 open Suave.Operators
@@ -17,10 +16,6 @@ let setCORSHeaders =
 let textPlain = setMimeType HeaderValues.TextPlain
 
 let mkBytes (v : string) = System.Text.Encoding.UTF8.GetBytes v
-
-let projectOptions =
-    let sampleBinLog = Path.Combine (__SOURCE_DIRECTORY__, "sample.binlog")
-    Telplin.TypedTree.Options.mkOptions sampleBinLog
 
 [<EntryPoint>]
 let main argv =
@@ -44,7 +39,6 @@ let main argv =
                             (fun json -> bad_request (mkBytes json) ctx)
                             (fun json -> bad_request (mkBytes json) ctx)
                             (fun error -> internal_error (mkBytes error) ctx)
-                            projectOptions
                             implementation
                 }
             )

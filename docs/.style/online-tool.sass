@@ -33,6 +33,7 @@
 @import "./bootstrap/scss/nav"
 @import "./bootstrap/scss/navbar"
 @import "./bootstrap/scss/spinners"
+@import "./bootstrap/scss/badge"
 @import "./bootstrap/scss/helpers"
 
 // 6. Add additional custom code here
@@ -77,3 +78,12 @@ main
     bottom: 2rem
     z-index: 10
     
+  #result
+    display: flex
+    flex-direction: column
+    section
+      flex-grow: 1
+    
+    #error-panel
+      padding-top: 0.5rem
+      padding-bottom: 60px

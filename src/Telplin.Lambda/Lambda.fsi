@@ -20,7 +20,6 @@ val mkProcessRequest<'t> :
     onInvalidImplementationFile : (string -> 't) ->
     onInvalidSignatureFile : (string -> 't) ->
     onInternalError : (string -> 't) ->
-    projectOptions : FSharpProjectOptions ->
     implementation : string ->
         't
 
