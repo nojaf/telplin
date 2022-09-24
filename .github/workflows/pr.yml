@@ -21,15 +21,5 @@ jobs:
           dotnet-version: |
             7.0.100-rc.1.22431.12
             6.0.x
-      - name: Restore tools
-        run: dotnet tool restore
-      - name: Check formatting
-        run: dotnet fantomas . -r --check
-      - name: Compile CSS
-        run: dotnet fsi docs/.style/style.fsx
-      - name: Restore dependencies
-        run: dotnet restore ./telplin.sln
       - name: Build
-        run: dotnet build --no-restore -c Release ./telplin.sln
-      - name: Tests
-        run: dotnet test --no-restore --no-build -c Release
+        run: dotnet fsi ./build.fsx

@@ -480,3 +480,10 @@ $RECYCLE.BIN/
 docs/.tool/*.js
 docs/.tool/dist
 docs/**/*.css
+
+# Copied from dist folder in .tool
+docs/index.html
+docs/App.js
+docs/favicon.ico
+docs/logo.png
+docs/env.js
