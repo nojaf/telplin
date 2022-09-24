@@ -478,4 +478,5 @@ $RECYCLE.BIN/
 
 .idea/
 docs/.tool/*.js
+docs/.tool/dist
 docs/**/*.css

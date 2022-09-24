@@ -19,6 +19,9 @@
     "liveReload": true,
     "useSSL": true
   },
+  "build":{
+    "target": "es2020"
+  },
   "packages": {
     "@monaco-editor/react": "https://cdn.skypack.dev/pin/@monaco-editor/react@v4.4.5-jQ6Kd5D1EaLqv9zHxevU/mode=imports/optimized/@monaco-editor/react.js",
     "lz-string": "https://cdn.skypack.dev/pin/lz-string@v1.4.4-hycJyBuAw3dCRBiW3DqU/mode=imports/optimized/lz-string.js",
