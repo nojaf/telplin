@@ -98,13 +98,13 @@ namespace MyNamespace
 Syntactically this is a correct signature file, however, it is quite the departure from the source material.  
 The typed tree misses a lot of context the implementation file has.
 
-`Telplin` works a bit different and tries to remain as faithful as possible to the original implementation file.
+`Telplin` works a bit different and tries to remain as faithful as possible to the original implementation file using both the untyped and the typed tree.
 
 ### Faster release cycle.
 
 As the `--allsigs` flag is part of the F# compiler, this means fixes to this feature are tied to `dotnet` SDK releases.  
-The release cadence of the SDK can be somewhat unpredictable and it could take a while before a fix finally reaches end-users.
+The release cadence of the `dotnet` SDK can be somewhat unpredictable and it could take a while before a fix finally reaches end-users.
 
-`Telplin` is a standalone tool that should be able to ship fixes shortly after they are merged.
+`Telplin` is a standalone tool that should be able to ship fixes shortly after they got merged.
 
 <tp-nav previous="./index.html" next="./usage.html"></tp-nav>

@@ -54,12 +54,16 @@ body
         @include reset-column
 
 aside
-  background-color: red
-
   img
     max-width: 300px
     padding: 2rem 2rem 1rem 2rem
-  
-  a
-    text-decoration: none
-    color: $dark
+  .list-group-item
+    padding: 0
+    a
+      padding: 0.5rem
+      text-decoration: none
+      display: block
+      color: $dark
+      &:hover
+        background-color: $secondary
+        color: $primary
