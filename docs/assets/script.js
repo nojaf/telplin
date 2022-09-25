@@ -8,3 +8,8 @@ addEventListener("load", () => {
             });
         })
 });
+
+// The markdown code comment block have inline event handlers.
+// We don't want anything to have in that case.
+function hideTip() {}
+function showTip() {}

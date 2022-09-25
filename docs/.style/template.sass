@@ -1,3 +1,15 @@
+$font-size-base: 1rem !default
+$spacer: 1rem !default
+$h1-font-size: $font-size-base * 2.5 !default
+$h2-font-size: $font-size-base * 1.8 !default
+$h3-font-size: $font-size-base * 1.6 !default
+$h4-font-size: $font-size-base * 1.4 !default
+$h5-font-size: $font-size-base * 1.2 !default
+$h6-font-size: $font-size-base !default
+$headings-margin-bottom: $spacer * .80 !default
+$paragraph-margin-bottom: 1.2rem
+$font-family-code: 'JetBrains Mono', monospace
+
 @import "variables"
 
 // Custom.scss
@@ -40,6 +52,7 @@
 @import "./bootstrap/scss/utilities/api"
 
 @import "sidebar"
+@import "code"
 
 nav
   box-shadow: 0px 9px 9px -5px rgba(22, 22, 22, 0.2)
@@ -53,7 +66,31 @@ nav
   padding: 3rem
   background-color: $white
   box-shadow: 0 4px 10px rgba(22, 22, 22, 0.2)
-
+  
 h1, h2, h3, h4, h5, h6
   a
     text-decoration: none
+    color: $primary
+    text-shadow: 1px 1px transparentize($secondary, 0.9%)
+
+blockquote
+  background: $secondary
+  border-left: 10px solid $primary
+  color: $primary
+  margin: 1.5em 10px
+  padding: 1rem 10px
+  quotes: "\201C" "\201D" "\2018" "\2019"
+
+  &:before
+    color: $primary
+    content: open-quote
+    font-size: 4em
+    line-height: 0.1em
+    margin-right: 0.25rem
+    vertical-align: -0.4em
+
+  p
+    display: inline
+
+a
+  color: darken($primary, 30%)
