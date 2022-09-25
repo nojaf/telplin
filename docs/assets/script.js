@@ -7,6 +7,10 @@ addEventListener("load", () => {
                 body.classList.toggle("open-menu");
             });
         })
+
+    Array.from(document.links)
+        .filter(link => link.hostname != window.location.hostname)
+        .forEach(link => link.target = '_blank');
 });
 
 // The markdown code comment block have inline event handlers.
