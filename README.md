@@ -28,6 +28,12 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 - `--files` in ci tool
 - Push to nuget
 - Deploy lambda on commit to main
+- ```
+docs/step-0> please set '<FsDocsLicenseLink>' in 'Directory.Build.props'
+docs/step-0> please set '<FsDocsReleaseNotesLink>' in 'Directory.Build.props'
+docs/step-0> please set '<Version>' in 'Directory.Build.props'
+docs/step-0> please set '<RepositoryUrl>' in 'Directory.Build.props'
+```
 
 ## Lamdbda
 
