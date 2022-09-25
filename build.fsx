@@ -49,6 +49,11 @@ pipeline "Build" {
 
                     File.Copy (srcFile, destFile, true)
                 )
+
+                let envJs =
+                    Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool", "dist", "telplin", "env.js")
+
+                File.Copy (envJs, Path.Combine (__SOURCE_DIRECTORY__, "docs", "env.js"))
             )
         }
     }
