@@ -9,4 +9,8 @@
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="6.0.6" />
     </ItemGroup>
+    <PropertyGroup>
+        <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
+        <RepositoryUrl>https://github.com/nojaf/telplin</RepositoryUrl>
+    </PropertyGroup>
 </Project>
