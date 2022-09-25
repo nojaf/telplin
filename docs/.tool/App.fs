@@ -30,14 +30,13 @@ let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
     ofImport "default" "@monaco-editor/react" (keyValueList CaseRules.LowerFirst props) []
 
 let getUrl () =
-    let apiRoot =
-        // See https://github.com/AngelMunoz/Perla/issues/85#issuecomment-1257032613
-        if Browser.Dom.window.location.hostname = "localhost" then
-            "http://localhost:8906"
-        else
-            "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206"
-
-    Promise.lift $"{apiRoot}/telplin/signature"
+    JsInterop.importDynamic "/telplin/env.js"
+    |> Promise.map (fun env -> env?API_ROOT)
+    |> Promise.catch (fun err ->
+        JS.console.warn ("Could not fetch environment!", err)
+        "http://localhost:8906"
+    )
+    |> Promise.map (sprintf "%s/telplin/signature")
 
 [<RequireQualifiedAccess>]
 type FetchSignatureResponse =

@@ -27,6 +27,7 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 - funding yml
 - `--files` in ci tool
 - Push to nuget
+- Deploy lambda on commit to main
 
 ## Lamdbda
 

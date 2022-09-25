@@ -4,11 +4,6 @@ open System.IO
 open Fun.Build
 
 pipeline "Build" {
-    envVars
-        [
-            "PERLA_API_ROOT", "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206"
-        ]
-
     workingDir __SOURCE_DIRECTORY__
 
     stage "lint" {
@@ -21,7 +16,9 @@ pipeline "Build" {
             run (fun _ ->
                 async {
                     let p = System.Diagnostics.Process.Start ("dotnet", "fsi ./docs/.style/style.fsx")
+
                     p.WaitForExit ()
+
                     return (if p.ExitCode = 0 || p.ExitCode = 139 then 0 else 1)
                 }
             )
@@ -32,6 +29,13 @@ pipeline "Build" {
 
         stage "perla" {
             workingDir (Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool"))
+
+            envVars
+                [
+                    "PERLA_API_ROOT",
+                    "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206"
+                ]
+
             run "dotnet tool restore"
             run "dotnet perla b"
 

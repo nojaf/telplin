@@ -17,7 +17,8 @@
       ]
     },
     "liveReload": true,
-    "useSSL": true
+    "useSSL": true,
+    "envPath": "/telplin/env.js"
   },
   "build":{
     "target": "es2020"

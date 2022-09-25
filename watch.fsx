@@ -3,7 +3,6 @@
 open Fun.Build
 
 pipeline "Watch" {
-    envVars [ "PERLA_API_ROOT", "http://127.0.0.1:8906" ]
     workingDir __SOURCE_DIRECTORY__
 
     stage "main" {
@@ -12,11 +11,12 @@ pipeline "Watch" {
         run "dotnet run --project ./src/Telplin.Lambda/Telplin.Lambda.fsproj"
 
         stage "perla" {
+            envVars [ "PERLA_API_ROOT", "http://127.0.0.1:8906" ]
             workingDir (System.IO.Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool"))
             run "dotnet perla s"
         }
 
-        run "dotnet fsdocs watch --port 7890"
+        run "dotnet fsdocs watch --port 7890 --noapidocs"
     }
 
     runImmediate
