@@ -2,6 +2,8 @@
 
 open Fun.Build
 
+let (</>) a b = System.IO.Path.Combine (a, b)
+
 pipeline "Watch" {
     workingDir __SOURCE_DIRECTORY__
 
@@ -12,7 +14,7 @@ pipeline "Watch" {
 
         stage "perla" {
             envVars [ "PERLA_API_ROOT", "http://127.0.0.1:8906" ]
-            workingDir (System.IO.Path.Combine (__SOURCE_DIRECTORY__, "docs", ".tool"))
+            workingDir (__SOURCE_DIRECTORY__ </> "docs" </> ".tool")
             run "dotnet perla s"
         }
 

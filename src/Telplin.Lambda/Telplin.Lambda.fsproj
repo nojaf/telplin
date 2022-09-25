@@ -18,6 +18,7 @@
     <!-- Don't create localization (en-US, etc) folders with resources -->
     <!-- https://github.com/dotnet/fsharp/issues/6007#issuecomment-547041463 -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="aws-lambda-tools-defaults.json" />

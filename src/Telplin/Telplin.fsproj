@@ -6,9 +6,11 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <RollForward>Major</RollForward>
     <ToolCommandName>telplin</ToolCommandName>
+    <PackAsTool>True</PackAsTool>
     <AssemblyName>telplin</AssemblyName>
     <WarningsAsErrors>FS0025</WarningsAsErrors>
     <RootNamespace>Telplin</RootNamespace>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
