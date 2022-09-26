@@ -24,7 +24,7 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 - docs website
 - Push to nuget
 - Deploy lambda on commit to main
-- Add some more pointers to the online tool, what is referenced, etc...
+- contribution guidelines
 
 ## Lamdbda
 

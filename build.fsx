@@ -47,12 +47,6 @@ pipeline "Build" {
         stage "perla" {
             workingDir (__SOURCE_DIRECTORY__ </> "docs" </> ".tool")
 
-            envVars
-                [
-                    "PERLA_API_ROOT",
-                    "https://g8pt5e44zi.execute-api.eu-west-3.amazonaws.com/telplin-main-stage-230a206"
-                ]
-
             run "dotnet tool restore"
             run "dotnet perla b"
 
@@ -74,7 +68,8 @@ pipeline "Build" {
                     </> "telplin"
                     </> "env.js"
 
-                File.Copy (envJs, __SOURCE_DIRECTORY__ </> "docs" </> "env.js", true)
+                if File.Exists envJs then
+                    File.Copy (envJs, __SOURCE_DIRECTORY__ </> "docs" </> "env.js", true)
             )
         }
     }
