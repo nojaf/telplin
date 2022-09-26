@@ -16,13 +16,15 @@ type CliArguments =
             | Files _ -> "Process a subset of files in the current project."
             | Write -> "Write signature files to disk"
 
-module Seq =
-    let tryChooseHead f = Seq.choose f >> Seq.tryHead
-
 [<EntryPoint>]
 let main args =
     let parser = ArgumentParser.Create<CliArguments> (programName = "Telplin")
-    let arguments = parser.Parse args
+    let arguments = parser.Parse (args, raiseOnUsage = false)
+
+    if arguments.IsUsageRequested then
+        parser.PrintUsage (programName = "Telplin") |> printfn "%s"
+        exit 0
+    else
 
     let file = arguments.GetResult <@ Binary_log @>
 
