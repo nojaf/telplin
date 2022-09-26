@@ -55,7 +55,7 @@ $font-family-code: 'JetBrains Mono', monospace
 @import "code"
 
 nav
-  box-shadow: 0px 9px 9px -5px rgba(22, 22, 22, 0.2)
+  box-shadow: 0 9px 9px -5px rgba(22, 22, 22, 0.2)
 
 #paper
   background: $gray-100
@@ -81,15 +81,17 @@ blockquote
   color: $primary
   margin: 1.5em 10px
   padding: 1rem 10px
-  quotes: "\201C" "\201D" "\2018" "\2019"
+  
+  &.fancy
+    quotes: "\201C" "\201D" "\2018" "\2019"
 
-  &:before
-    color: $primary
-    content: open-quote
-    font-size: 4em
-    line-height: 0.1em
-    margin-right: 0.25rem
-    vertical-align: -0.4em
+    &:before
+      color: $primary
+      content: open-quote
+      font-size: 4em
+      line-height: 0.1em
+      margin-right: 0.25rem
+      vertical-align: -0.4em
 
   p
     display: inline
