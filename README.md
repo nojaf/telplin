@@ -22,9 +22,9 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 ## TODO
 
 - docs website
-- `--files` in ci tool
 - Push to nuget
 - Deploy lambda on commit to main
+- Add some more pointers to the online tool, what is referenced, etc...
 
 ## Lamdbda
 

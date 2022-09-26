@@ -5,14 +5,15 @@ open Telplin
 
 type CliArguments =
     | [<MainCommand>] Binary_log of path : string
-    | Single_File of path : string
+    | Files of path : string list
     | Write
 
     interface IArgParserTemplate with
         member this.Usage =
             match this with
-            | Binary_log _ -> "Binary log file to process"
-            | Single_File _ -> "Process a single file in the current project. File path should be absolute"
+            | Binary_log _ ->
+                "Binary log file of earlier completed rebuild. Run `dotnet build -bl --no-incremental` to obtain one."
+            | Files _ -> "Process a subset of files in the current project."
             | Write -> "Write signature files to disk"
 
 module Seq =
@@ -28,16 +29,12 @@ let main args =
     let projectOptions = TypedTree.Options.mkOptions file
 
     let signatures =
-        match arguments.TryGetResult <@ Single_File @> with
-        | Some singleFile ->
-            let code = File.ReadAllText singleFile
-            let sourceText = SourceText.ofString code
-            let resolver = TypedTree.Resolver.mkResolverFor singleFile sourceText projectOptions
-            let signature = UntypedTree.Writer.mkSignatureFile resolver code
-            [| singleFile, signature |]
-        | None ->
+        let sourceFiles =
+            match arguments.TryGetResult <@ Files @> with
+            | None -> projectOptions.SourceFiles
+            | Some files -> List.map Path.GetFullPath files |> List.toArray
 
-        projectOptions.SourceFiles
+        sourceFiles
         |> Array.filter (fun file -> file.EndsWith ".fs")
         |> Array.map (fun sourceFile ->
             printfn "process: %s" sourceFile
@@ -54,8 +51,10 @@ let main args =
                 let signaturePath = Path.ChangeExtension (fileName, ".fsi")
                 File.WriteAllText (signaturePath, signature)
             else
+                let length = fileName.Length + 4
+                printfn "%s" (String.init length (fun _ -> "-"))
                 printfn $"| %s{fileName} |"
-                printfn "%s" (String.init 100 (fun _ -> "-"))
+                printfn "%s" (String.init length (fun _ -> "-"))
                 printfn "%s" signature
         )
         signatures
