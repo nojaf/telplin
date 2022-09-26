@@ -9,14 +9,3 @@ Telplin helps F# users to **generate** matching **signature files** for implemen
 It uses the [F# compiler](https://github.com/dotnet/fsharp) and [Fantomas](https://github.com/fsprojects/fantomas) to achieve this.
 
 <tp-nav next="./motivation.html"></tp-nav>
-
----
-
-Documentation.
-Todo:
-
-- General outline
-- Why this project is different than `--allsigs`
-- Typical end user flow
-- Architectural notes
-- Project name

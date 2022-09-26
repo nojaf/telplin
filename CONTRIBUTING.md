@@ -1,0 +1,1 @@
+Please refer to our [documentation](https://nojaf.com/telplin/docs/contributing.html).

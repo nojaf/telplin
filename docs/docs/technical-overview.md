@@ -68,4 +68,4 @@ An `NUnit` unit test project that verifies the core logic.
 
 A `Fable` application that powers the front-end of the [online tool](../index.html).
 
-<tp-nav previous="./usage.html"></tp-nav>
+<tp-nav previous="./usage.html" next="./contributing.html"></tp-nav>
