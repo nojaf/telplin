@@ -17,8 +17,8 @@ As the project has not yet matured, it is advised to run `telplin --help` to see
 ## Post processing
 
 Once your signature files are generated, you want to include them in your `fsproj`.
-And inspect each file to see if anything can be trimmed from them.  
+Inspect each file to see if anything can be trimmed.  
 Signature files are more effective if they contain only the information the module/namespace truly needs to expose.  
 All implementation details should be stripped from your signature file.
 
-<tp-nav previous="./motivation.html"></tp-nav>
+<tp-nav previous="./motivation.html" next="./technical-overview.html"></tp-nav>
