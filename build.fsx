@@ -82,11 +82,6 @@ pipeline "Build" {
         run "dotnet pack .\src\Telplin.UntypedTree\Telplin.UntypedTree.fsproj -c Release -o bin"
         run "dotnet pack .\src\Telplin.TypedTree\Telplin.TypedTree.fsproj -c Release -o bin"
         run "dotnet pack .\src\Telplin.Core\Telplin.Core.fsproj -c Release -o bin"
-
-        stage "lambda" {
-            workingDir (__SOURCE_DIRECTORY__ </> "src" </> "Telplin.Lambda")
-            run "dotnet lambda package"
-        }
     }
 
     stage "docs" { run "dotnet fsdocs build --nodefaultcontent --noapidocs" }

@@ -45,8 +45,19 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v1
 
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Setup dotnet
         uses: actions/setup-dotnet@v2
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Package lambda
+        working-directory: src/Telplin.Lambda
+        run: dotnet lambda package
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
