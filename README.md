@@ -23,7 +23,6 @@ dotnet build -bl --no-incremental ; C:/Users/nojaf/Projects/telplin/src/Telplin/
 
 - docs website
 - Push to nuget
-- Deploy lambda on commit to main
 - contribution guidelines
 
 ## Lamdbda
@@ -40,3 +39,8 @@ Content-Type: text/plain
 Laurelin & Telperion
 
 Telplin?
+
+dotnet build --no-incremental /p:DotnetFscCompilerPath="C:\Users\nojaf\Projects\fsharp\artifacts\bin\fsc\Release\net7.0\fsc.dll"
+
+
+$env:FCS_ParallelReferenceResolution = "True" ; dotnet build --no-incremental /p:DotnetFscCompilerPath="C:\Users\nojaf\Projects\fsharp\artifacts\bin\fsc\Release\net7.0\fsc.dll" /p:OtherFlags="--test:ParallelCheckingWithSignatureFilesOn"
