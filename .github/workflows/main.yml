@@ -55,7 +55,7 @@ jobs:
       - uses: pulumi/actions@v3
         with:
           command: up
-          stack-name: main
+          stack-name: telplin
           work-dir: ./src/Telplin.Deploy
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
