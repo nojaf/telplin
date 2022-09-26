@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
+      - name: Setup dotnet
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: |
@@ -44,6 +44,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v2
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
