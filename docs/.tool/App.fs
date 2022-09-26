@@ -308,6 +308,25 @@ Issue created from [telplin-online]({location.href})
                 MonacoEditorProp.DefaultValue model.Implementation
                 MonacoEditorProp.OnChange (UpdateImplementation >> dispatch)
             ]
+            div [ ClassName $"{Bootstrap.BgLight} {Bootstrap.P3}" ] [
+                str
+                    "Welcome to the Telplin online tool. The goal of this tool is to report issues for scenario's where a signature file cannot be generated."
+                br []
+                str "Most "
+                code [] [ str "System" ]
+                str
+                    " assemblies are present and can be used. Your code is expected to be valid inside a library project."
+                br []
+                str "The implementation F# code will be "
+                strong [] [ str "typed checked" ]
+                str " first, the signature will be "
+                strong [] [ str "generated" ]
+                str " and lastly "
+                strong [] [ str "validated" ]
+                str " against the implementation code."
+                br []
+                str "The initial request might could take some time."
+            ]
         ]
         if not model.IsLoading then
             div [ Id "result" ] [
