@@ -880,3 +880,17 @@ type Debounce<'a> =
     /// Timeout in ms
     member Timeout: int
 """
+
+[<Test>]
+let ``fully typed binding`` () =
+    assertSignature
+        """
+module F
+
+let minus (a:int) (b:int) : int = a - b
+"""
+        """
+module F
+
+val minus: a: int -> b: int -> int
+"""

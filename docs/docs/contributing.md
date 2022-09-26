@@ -70,7 +70,7 @@ You can run `dotnet fsi watch.fsx` to launch the online tool (<small>front-end &
 * Your local build needs to pass: `dotnet fsi build.fsx`
 * Use proper pull request titles. Not `Fixes #someNumber`!
 * Always aim to introduce the least amount of changes to achieve your goal.
-* Write unit tests in the same style as the existing ones.
+* Write unit tests in the same style as the existing ones. The name should start with a lowercase letter!
 * Ask questions when you are unsure 😸!
 
 <tp-nav previous="./technical-overview.html"></tp-nav>

@@ -334,7 +334,45 @@ and mkSynTypForSignature
     returnTypeText
     resolvedConstraints
     constraintsFromSource
-    argPats
+    (argPats : SynPat list)
+    (returnTypeInImpl : (SynType list * SynType) option)
+    : SynType
+    =
+    let isTypedPat p =
+        match p with
+        | TypedPat _
+        | ParenPat (TypedPat _) -> true
+        | _ -> false
+
+    match returnTypeInImpl with
+    | Some (_, returnType) when List.forall isTypedPat argPats ->
+        mkSynTypForSignatureBasedOnUntypedTree argPats returnType
+    | _ ->
+        mkSynTypForSignatureBasedOnTypedTree
+            returnTypeText
+            resolvedConstraints
+            constraintsFromSource
+            argPats
+            returnTypeInImpl
+
+and mkSynTypForSignatureBasedOnUntypedTree (argPats : SynPat list) (returnType : SynType) : SynType =
+    let parameters =
+        argPats
+        |> List.choose (
+            function
+            | ParenPat (TypedPat (NamedPat parameterName, t)) ->
+                Some (SynType.SignatureParameter ([], false, Some parameterName, wrapInParenWhenFunType t, zeroRange))
+            | _ -> None
+        )
+
+    [ yield! parameters ; yield (wrapInParenWhenFunType returnType) ]
+    |> mkSynTypeFun
+
+and mkSynTypForSignatureBasedOnTypedTree
+    returnTypeText
+    resolvedConstraints
+    constraintsFromSource
+    (argPats : SynPat list)
     (returnTypeInImpl : (SynType list * SynType) option)
     : SynType
     =
@@ -651,7 +689,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                         | pats -> [ SynPat.Paren (SynPat.Tuple (false, pats, zeroRange), zeroRange) ]
                     | SynSimplePats.Typed _ -> []
 
-                mkSynTypForSignature
+                mkSynTypForSignatureBasedOnTypedTree
                     signatureText
                     resolvedGenericParameters
                     None
