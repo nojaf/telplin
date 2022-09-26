@@ -684,8 +684,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                         let pats = pats |> List.map convertToSynPat
 
                         match pats with
-                        | []
-                        | [ _ ] -> pats
+                        | [] -> []
+                        | [ pat ] -> [ SynPat.Paren (pat, zeroRange) ]
                         | pats -> [ SynPat.Paren (SynPat.Tuple (false, pats, zeroRange), zeroRange) ]
                     | SynSimplePats.Typed _ -> []
 

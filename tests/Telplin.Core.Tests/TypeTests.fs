@@ -257,7 +257,7 @@ namespace FormatConfig
 open System
 
 type FormatException =
-    new: string -> FormatException
+    new: msg: string -> FormatException
     inherit Exception
 """
 
@@ -524,4 +524,21 @@ namespace FA
 type Hej =
     new: unit -> Hej
     member DisableInMemoryProjectReferences: bool with get, set
+"""
+
+[<Test>]
+let ``primary and secondary constructor`` () =
+    assertSignature
+        """
+namespace PS
+
+type Bar(a:int) =
+    new (a:int, b:int) = Bar(a)
+"""
+        """
+namespace PS
+
+type Bar =
+    new: a: int -> Bar
+    new: a: int * b: int -> Bar
 """
