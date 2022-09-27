@@ -18,7 +18,7 @@ pipeline "Build" {
                 deleteIfExists (__SOURCE_DIRECTORY__ </> "bin")
                 deleteIfExists (__SOURCE_DIRECTORY__ </> "output")
                 deleteIfExists (__SOURCE_DIRECTORY__ </> "docs" </> ".tool" </> "dist")
-                0
+                return 0
             }
         )
     }
@@ -29,17 +29,7 @@ pipeline "Build" {
     }
 
     stage "build" {
-        stage "sass" {
-            run (fun _ ->
-                async {
-                    let p = System.Diagnostics.Process.Start ("dotnet", "fsi ./docs/.style/style.fsx")
-
-                    p.WaitForExit ()
-
-                    return (if p.ExitCode = 0 || p.ExitCode = 139 then 0 else 1)
-                }
-            )
-        }
+        run "dotnet fsi ./docs/.style/style.fsx"
 
         run "dotnet restore ./telplin.sln"
         run "dotnet build --no-restore -c Release ./telplin.sln"
