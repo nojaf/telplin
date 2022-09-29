@@ -58,7 +58,7 @@ dotnet fsi build.fsx
 
 ## Documentation &amp; Online tool
 
-You can run `dotnet fsi watch.fsx` to launch the online tool (<small>front-end &amp; back-end</small>) and the documentation.
+You can run `dotnet fsi build.fsx -p Watch` to launch the online tool (<small>front-end &amp; back-end</small>) and the documentation.
 
 * docs (fsdocs): [http://localhost:7890/docs/index.html](http://localhost:7890/docs/index.html)
 * frontend (perla): [https://localhost:8900](https://localhost:8900)
