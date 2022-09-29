@@ -82,7 +82,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                                     IsSupportsNullConstraint = c.IsSupportsNullConstraint
                                     CoercesToTarget =
                                         if c.IsCoercesToConstraint then
-                                            Some (c.CoercesToTarget.FormatLayout displayContext |> taggedTextToString)
+                                            Some (c.CoercesToTarget.Format displayContext)
                                         else
                                             None
                                 }
