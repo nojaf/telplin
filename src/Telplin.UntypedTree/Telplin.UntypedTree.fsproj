@@ -14,7 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Fantomas.Core" Version="5.1.0-alpha-001" />
+      <PackageReference Include="Fantomas.Core" Version="5.1.0-alpha-002" />
     </ItemGroup>
 
     <ItemGroup>

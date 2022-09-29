@@ -131,9 +131,8 @@ let mkSynTypFromText (typeText : string) : SynType =
         Fantomas.FCS.Parse.parseFile true (SourceText.ofString $"val v: {typeText}") []
 
     match aliasAST with
-    | ParsedInput.SigFile (ParsedSigFileInput(modules = [ SynModuleOrNamespaceSig(decls = [ SynModuleSigDecl.Val(valSig = SynValSig (synType = t)) ]) ])) ->
+    | ParsedInput.SigFile (ParsedSigFileInput(contents = [ SynModuleOrNamespaceSig(decls = [ SynModuleSigDecl.Val(valSig = SynValSig (synType = t)) ]) ])) ->
         t
-
     | _ -> failwith $"should not fail, but did for {typeText}"
 
 type Range with
