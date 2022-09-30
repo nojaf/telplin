@@ -308,7 +308,7 @@ Issue created from [telplin-online]({location.href})
                 MonacoEditorProp.DefaultValue model.Implementation
                 MonacoEditorProp.OnChange (UpdateImplementation >> dispatch)
             ]
-            div [ ClassName $"{Bootstrap.BgLight} {Bootstrap.P3}" ] [
+            div [ Id "info" ; ClassName $"{Bootstrap.BgLight} {Bootstrap.P3}" ] [
                 str
                     "Welcome to the Telplin online tool. The goal of this tool is to report issues for scenario's where a signature file cannot be generated."
                 br []
@@ -337,17 +337,16 @@ Issue created from [telplin-online]({location.href})
                     MonacoEditorProp.Options {| readOnly = true |}
                 ]
                 ofOption errorPanel
-            ]
-
-            div [ Id "commands" ] [
-                ofOption reportIssueButton
-                button [
-                    ClassName $"{Bootstrap.Btn} {Bootstrap.BtnPrimary}"
-                    OnClick (fun ev ->
-                        ev.preventDefault ()
-                        dispatch FetchSignature
-                    )
-                ] [ str "Get signature" ]
+                div [ Id "commands" ] [
+                    button [
+                        ClassName $"{Bootstrap.Btn} {Bootstrap.BtnPrimary}"
+                        OnClick (fun ev ->
+                            ev.preventDefault ()
+                            dispatch FetchSignature
+                        )
+                    ] [ str "Get signature" ]
+                    ofOption reportIssueButton
+                ]
             ]
         else
             div [ Id "loading" ] [ div [ ClassName $"{Bootstrap.SpinnerGrow} {Bootstrap.TextPrimary}" ] [] ]

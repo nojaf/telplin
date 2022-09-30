@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.6"
+#r "nuget: Fun.Build, 0.1.8"
 
 open System.IO
 open Fun.Build
