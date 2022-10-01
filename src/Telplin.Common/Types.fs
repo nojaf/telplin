@@ -39,7 +39,7 @@ type BindingInfo = string * GenericConstraintForParameter list
 
 type TypeInfoResponse =
     {
-        IsClass : bool
+        NeedsClassAttribute : bool
         ConstructorInfo : BindingInfo option
     }
 
