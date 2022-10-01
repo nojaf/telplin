@@ -542,3 +542,75 @@ type Bar =
     new: a: int -> Bar
     new: a: int * b: int -> Bar
 """
+
+[<Test>]
+let ``class with C# extension method, 1`` () =
+    assertSignature
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<Class>]
+type Foo =
+    [<Extension>]
+    static member PlusOne (a:int) : int = a + 1
+"""
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<Class>]
+type Foo =
+    [<Extension>]
+    static member PlusOne: a: int -> int
+"""
+
+[<Test>]
+let ``class with C# extension method, ClassAttribute`` () =
+    assertSignature
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<ClassAttribute>]
+type Foo =
+    [<Extension>]
+    static member PlusOne (a:int) : int = a + 1
+"""
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<ClassAttribute>]
+type Foo =
+    [<Extension>]
+    static member PlusOne: a: int -> int
+"""
+
+[<Test>]
+let ``class with C# extension method, Microsoft.FSharp.Core.ClassAttribute`` () =
+    assertSignature
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<Microsoft.FSharp.Core.Class>]
+type Foo =
+    [<Extension>]
+    static member PlusOne (a:int) : int = a + 1
+"""
+        """
+module Telplin
+
+open System.Runtime.CompilerServices
+
+[<Microsoft.FSharp.Core.Class>]
+type Foo =
+    [<Extension>]
+    static member PlusOne: a: int -> int
+"""

@@ -584,7 +584,7 @@ and mkSynTypeDefnSig
                     | [ singleIdent ] ->
                         let typeInfo = resolver.GetTypeInfo singleIdent.idRange.Proxy
 
-                        if typeInfo.IsClass then
+                        if typeInfo.NeedsClassAttribute then
                             ({
                                 Attributes =
                                     [

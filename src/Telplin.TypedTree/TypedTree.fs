@@ -116,8 +116,19 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                         )
                         |> Seq.tryHead // Assume one constructor for now
 
+                    let doesNotHaveClassAttribute =
+                        let hasAttribute =
+                            typeSymbol.Attributes
+                            |> Seq.exists (fun a ->
+                                match a.AttributeType.TryFullName with
+                                | None -> false
+                                | Some typeName -> "Microsoft.FSharp.Core.ClassAttribute" = typeName
+                            )
+
+                        not hasAttribute
+
                     {
-                        IsClass = typeSymbol.IsClass
+                        NeedsClassAttribute = typeSymbol.IsClass && doesNotHaveClassAttribute
                         ConstructorInfo = ctor
                     }
                 with ex ->
