@@ -6,9 +6,6 @@ open Microsoft.Build.Logging.StructuredLogger
 open FSharp.Compiler.CodeAnalysis
 open Telplin.OptionCE
 
-module Seq =
-    let tryChooseHead f = Seq.choose f >> Seq.tryHead
-
 let fsharpFiles = set [| ".fs" ; ".fsi" ; ".fsx" |]
 
 let isFSharpFile (file : string) =
@@ -19,7 +16,7 @@ let readCompilerArgsFromBinLog file =
 
     let rebuild (build : Build) =
         build.Children
-        |> Seq.tryChooseHead (
+        |> Seq.tryPick (
             function
             | :? Project as p when (p.TargetsText = "Rebuild") -> Some p
             | _ -> None
@@ -27,7 +24,7 @@ let readCompilerArgsFromBinLog file =
 
     let coreCompile (project : Project) =
         project.Children
-        |> Seq.tryChooseHead (
+        |> Seq.tryPick (
             function
             | :? Target as t when (t.Name = "CoreCompile") -> Some t
             | _ -> None
@@ -35,7 +32,7 @@ let readCompilerArgsFromBinLog file =
 
     let fscTask (target : Target) =
         target.Children
-        |> Seq.tryChooseHead (
+        |> Seq.tryPick (
             function
             | :? FscTask as fsc -> Some fsc
             | _ -> None
@@ -43,7 +40,7 @@ let readCompilerArgsFromBinLog file =
 
     let message (fscTask : FscTask) =
         fscTask.Children
-        |> Seq.tryChooseHead (
+        |> Seq.tryPick (
             function
             | :? Message as m -> Some m.Text
             | _ -> None
