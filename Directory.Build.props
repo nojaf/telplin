@@ -8,7 +8,7 @@
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <Description>
-            Still a bit of a secret.
+            Generate F# signature files.
         </Description>
         <Copyright>Copyright © $([System.DateTime]::UtcNow.Year)</Copyright>
         <PackageTags>F# fsharp signature</PackageTags>

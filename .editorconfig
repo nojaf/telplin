@@ -18,3 +18,6 @@ fsharp_keep_max_number_of_blank_lines=1
 
 [docs/.tool/App.fs]
 fsharp_experimental_stroustrup_style=true
+
+[build.fsx]
+fsharp_blank_lines_around_nested_multiline_expressions=false
