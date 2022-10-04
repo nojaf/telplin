@@ -1,9 +1,50 @@
 #r "nuget: Fun.Build, 0.1.8"
+#r "nuget: CliWrap, 3.5.0"
 
 open System.IO
 open Fun.Build
+open CliWrap
+open CliWrap.Buffered
 
 let (</>) a b = Path.Combine (a, b)
+
+let (>>=) a f =
+    async {
+        let! (exitCode, output : string, _error : string) = a
+        if exitCode <> 0 then return exitCode else return! f output
+    }
+
+let runCmd file (arguments : string) =
+    async {
+        let! result = Cli.Wrap(file).WithArguments(arguments).ExecuteAsync().Task |> Async.AwaitTask
+        return result.ExitCode
+    }
+
+let git (arguments : string) =
+    async {
+        let! result =
+            Cli.Wrap("git").WithArguments(arguments).WithWorkingDirectory(
+                __SOURCE_DIRECTORY__
+            )
+                .ExecuteBufferedAsync()
+                .Task
+            |> Async.AwaitTask
+        return result.ExitCode, result.StandardOutput.Trim (), result.StandardError
+    }
+
+let fsharpExtensions = set [| ".fs" ; ".fsx" ; ".fsi" |]
+
+let isFSharpFile (f : string) =
+    Set.contains (Path.GetExtension (f)) fsharpExtensions
+
+let checkChangedFiles () =
+    git "diff --name-only main"
+    >>= (fun (output : string) ->
+        let fsharpFiles =
+            output.Split '\n' |> Array.filter isFSharpFile |> String.concat " "
+
+        runCmd "dotnet" $"fantomas --check {fsharpFiles}"
+    )
 
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
@@ -23,7 +64,18 @@ pipeline "Build" {
     }
     stage "lint" {
         run "dotnet tool restore"
-        run "dotnet fantomas . -r --check"
+        run (fun _ ->
+            async {
+                return!
+                    git "branch --show-current"
+                    >>= (fun branchName ->
+                        if branchName = "main" then
+                            runCmd "dotnet" "fantomas . -r --check"
+                        else
+                            checkChangedFiles ()
+                    )
+            }
+        )
     }
     stage "build" {
         run "dotnet fsi ./docs/.style/style.fsx"
