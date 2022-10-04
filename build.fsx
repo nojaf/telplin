@@ -8,21 +8,9 @@ open CliWrap.Buffered
 
 let (</>) a b = Path.Combine (a, b)
 
-let (>>=) a f =
-    async {
-        let! (exitCode, output : string, _error : string) = a
-        if exitCode <> 0 then return exitCode else return! f output
-    }
-
 let runCmd file (arguments : string) =
     async {
-        let! result =
-            Cli.Wrap(file).WithArguments(arguments).WithValidation(
-                CommandResultValidation.None
-            )
-                .ExecuteAsync()
-                .Task
-            |> Async.AwaitTask
+        let! result = Cli.Wrap(file).WithArguments(arguments).ExecuteAsync().Task |> Async.AwaitTask
         return result.ExitCode
     }
 
@@ -32,28 +20,16 @@ let git (arguments : string) =
             Cli.Wrap("git").WithArguments(arguments).WithWorkingDirectory(
                 __SOURCE_DIRECTORY__
             )
-                .WithValidation(
-                CommandResultValidation.None
-            )
                 .ExecuteBufferedAsync()
                 .Task
             |> Async.AwaitTask
-        return result.ExitCode, result.StandardOutput.Trim (), result.StandardError
+        return result.StandardOutput.Trim ()
     }
 
 let fsharpExtensions = set [| ".fs" ; ".fsx" ; ".fsi" |]
 
 let isFSharpFile (f : string) =
     Set.contains (Path.GetExtension (f)) fsharpExtensions
-
-let checkChangedFiles () =
-    git "diff --name-only main"
-    >>= (fun (output : string) ->
-        let fsharpFiles =
-            output.Split '\n' |> Array.filter isFSharpFile |> String.concat " "
-
-        runCmd "dotnet" $"fantomas --check {fsharpFiles}"
-    )
 
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
@@ -75,14 +51,15 @@ pipeline "Build" {
         run "dotnet tool restore"
         run (fun _ ->
             async {
-                return!
-                    git "branch --show-current"
-                    >>= (fun branchName ->
-                        if branchName = "main" then
-                            runCmd "dotnet" "fantomas . -r --check"
-                        else
-                            checkChangedFiles ()
-                    )
+                let! branchName = git "branch --show-current"
+                if branchName = "main" then
+                    return! runCmd "dotnet" "fantomas . -r --check"
+                else
+                    let! branchingPoint = git "merge-base main HEAD"
+                    let! output = git $"diff --name-only {branchingPoint}"
+                    let fsharpFiles =
+                        output.Split '\n' |> Array.filter isFSharpFile |> String.concat " "
+                    return! runCmd "dotnet" $"fantomas --check {fsharpFiles}"
             }
         )
     }
