@@ -16,7 +16,13 @@ let (>>=) a f =
 
 let runCmd file (arguments : string) =
     async {
-        let! result = Cli.Wrap(file).WithArguments(arguments).ExecuteAsync().Task |> Async.AwaitTask
+        let! result =
+            Cli.Wrap(file).WithArguments(arguments).WithValidation(
+                CommandResultValidation.None
+            )
+                .ExecuteAsync()
+                .Task
+            |> Async.AwaitTask
         return result.ExitCode
     }
 
@@ -25,6 +31,9 @@ let git (arguments : string) =
         let! result =
             Cli.Wrap("git").WithArguments(arguments).WithWorkingDirectory(
                 __SOURCE_DIRECTORY__
+            )
+                .WithValidation(
+                CommandResultValidation.None
             )
                 .ExecuteBufferedAsync()
                 .Task
