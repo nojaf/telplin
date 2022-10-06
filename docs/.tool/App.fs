@@ -310,7 +310,7 @@ Issue created from [telplin-online]({location.href})
             ]
             div [ Id "info" ; ClassName $"{Bootstrap.BgLight} {Bootstrap.P3}" ] [
                 str
-                    "Welcome to the Telplin online tool. The goal of this tool is to report issues for scenario's where a signature file cannot be generated."
+                    "Welcome to the Telplin online tool. The goal of this tool is to report issues for scenarios where a signature file cannot be generated."
                 br []
                 str "Most "
                 code [] [ str "System" ]
@@ -325,7 +325,7 @@ Issue created from [telplin-online]({location.href})
                 strong [] [ str "validated" ]
                 str " against the implementation code."
                 br []
-                str "The initial request might could take some time."
+                str "The initial request might take some time."
             ]
         ]
         if not model.IsLoading then

@@ -37,7 +37,7 @@ This improvement can make the IDE feel a lot snappier when working in a large co
 
 ### Compilation improvement
 
-In [dotnet/fsharp#13737](https://github.com/dotnet/fsharp/pull/13737), a similar feature was introduced to optimized the compiler. If an implementation file is backed by a signature file, the verification of whether the implementation and its signature match will be done in parallel.  
+In [dotnet/fsharp#13737](https://github.com/dotnet/fsharp/pull/13737), a similar feature was introduced to optimize the compiler. If an implementation file is backed by a signature file, the verification of whether the implementation and its signature match will be done in parallel.  
 This can be enabled by adding `<OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>` to your `fsproj`.
 
 ## Why this tool?
