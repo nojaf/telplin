@@ -35,9 +35,9 @@ Contains some shared types and interfaces.
 
 ### Teplin.UntypedTree
 
-Has a reference to [Fantomas.Core](https://www.nuget.org/packages/Fantomas.Core) and processed the `untyped` tree.
+Has a reference to [Fantomas.Core](https://www.nuget.org/packages/Fantomas.Core) and processes the `untyped` tree.
 Note that Fantomas does not use [FSharp.Compiler.Service](https://www.nuget.org/packages/FSharp.Compiler.Service).  
-The `untyped` tree types that `Fantomas.FCS` exposes are near identical to `FCS` but are not binary compatible.
+The `untyped` tree types that `Fantomas.FCS` exposes are nearly identical to `FCS` but are not binary compatible.
 
 In short, Fantomas needs *Fantomas flavoured* AST to produce source code and that is why there is a strict boundary drawn between the `untyped` and `typed` trees.
 
@@ -54,7 +54,7 @@ Orchestrates the processing of both syntax trees.
 
 A command line tool application that reads a [MSBuild binlog file](https://msbuildlog.com/#usingbl) and can generate signatures.  
 The main reason to use a `binlog` file, is that Telplin needs the compiler options to get the `typed` tree.  
-Another benefit would be the insurance that all referenced project are built and available.
+Another benefit would be the insurance that all referenced projects are built and available.
 
 ### Telplin.Lambda
 
