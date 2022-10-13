@@ -22,10 +22,10 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <WarningsAsErrors>FS0025</WarningsAsErrors>
+        <OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="6.0.6" />
