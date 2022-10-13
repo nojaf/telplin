@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
-        <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
         <IsPackable>true</IsPackable>
     </PropertyGroup>
 
