@@ -500,6 +500,8 @@ and mkSynTypForSignatureBasedOnTypedTree
             |> List.choose (fun c ->
                 if c.IsEqualityConstraint then
                     Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
+                elif c.IsComparisonConstraint then
+                    Some (SynTypeConstraint.WhereTyparIsComparable (typar, zeroRange))
                 elif c.IsReferenceTypeConstraint then
                     Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
                 elif c.IsSupportsNullConstraint then

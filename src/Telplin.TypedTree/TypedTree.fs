@@ -78,6 +78,7 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                             |> Seq.map (fun c ->
                                 {
                                     IsEqualityConstraint = c.IsEqualityConstraint
+                                    IsComparisonConstraint = c.IsComparisonConstraint
                                     IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
                                     IsSupportsNullConstraint = c.IsSupportsNullConstraint
                                     CoercesToTarget =

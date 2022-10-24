@@ -816,6 +816,20 @@ val memoizeBy: g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b) when 'c: equality
 """
 
 [<Test>]
+let ``implicit comparison constraint in binding`` () =
+    assertSignature
+        """
+module List2D
+
+let minBy f = List.map (List.minBy f) >> List.minBy f
+"""
+        """
+module List2D
+
+val minBy: f: ('a -> 'b) -> ('a list list -> 'a) when 'b: comparison
+"""
+
+[<Test>]
 let ``parameter type with a #`` () =
     assertSignature
         """

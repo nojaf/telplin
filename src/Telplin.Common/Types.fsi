@@ -21,6 +21,7 @@ type GenericConstraintForParameter =
 and GenericConstraint =
     {
         IsEqualityConstraint : bool
+        IsComparisonConstraint : bool
         IsReferenceTypeConstraint : bool
         IsSupportsNullConstraint : bool
         CoercesToTarget : string option
