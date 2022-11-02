@@ -908,3 +908,17 @@ module F
 
 val minus: a: int -> b: int -> int
 """
+
+[<Test>]
+let ``member constraints`` () =
+    assertSignature
+        """
+module Telplin
+
+let inline sum xs = List.sum xs
+"""
+        """
+module Telplin
+
+val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
+"""

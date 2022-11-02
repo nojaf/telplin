@@ -9,7 +9,9 @@ open Telplin.Common
 open Telplin.UntypedTree.SourceParser
 
 let zeroRange : range = Range.Zero
+let zeroXml = FSharp.Compiler.Xml.PreXmlDoc.Empty
 let unitExpr : SynExpr = SynExpr.Const (SynConst.Unit, zeroRange)
+let emptyValInfo = SynValInfo ([], SynArgInfo ([], false, None))
 
 [<RequireQualifiedAccess>]
 type TypesFromPattern =
@@ -530,6 +532,69 @@ and mkSynTypForSignatureBasedOnTypedTree
                     |> Option.map (fun coercesToTarget ->
                         SynTypeConstraint.WhereTyparSubtypeOfType (typar, mkSynTypFromText coercesToTarget, zeroRange)
                     )
+                elif Option.isSome c.MemberConstraint then
+                    c.MemberConstraint
+                    |> Option.map (fun memberConstraintData ->
+                        let memberName =
+                            let text =
+                                let memberName =
+                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore memberConstraintData.MemberName
+
+                                if PrettyNaming.IsOperatorDisplayName memberName then
+                                    $"({memberName})"
+                                elif memberName = "get_Zero" then
+                                    "Zero"
+                                else
+                                    memberName
+
+                            SynIdent (
+                                Ident (memberConstraintData.MemberName, zeroRange),
+                                Some (IdentTrivia.OriginalNotation text)
+                            )
+
+                        let typ = mkSynTypFromText memberConstraintData.Type
+
+                        let trivia =
+                            { SynMemberFlagsTrivia.Zero with
+                                StaticRange =
+                                    if memberConstraintData.IsStatic then
+                                        Some zeroRange
+                                    else
+                                        None
+                                MemberRange = Some zeroRange
+                            }
+
+                        SynTypeConstraint.WhereTyparSupportsMember (
+                            [ SynType.Var (typar, zeroRange) ],
+                            SynMemberSig.Member (
+                                SynValSig (
+                                    [],
+                                    memberName,
+                                    SynValTyparDecls (None, true),
+                                    typ,
+                                    emptyValInfo,
+                                    false,
+                                    false,
+                                    zeroXml,
+                                    None,
+                                    None,
+                                    zeroRange,
+                                    SynValSigTrivia.Zero
+                                ),
+                                {
+                                    IsInstance = not memberConstraintData.IsStatic
+                                    IsDispatchSlot = false
+                                    IsOverrideOrExplicitImpl = false
+                                    IsFinal = false
+                                    GetterOrSetterIsCompilerGenerated = false
+                                    MemberKind = SynMemberKind.Member
+                                    Trivia = trivia
+                                },
+                                zeroRange
+                            ),
+                            zeroRange
+                        )
+                    )
                 else
                     None
             )
@@ -752,7 +817,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 SynIdent (ident, None),
                 SynValTyparDecls (None, true),
                 t,
-                SynValInfo ([], SynArgInfo ([], false, None)),
+                emptyValInfo,
                 false,
                 false,
                 xmlDoc,

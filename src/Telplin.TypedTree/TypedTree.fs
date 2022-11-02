@@ -76,16 +76,46 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                         let constraints =
                             gp.Constraints
                             |> Seq.map (fun c ->
+                                let memberConstraintData =
+                                    if not c.IsMemberConstraint then
+                                        None
+                                    else
+                                        let fullType =
+                                            let parameters =
+                                                c.MemberConstraintData.MemberArgumentTypes
+                                                |> Seq.map (fun at -> at.Format displayContext)
+                                                |> String.concat " * "
+
+                                            let rt = c.MemberConstraintData.MemberReturnType.Format displayContext
+
+                                            let arrow =
+                                                if Seq.isEmpty c.MemberConstraintData.MemberArgumentTypes then
+                                                    ""
+                                                else
+                                                    " -> "
+
+                                            $"{parameters} {arrow} {rt}".TrimStart ()
+
+                                        Some
+                                            {
+                                                IsStatic = c.MemberConstraintData.MemberIsStatic
+                                                MemberName = c.MemberConstraintData.MemberName
+                                                Type = fullType
+                                            }
+
+                                let coercesToTarget =
+                                    if c.IsCoercesToConstraint then
+                                        Some (c.CoercesToTarget.Format displayContext)
+                                    else
+                                        None
+
                                 {
                                     IsEqualityConstraint = c.IsEqualityConstraint
                                     IsComparisonConstraint = c.IsComparisonConstraint
                                     IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
                                     IsSupportsNullConstraint = c.IsSupportsNullConstraint
-                                    CoercesToTarget =
-                                        if c.IsCoercesToConstraint then
-                                            Some (c.CoercesToTarget.Format displayContext)
-                                        else
-                                            None
+                                    CoercesToTarget = coercesToTarget
+                                    MemberConstraint = memberConstraintData
                                 }
                             )
                             |> Seq.toList

@@ -25,6 +25,14 @@ and GenericConstraint =
         IsReferenceTypeConstraint : bool
         IsSupportsNullConstraint : bool
         CoercesToTarget : string option
+        MemberConstraint : MemberConstraintData option
+    }
+
+and MemberConstraintData =
+    {
+        IsStatic : bool
+        MemberName : string
+        Type : string
     }
 
 type BindingInfo = string * GenericConstraintForParameter list
