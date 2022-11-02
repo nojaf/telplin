@@ -315,6 +315,8 @@ and mkSynValSig
         match synBindingTrivia.LeadingKeyword with
         | SynLeadingKeyword.Member _
         | SynLeadingKeyword.StaticMember _
+        | SynLeadingKeyword.Default _
+        | SynLeadingKeyword.Override _
         | SynLeadingKeyword.New _ -> synBindingTrivia.LeadingKeyword
         | _ -> SynLeadingKeyword.Val zeroRange
 

@@ -99,6 +99,53 @@ type Foo =
 """
 
 [<Test>]
+let ``Abstract member with default implementation`` () =
+    assertSignature
+        """
+namespace Telplin
+
+type Base() =
+    abstract member F: int -> int
+    default this.F x = 0
+"""
+        """
+namespace Telplin
+
+type Base =
+    new: unit -> Base
+    abstract member F: int -> int
+    default F: x: int -> int
+"""
+
+[<Test>]
+let ``Derived class with member override`` () =
+    assertSignature
+        """
+namespace Telplin
+
+[<AbstractClass>]
+type Base() =
+    abstract member F: int -> int
+
+type T() =
+    inherit Base()
+    override this.F x = 1
+"""
+        """
+namespace Telplin
+
+[<AbstractClass>]
+type Base =
+    new: unit -> Base
+    abstract member F: int -> int
+
+type T =
+    new: unit -> T
+    inherit Base
+    override F: x: int -> int
+"""
+
+[<Test>]
 let ``type extension`` () =
     assertSignature
         """
