@@ -214,8 +214,7 @@ and mkSynModuleOrNamespaceSig
 
     let trivia : SynModuleOrNamespaceSigTrivia =
         {
-            ModuleKeyword = synModuleOrNamespaceTrivia.ModuleKeyword
-            NamespaceKeyword = synModuleOrNamespaceTrivia.NamespaceKeyword
+            LeadingKeyword = synModuleOrNamespaceTrivia.LeadingKeyword
         }
 
     SynModuleOrNamespaceSig (
@@ -266,23 +265,24 @@ and mkSynValSig
                  synExpr,
                  _range,
                  _debugPointAtBinding,
-                 _synBindingTrivia))
+                 synBindingTrivia))
     : SynValSig
     =
-    let ident, mBindingName, argPats, constraintsFromSource, vis =
+    let ident, mBindingName, argPats, constraintsFromSource, vis, hasExtraIdent =
         match headPat with
         | SynPat.LongIdent (longDotId = longDotId
                             argPats = SynArgPats.Pats argPats
                             typarDecls = constraints
-                            accessibility = vis) ->
+                            accessibility = vis
+                            extraId = extraId) ->
             let identTrivia = List.tryLast longDotId.Trivia
             let lastIdent = (List.last longDotId.LongIdent)
             let mBindingName = lastIdent.idRange
 
-            SynIdent (lastIdent, identTrivia), mBindingName, argPats, constraints, vis
+            SynIdent (lastIdent, identTrivia), mBindingName, argPats, constraints, vis, Option.isSome extraId
 
         | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
-            synIdent, ident.idRange, [], None, vis
+            synIdent, ident.idRange, [], None, vis, false
 
         | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
 
@@ -311,6 +311,13 @@ and mkSynValSig
         | Some c -> c
         | None -> SynValTyparDecls (None, false)
 
+    let leadingKeyword =
+        match synBindingTrivia.LeadingKeyword with
+        | SynLeadingKeyword.Member _
+        | SynLeadingKeyword.StaticMember _
+        | SynLeadingKeyword.New _ -> synBindingTrivia.LeadingKeyword
+        | _ -> SynLeadingKeyword.Val zeroRange
+
     SynValSig (
         synAttributeLists,
         ident,
@@ -325,8 +332,8 @@ and mkSynValSig
         expr,
         zeroRange,
         {
-            ValKeyword = Some zeroRange
-            WithKeyword = None
+            LeadingKeyword = leadingKeyword
+            WithKeyword = if hasExtraIdent then Some zeroRange else None
             EqualsRange = None
         }
     )
@@ -554,18 +561,19 @@ and mkSynTypForSignatureBasedOnTypedTree
 
                         let typ = mkSynTypFromText memberConstraintData.Type
 
-                        let trivia =
-                            { SynMemberFlagsTrivia.Zero with
-                                StaticRange =
+                        let trivia : SynValSigTrivia =
+                            {
+                                LeadingKeyword =
                                     if memberConstraintData.IsStatic then
-                                        Some zeroRange
+                                        SynLeadingKeyword.StaticMember (zeroRange, zeroRange)
                                     else
-                                        None
-                                MemberRange = Some zeroRange
+                                        SynLeadingKeyword.Member zeroRange
+                                WithKeyword = None
+                                EqualsRange = None
                             }
 
                         SynTypeConstraint.WhereTyparSupportsMember (
-                            [ SynType.Var (typar, zeroRange) ],
+                            SynType.Var (typar, zeroRange),
                             SynMemberSig.Member (
                                 SynValSig (
                                     [],
@@ -579,7 +587,7 @@ and mkSynTypForSignatureBasedOnTypedTree
                                     None,
                                     None,
                                     zeroRange,
-                                    SynValSigTrivia.Zero
+                                    trivia
                                 ),
                                 {
                                     IsInstance = not memberConstraintData.IsStatic
@@ -588,7 +596,6 @@ and mkSynTypForSignatureBasedOnTypedTree
                                     IsFinal = false
                                     GetterOrSetterIsCompilerGenerated = false
                                     MemberKind = SynMemberKind.Member
-                                    Trivia = trivia
                                 },
                                 zeroRange
                             ),
@@ -690,7 +697,7 @@ and mkSynTypeDefnSig
         zeroRange,
         {
             EqualsRange = trivia.EqualsRange
-            TypeKeyword = trivia.TypeKeyword
+            LeadingKeyword = trivia.LeadingKeyword
             WithKeyword = withKeyword
         }
     )
@@ -765,21 +772,21 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
 
         let valSig =
             // This doesn't need to be correct for Fantomas
-            let valInfo = SynValInfo ([], SynArgInfo ([], false, None))
-
             SynValSig (
                 synAttributeLists,
                 mkSynIdent "new",
                 SynValTyparDecls (None, false),
                 t,
-                valInfo,
+                emptyValInfo,
                 false,
                 false,
                 preXmlDoc,
                 vis,
                 None,
                 zeroRange,
-                SynValSigTrivia.Zero
+                { SynValSigTrivia.Zero with
+                    LeadingKeyword = SynLeadingKeyword.New zeroRange
+                }
             )
 
         Some (
@@ -792,7 +799,6 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     IsFinal = false
                     GetterOrSetterIsCompilerGenerated = false
                     MemberKind = SynMemberKind.Constructor
-                    Trivia = SynMemberFlagsTrivia.Zero
                 },
                 zeroRange
             )
@@ -824,7 +830,9 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 vis,
                 None,
                 zeroRange,
-                SynValSigTrivia.Zero
+                { SynValSigTrivia.Zero with
+                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
+                }
             )
 
         Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
@@ -879,8 +887,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     None,
                     zeroRange,
                     {
-                        ValKeyword = Some zeroRange
-                        WithKeyword = None
+                        LeadingKeyword = SynLeadingKeyword.Member zeroRange
+                        WithKeyword = Some zeroRange
                         EqualsRange = None
                     }
                 )
@@ -909,8 +917,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 None,
                 zeroRange,
                 {
-                    ValKeyword = Some zeroRange
-                    WithKeyword = None
+                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
+                    WithKeyword = Some zeroRange
                     EqualsRange = None
                 }
             )
@@ -946,8 +954,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 None,
                 zeroRange,
                 {
-                    ValKeyword = Some zeroRange
-                    WithKeyword = None
+                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
+                    WithKeyword = Some zeroRange
                     EqualsRange = None
                 }
             )
