@@ -99,7 +99,7 @@ type Foo =
 """
 
 [<Test>]
-let ``Abstract member with default implementation`` () =
+let ``abstract member with default implementation`` () =
     assertSignature
         """
 namespace Telplin
@@ -118,7 +118,7 @@ type Base =
 """
 
 [<Test>]
-let ``Derived class with member override`` () =
+let ``derived class with member override`` () =
     assertSignature
         """
 namespace Telplin
