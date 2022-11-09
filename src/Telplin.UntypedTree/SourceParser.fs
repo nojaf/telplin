@@ -20,12 +20,12 @@ let (|TupleTypes|) ts =
 
 let (|NamedPat|_|) p =
     match p with
-    | SynPat.Named(ident = SynIdent (ident, _)) -> Some ident
+    | SynPat.Named (ident = SynIdent (ident, _)) -> Some ident
     | _ -> None
 
 let (|IdentType|_|) text t =
     match t with
-    | SynType.LongIdent (SynLongIdent(id = [ ident ])) when ident.idText = text -> Some t
+    | SynType.LongIdent (SynLongIdent (id = [ ident ])) when ident.idText = text -> Some t
     | _ -> None
 
 let (|LongIdentType|_|) t =
@@ -71,28 +71,28 @@ let (|ForceMemberFlags|) (nodeName : string) (mf : SynMemberFlags option) =
 
 let (|GetMemberLongIdentPat|_|) p =
     match p with
-    | SynPat.LongIdent (longDotId = SynLongIdent(id = [ _thisIdent ; propertyNameIdent ])
-                        extraId = Some _
-                        accessibility = vis
-                        argPats = SynArgPats.Pats [ ParenPat (SynPat.Const (SynConst.Unit, _)) ]) ->
-        Some (propertyNameIdent, vis)
+    | SynPat.LongIdent (
+        longDotId = SynLongIdent (id = [ _thisIdent ; propertyNameIdent ])
+        extraId = Some _
+        accessibility = vis
+        argPats = SynArgPats.Pats [ ParenPat (SynPat.Const (SynConst.Unit, _)) ]) -> Some (propertyNameIdent, vis)
     | _ -> None
 
 let (|SetMemberLongIdentPat|_|) p =
     match p with
-    | SynPat.LongIdent (longDotId = SynLongIdent(id = [ _thisIdent ; nameIdent ]) ; argPats = SynArgPats.Pats [ _ ]) ->
+    | SynPat.LongIdent (longDotId = SynLongIdent (id = [ _thisIdent ; nameIdent ]) ; argPats = SynArgPats.Pats [ _ ]) ->
         Some nameIdent
     | _ -> None
 
 let (|SimpleGetSetBinding|_|) (md : SynMemberDefn) =
     match md with
-    | SynMemberDefn.GetSetMember (Some (SynBinding (headPat = GetMemberLongIdentPat (nameIdent, _vis)
-                                                    valData = (SynValData(memberFlags = ForceMemberFlags "SimpleGetSetBinding"
-                                                                                                         mf)) as synValData
-                                                    attributes = attributes
-                                                    xmlDoc = xmlDoc
-                                                    accessibility = vis)),
-                                  Some (SynBinding(headPat = SetMemberLongIdentPat _alsoNameIdent)),
+    | SynMemberDefn.GetSetMember (Some (SynBinding (
+                                      headPat = GetMemberLongIdentPat (nameIdent, _vis)
+                                      valData = (SynValData (memberFlags = ForceMemberFlags "SimpleGetSetBinding" mf)) as synValData
+                                      attributes = attributes
+                                      xmlDoc = xmlDoc
+                                      accessibility = vis)),
+                                  Some (SynBinding (headPat = SetMemberLongIdentPat _alsoNameIdent)),
                                   _,
                                   _) ->
         Some (
@@ -109,18 +109,17 @@ let (|SimpleGetSetBinding|_|) (md : SynMemberDefn) =
 
 let (|IndexedGetSetBinding|_|) (md : SynMemberDefn) =
     match md with
-    | SynMemberDefn.GetSetMember (Some (SynBinding (headPat = SynPat.LongIdent(argPats = SynArgPats.Pats [ getIndexPat ]) & SynPat.LongIdent(longDotId = SynLongIdent(id = [ _thisIdent
-                                                                                                                                                                             propertyNameIdent ]))
-                                                    valData = (SynValData(memberFlags = ForceMemberFlags "IndexedGetSetBinding"
-                                                                                                         mf)) as synValData
-                                                    attributes = attributes
-                                                    xmlDoc = xmlDoc
-                                                    accessibility = vis)),
-                                  (Some (SynBinding(headPat = SynPat.LongIdent (longDotId = SynLongIdent(id = [ _ ; _ ])
-                                                                                argPats = SynArgPats.Pats [ SynPat.Tuple (_,
-                                                                                                                          [ setIndexPat
-                                                                                                                            _ ],
-                                                                                                                          _) ])))),
+    | SynMemberDefn.GetSetMember (Some (SynBinding (
+                                      headPat = SynPat.LongIdent (argPats = SynArgPats.Pats [ getIndexPat ]) & SynPat.LongIdent (
+                                          longDotId = SynLongIdent (id = [ _thisIdent ; propertyNameIdent ]))
+                                      valData = (SynValData (memberFlags = ForceMemberFlags "IndexedGetSetBinding" mf)) as synValData
+                                      attributes = attributes
+                                      xmlDoc = xmlDoc
+                                      accessibility = vis)),
+                                  (Some (SynBinding (
+                                      headPat = SynPat.LongIdent (
+                                          longDotId = SynLongIdent (id = [ _ ; _ ])
+                                          argPats = SynArgPats.Pats [ SynPat.Tuple (_, [ setIndexPat ; _ ], _) ])))),
                                   _,
                                   _) ->
 
