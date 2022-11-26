@@ -19,6 +19,19 @@ type TypesFromPattern =
     | HasNoParameters
     | HasParameters of types : SynType list
 
+[<RequireQualifiedAccess>]
+type TypeContext =
+    {
+        TypeIdent : LongIdent
+        TyparMap : Map<string, Ident>
+    }
+
+    static member Empty =
+        {
+            TypeContext.TypeIdent = []
+            TypeContext.TyparMap = Map.empty
+        }
+
 let rec mkSynTypeFun (types : SynType list) : SynType =
     match types with
     | [] -> failwith "unexpected empty list"
@@ -235,7 +248,7 @@ and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl)
     | SynModuleDecl.Let (_, bindings, _) ->
         bindings
         |> List.map (fun binding ->
-            let valSig = mkSynValSig resolver binding
+            let valSig = mkSynValSig resolver TypeContext.Empty binding
             SynModuleSigDecl.Val (valSig, zeroRange)
         )
     | SynModuleDecl.Open (synOpenDeclTarget, _range) -> [ SynModuleSigDecl.Open (synOpenDeclTarget, zeroRange) ]
@@ -254,6 +267,7 @@ and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl)
 
 and mkSynValSig
     (resolver : TypedTreeInfoResolver)
+    (typeContext : TypeContext)
     (SynBinding (_synAccessOption,
                  _synBindingKind,
                  isInline,
@@ -306,7 +320,13 @@ and mkSynValSig
         | _ -> None
 
     let t =
-        mkSynTypForSignature returnTypeText resolvedConstraints constraintsFromSource argPats returnTypeInImpl
+        mkSynTypForSignature
+            typeContext
+            returnTypeText
+            resolvedConstraints
+            constraintsFromSource
+            argPats
+            returnTypeInImpl
 
     let synValTyparDecls =
         match constraintsFromSource with
@@ -343,6 +363,7 @@ and mkSynValSig
     )
 
 and mkSynTypForSignature
+    (typeContext : TypeContext)
     returnTypeText
     resolvedConstraints
     constraintsFromSource
@@ -361,6 +382,7 @@ and mkSynTypForSignature
         mkSynTypForSignatureBasedOnUntypedTree argPats returnType
     | _ ->
         mkSynTypForSignatureBasedOnTypedTree
+            typeContext
             returnTypeText
             resolvedConstraints
             constraintsFromSource
@@ -381,6 +403,7 @@ and mkSynTypForSignatureBasedOnUntypedTree (argPats : SynPat list) (returnType :
     |> mkSynTypeFun
 
 and mkSynTypForSignatureBasedOnTypedTree
+    (typeContext : TypeContext)
     returnTypeText
     resolvedConstraints
     constraintsFromSource
@@ -411,6 +434,33 @@ and mkSynTypForSignatureBasedOnTypedTree
                         List.skip argPats.Length ts |> mkSynTypeFun |> wrapInParenWhenFunType
 
                     [ yield! parameterTypes ; yield returnType ]
+
+        let ts =
+            match typeContext.TyparMap with
+            | typarMap when typarMap.IsEmpty -> ts
+            | typarMap ->
+                let rec mapOriginalToExtensionTypar (t : SynType) =
+                    match t with
+                    | SynType.Var (SynTypar (originalTyparIdent, tsr, icg), _) ->
+                        let extensionTyparIdent =
+                            typarMap.TryFind originalTyparIdent.idText
+                            |> Option.defaultValue originalTyparIdent
+
+                        SynType.Var (SynTypar (extensionTyparIdent, tsr, icg), originalTyparIdent.idRange) // or zeroRange? or Proxy?
+                    | SynType.App (ty, _, typeArgs, _, _, isPostfix, _) ->
+                        let mappedTypeArgs = typeArgs |> List.map mapOriginalToExtensionTypar
+                        SynType.App (ty, None, mappedTypeArgs, [ zeroRange ], None, isPostfix, zeroRange)
+                    | SynType.Tuple (isStruct, path, _) ->
+                        let mapSegment p =
+                            match p with
+                            | SynTupleTypeSegment.Type t -> SynTupleTypeSegment.Type (mapOriginalToExtensionTypar t)
+                            | _ -> p
+
+                        SynType.Tuple (isStruct, path |> List.map mapSegment, zeroRange)
+                    | SynType.LongIdent _ -> t
+                    | _ -> failwith $"unexpected SynType case other than Var/App/Tuple/LongIdent" //TODO: handle all cases
+
+                ts |> List.map mapOriginalToExtensionTypar
 
         let ps =
             [
@@ -495,6 +545,7 @@ and mkSynTypForSignatureBasedOnTypedTree
 
     let constraints =
         resolvedConstraints
+        |> List.filter (fun rc -> not (Map.containsKey rc.ParameterName typeContext.TyparMap))
         |> List.collect (fun rc ->
             let typarStaticReq =
                 if rc.IsHeadType then
@@ -615,7 +666,7 @@ and mkSynTypForSignatureBasedOnTypedTree
 
 and mkSynTypeDefnSig
     resolver
-    (SynTypeDefn (SynComponentInfo (longId = typeInfo) as componentInfo,
+    (SynTypeDefn (SynComponentInfo (longId = typeInfo ; typeParams = typeParams) as componentInfo,
                   typeRepr,
                   members,
                   implicitConstructor,
@@ -623,6 +674,32 @@ and mkSynTypeDefnSig
                   trivia))
     : SynTypeDefnSig
     =
+    let typeContext =
+        {
+            TypeContext.TypeIdent = typeInfo
+            TypeContext.TyparMap =
+                let originalTyparNames =
+                    match typeRepr with
+                    | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _) ->
+                        resolver.GetTypeTyparNames typeInfo.Head.idRange.Proxy
+                    | _ -> []
+
+                match originalTyparNames with
+                | [] -> Map.empty
+                | _ ->
+                    let extensionTyparIdents =
+                        match typeParams with
+                        | Some tps ->
+                            tps.TyparDecls
+                            |> List.map (fun (SynTyparDecl (_, SynTypar (ident, _, _))) -> ident)
+                        | _ -> []
+
+                    if extensionTyparIdents.Length <> originalTyparNames.Length then
+                        failwith $"unexpected difference in typar count"
+                    else
+                        List.zip originalTyparNames extensionTyparIdents |> Map
+        }
+
     let typeSigRepr =
         match typeRepr with
         | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
@@ -631,7 +708,7 @@ and mkSynTypeDefnSig
         | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _synMemberDefns, _range) ->
             SynTypeDefnSigRepr.Simple (SynTypeDefnSimpleRepr.None zeroRange, zeroRange)
         | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, _range) ->
-            let members = List.choose (mkSynMemberSig resolver typeInfo) synMemberDefns
+            let members = List.choose (mkSynMemberSig resolver typeContext) synMemberDefns
             SynTypeDefnSigRepr.ObjectModel (synTypeDefnKind, members, zeroRange)
         | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
 
@@ -640,7 +717,7 @@ and mkSynTypeDefnSig
         | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _) -> Some zeroRange
         | _ -> trivia.WithKeyword
 
-    let members = members |> List.choose (mkSynMemberSig resolver typeInfo)
+    let members = members |> List.choose (mkSynMemberSig resolver typeContext)
 
     let componentInfo =
         match typeRepr with
@@ -708,9 +785,10 @@ and mkSynTypeDefnSig
 
 and mkSynExceptionDefn resolver (SynExceptionDefn (synExceptionDefnRepr, withKeyword, synMemberDefns, _range)) =
     let (SynExceptionDefnRepr (longId = longId)) = synExceptionDefnRepr
-    let longId = Option.defaultValue [] longId
 
-    let members = List.choose (mkSynMemberSig resolver longId) synMemberDefns
+    let typeContext = TypeContext.Empty
+
+    let members = List.choose (mkSynMemberSig resolver typeContext) synMemberDefns
     SynExceptionSig (synExceptionDefnRepr, withKeyword, members, zeroRange)
 
 and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia : SynModuleSigDecl =
@@ -727,14 +805,14 @@ and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModu
         }
     )
 
-and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMemberSig option =
+and mkSynMemberSig resolver (typeContext : TypeContext) (md : SynMemberDefn) : SynMemberSig option =
     match md with
     | SynMemberDefn.ValField (fieldInfo, _range) -> Some (SynMemberSig.ValField (fieldInfo, zeroRange))
 
     | SynMemberDefn.Member (SynBinding (
                                 valData = SynValData (memberFlags = ForceMemberFlags "SynMemberDefn.Member" memberFlags)) as binding,
                             _range) ->
-        let valSig = mkSynValSig resolver binding
+        let valSig = mkSynValSig resolver typeContext binding
         Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
 
     | SynMemberDefn.AbstractSlot (synValSig, synMemberFlags, _range) ->
@@ -747,6 +825,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
 
     | SynMemberDefn.ImplicitCtor (vis, synAttributeLists, synSimplePats, _selfIdentifier, preXmlDoc, _range) ->
         let t =
+            let typeIdent = typeContext.TypeIdent
             let { ConstructorInfo = ctor } = resolver.GetTypeInfo typeIdent.Head.idRange.Proxy
 
             let returnType =
@@ -767,6 +846,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     | SynSimplePats.Typed _ -> []
 
                 mkSynTypForSignatureBasedOnTypedTree
+                    TypeContext.Empty
                     signatureText
                     resolvedGenericParameters
                     None
@@ -857,7 +937,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 SynBinding (a, k, il, is, attrs, xml, vd, headPat, rto, e, r, d, t)
             | _ -> binding
 
-        let valSig = mkSynValSig resolver binding
+        let valSig = mkSynValSig resolver typeContext binding
         Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
 
     | SynMemberDefn.GetSetMember (None,
@@ -898,7 +978,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
 
             Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
         | _ ->
-            let valSig = mkSynValSig resolver binding
+            let valSig = mkSynValSig resolver typeContext binding
             Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
 
     // member Name: type with get, set

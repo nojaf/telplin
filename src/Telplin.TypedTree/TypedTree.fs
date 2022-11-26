@@ -170,9 +170,17 @@ let mkResolverFor sourceFileName sourceText projectOptions =
                 try
                     let valSymbol, displayContext = findSymbol bindingNameRange
                     mkBindingInfo displayContext valSymbol
-
                 with ex ->
                     printException ex bindingNameRange
+                    raise ex
+
+            member resolver.GetTypeTyparNames range =
+                try
+                    let typeSymbol, _ = findTypeSymbol range
+                    let getName (typar : FSharpGenericParameter) = typar.FullName
+                    typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList
+                with ex ->
+                    printException ex range
                     raise ex
         }
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
