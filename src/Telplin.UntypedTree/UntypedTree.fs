@@ -615,7 +615,7 @@ and mkSynTypForSignatureBasedOnTypedTree
 
 and mkSynTypeDefnSig
     resolver
-    (SynTypeDefn (SynComponentInfo (longId = typeInfo) as componentInfo,
+    (SynTypeDefn (SynComponentInfo (longId = typeInfo ; typeParams = typeParams) as componentInfo,
                   typeRepr,
                   members,
                   implicitConstructor,
@@ -623,6 +623,28 @@ and mkSynTypeDefnSig
                   trivia))
     : SynTypeDefnSig
     =
+    let typarMap =
+        let originalTyparNames =
+            match typeRepr with
+            | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _) ->
+                resolver.GetTypeTyparNames typeInfo.Head.idRange.Proxy
+            | _ -> []
+
+        match originalTyparNames with
+        | [] -> Map.empty
+        | _ ->
+            let extensionTyparIdents =
+                match typeParams with
+                | Some tps ->
+                    tps.TyparDecls
+                    |> List.map (fun (SynTyparDecl (_, SynTypar (ident, _, _))) -> ident)
+                | _ -> []
+
+            if extensionTyparIdents.Length <> originalTyparNames.Length then
+                failwith $"unexpected difference in typar count"
+            else
+                List.zip originalTyparNames extensionTyparIdents |> Map
+
     let typeSigRepr =
         match typeRepr with
         | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
@@ -641,6 +663,51 @@ and mkSynTypeDefnSig
         | _ -> trivia.WithKeyword
 
     let members = members |> List.choose (mkSynMemberSig resolver typeInfo)
+
+    let members =
+        if typarMap.IsEmpty then
+            members
+        else
+            let rec mapTypar (t : SynType) =
+                match t with
+                | SynType.LongIdent _ -> t
+                | SynType.App (ty, lr, typeArgs, cr, gr, isPostfix, r) ->
+                    SynType.App (ty, lr, typeArgs |> List.map mapTypar, cr, gr, isPostfix, r)
+                | SynType.Tuple (isStruct, path, r) ->
+                    let mapSegment p =
+                        match p with
+                        | SynTupleTypeSegment.Type t -> SynTupleTypeSegment.Type (mapTypar t)
+                        | _ -> p
+
+                    SynType.Tuple (isStruct, path |> List.map mapSegment, r)
+                | SynType.Fun (argType, returnType, range, trivia) ->
+                    SynType.Fun (mapTypar argType, mapTypar returnType, range, trivia)
+                | SynType.Var (SynTypar (originalTyparIdent, tsr, icg), _) ->
+                    let extensionTyparIdent =
+                        typarMap.TryFind originalTyparIdent.idText
+                        |> Option.defaultValue originalTyparIdent
+
+                    SynType.Var (SynTypar (extensionTyparIdent, tsr, icg), originalTyparIdent.idRange) // or zeroRange? or Proxy?
+                | SynType.WithGlobalConstraints (synType, constraints, range) ->
+                    let isNotConstraintForOriginalTypar c =
+                        match c with
+                        | TyparInConstraint (SynTypar (ident, _, _)) -> not <| typarMap.ContainsKey ident.idText
+                        | _ -> true
+
+                    let constraints = constraints |> List.filter isNotConstraintForOriginalTypar
+                    let synType = mapTypar synType
+                    SynType.WithGlobalConstraints (synType, constraints, range)
+                | SynType.SignatureParameter (attrs, optional, id, usedType, range) ->
+                    SynType.SignatureParameter (attrs, optional, id, mapTypar usedType, range)
+                | _ -> failwith $"unexpected / unhandled SynType case" //TODO: handle all relevant cases
+
+            let mapMember (m : SynMemberSig) =
+                match m with
+                | SynMemberSig.Member (SynValSig (a, i, e, synType, ar, ii, im, x, ac, s, r, t), f, rr) ->
+                    SynMemberSig.Member (SynValSig (a, i, e, mapTypar synType, ar, ii, im, x, ac, s, r, t), f, rr)
+                | _ -> failwith "unexpected SynMemberSig case"
+
+            members |> List.map mapMember
 
     let componentInfo =
         match typeRepr with

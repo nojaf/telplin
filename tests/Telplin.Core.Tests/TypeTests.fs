@@ -461,7 +461,6 @@ type AsyncMaybeBuilder =
 """
 
 [<Test>]
-[<Ignore "A bit tricky to get right">]
 let ``generic type extension`` () =
     assertSignature
         """
@@ -483,7 +482,7 @@ open System.Collections.Concurrent
 
 type ConcurrentDictionary<'key, 'value> with
 
-    member TryFind: key:'key -> 'value option
+    member TryFind: key: 'key -> 'value option
 """
 
 [<Test>]
