@@ -922,21 +922,3 @@ module Telplin
 
 val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
 """
-
-[<Test>]
-let ``extension member when the generic types have names other than the original`` () =
-    assertSignature
-        """
-module Telplin
-
-type Map<'K, 'V when 'K: comparison> with
-
-    member m.X (t: 'T) (k: 'K) = Some k, 0
-"""
-        """
-module Telplin
-
-type Map<'K, 'V when 'K: comparison> with
-
-    member X: t: 'T -> k: 'K -> 'K option * int
-"""
