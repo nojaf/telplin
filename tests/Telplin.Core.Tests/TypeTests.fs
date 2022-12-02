@@ -461,7 +461,6 @@ type AsyncMaybeBuilder =
 """
 
 [<Test>]
-[<Ignore "A bit tricky to get right">]
 let ``generic type extension`` () =
     assertSignature
         """
@@ -483,7 +482,43 @@ open System.Collections.Concurrent
 
 type ConcurrentDictionary<'key, 'value> with
 
-    member TryFind: key:'key -> 'value option
+    member TryFind: key: 'key -> 'value option
+"""
+
+[<Test>]
+let ``extension member when the type parameters have names other than the original`` () =
+    assertSignature
+        """
+module Extensions
+
+type List<'E> with
+
+    member this.X = this.Head
+"""
+        """
+module Extensions
+
+type List<'E> with
+
+    member X: 'E
+"""
+
+[<Test>]
+let ``extension member with additional type parameters and nested use of original typars`` () =
+    assertSignature
+        """
+module Telplin
+
+type Map<'K, 'V when 'K: comparison> with
+
+    member m.X (t: 'T) (k: 'K) = Some k, ({| n = [|k|] |}, 0)
+"""
+        """
+module Telplin
+
+type Map<'K, 'V when 'K: comparison> with
+
+    member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int)
 """
 
 [<Test>]

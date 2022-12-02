@@ -46,6 +46,7 @@ type TypeInfoResponse =
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
     abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo
+    abstract member GetTypeTyparNames : range : RangeProxy -> string list
 
 type FSharpDiagnosticInfoSeverity =
     | Warning = 0
