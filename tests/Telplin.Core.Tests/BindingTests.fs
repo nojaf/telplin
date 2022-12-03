@@ -339,7 +339,7 @@ let (|Red|Blue|Yellow|) b =
 module Colour
 
 open System
-val (|Red|Blue|Yellow|): b: int -> Choice<(string * DateTime), (float * char[]), byte list>
+val (|Red|Blue|Yellow|): b: int -> Choice<(string * DateTime), (float * char array), byte list>
 """
 
 [<Test>]
@@ -921,4 +921,32 @@ let inline sum xs = List.sum xs
 module Telplin
 
 val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
+"""
+
+[<Test>]
+let ``array in nested type`` () =
+    assertSignature
+        """
+module Telplin
+
+let v = [|0|], 0
+"""
+        """
+module Telplin
+
+val v: int array * int
+"""
+
+[<Test>]
+let ``multidimensional array`` () =
+    assertSignature
+        """
+module Telplin
+
+let v = array2D [ [ 1 ; 0 ] ; [ 0 ; 1 ] ]
+"""
+        """
+module Telplin
+
+val v: int[,]
 """

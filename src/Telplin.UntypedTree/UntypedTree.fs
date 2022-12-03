@@ -55,23 +55,28 @@ let mkSynLongIdent text =
 
 let mkSynTypeLongIdent text = SynType.LongIdent (mkSynLongIdent text)
 
+let rec applyRecursively (f : SynType -> SynType) (t : SynType) : SynType =
+    match t with
+    | IdentType "Int32" _ -> mkSynTypeLongIdent "int"
+    | SynType.App (t, lr, typeArgs, cr, gr, isp, r) -> SynType.App (f t, lr, List.map f typeArgs, cr, gr, isp, r)
+    | SynType.Tuple (isStruct, path, r) ->
+        let mapSegment p =
+            match p with
+            | SynTupleTypeSegment.Type t -> SynTupleTypeSegment.Type (f t)
+            | _ -> p
+
+        SynType.Tuple (isStruct, List.map mapSegment path, r)
+    | SynType.AnonRecd (i, fields, r) -> SynType.AnonRecd (i, List.map (fun (ident, t) -> ident, f t) fields, r)
+    | SynType.Array (1, t, r) -> SynType.App (mkSynTypeLongIdent "array", None, [ f t ], [], None, true, r)
+    | SynType.Array (rank, t, r) -> SynType.Array (rank, f t, r)
+    | SynType.Fun (argType, returnType, r, tr) -> SynType.Fun (f argType, f returnType, r, tr)
+    | SynType.Paren (t, range) -> SynType.Paren (f t, range)
+    | SynType.SignatureParameter (a, o, i, t, r) -> SynType.SignatureParameter (a, o, i, f t, r)
+    | _ -> t
+
 /// Clean up some less nice results from the typed tree.
 /// Change `Int32` to `int`, or `int[]` to `int array`.
-let rec sanitizeType (synType : SynType) : SynType =
-    match synType with
-    | IdentType "Int32" _ -> mkSynTypeLongIdent "int"
-    | SynType.Array (1, t, _) -> SynType.App (mkSynTypeLongIdent "array", None, [ t ], [], None, true, zeroRange)
-    | SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range) ->
-        SynType.App (
-            sanitizeType typeName,
-            rangeOption,
-            List.map sanitizeType typeArgs,
-            commaRanges,
-            greaterRange,
-            isPostfix,
-            range
-        )
-    | t -> t
+let rec sanitizeType (synType : SynType) : SynType = applyRecursively sanitizeType synType
 
 /// The type in the source code could have had more information
 /// For example: it could have been prefixed with a namespace
@@ -626,16 +631,16 @@ and mkSynTypeDefnSig
     let typarMap =
         match typeRepr, typeParams with
         | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _), Some tps ->
-            let originalTyparNames = resolver.GetTypeTyparNames typeInfo.Head.idRange.Proxy
+            let origTyparNames = resolver.GetTypeTyparNames typeInfo.Head.idRange.Proxy
 
-            let extensionTyparIdents =
+            let augmTyparIdents =
                 tps.TyparDecls
                 |> List.map (fun (SynTyparDecl (_, SynTypar (ident, _, _))) -> ident)
 
-            if extensionTyparIdents.Length <> originalTyparNames.Length then
+            if augmTyparIdents.Length <> origTyparNames.Length then
                 failwith "unexpected difference in typar count"
             else
-                List.zip originalTyparNames extensionTyparIdents |> Map
+                List.zip origTyparNames augmTyparIdents |> Map
         | _ -> Map.empty
 
     let typeSigRepr =
@@ -664,27 +669,9 @@ and mkSynTypeDefnSig
 
         let rec mapTypar (t : SynType) =
             match t with
-            | SynType.LongIdent _ -> t
-            | SynType.App (ty, lr, typeArgs, cr, gr, isPostfix, r) ->
-                SynType.App (ty, lr, typeArgs |> List.map mapTypar, cr, gr, isPostfix, r)
-            | SynType.Tuple (isStruct, path, r) ->
-                let mapSegment p =
-                    match p with
-                    | SynTupleTypeSegment.Type t -> SynTupleTypeSegment.Type (mapTypar t)
-                    | _ -> p
-
-                SynType.Tuple (isStruct, path |> List.map mapSegment, r)
-            | SynType.AnonRecd (isStruct, fields, range) ->
-                SynType.AnonRecd (isStruct, fields |> List.map (fun (ident, ty) -> ident, mapTypar ty), range)
-            | SynType.Array (rank, ty, range) -> SynType.Array (rank, mapTypar ty, range) |> sanitizeType
-            | SynType.Fun (argType, returnType, range, trivia) ->
-                SynType.Fun (mapTypar argType, mapTypar returnType, range, trivia)
-            | SynType.Var (SynTypar (originalTyparIdent, tsr, icg), _) ->
-                let extensionTyparIdent =
-                    typarMap.TryFind originalTyparIdent.idText
-                    |> Option.defaultValue originalTyparIdent
-
-                SynType.Var (SynTypar (extensionTyparIdent, tsr, icg), originalTyparIdent.idRange)
+            | SynType.Var (SynTypar (origTypar, tsr, icg), _) ->
+                let augmTypar = typarMap.TryFind origTypar.idText |> Option.defaultValue origTypar
+                SynType.Var (SynTypar (augmTypar, tsr, icg), origTypar.idRange)
             | SynType.WithGlobalConstraints (synType, constraints, range) ->
                 let isNotConstraintForOriginalTypar c =
                     match c with
@@ -692,12 +679,8 @@ and mkSynTypeDefnSig
                     | _ -> true
 
                 let constraints = constraints |> List.filter isNotConstraintForOriginalTypar
-                let synType = mapTypar synType
-                SynType.WithGlobalConstraints (synType, constraints, range)
-            | SynType.Paren (ty, range) -> SynType.Paren (mapTypar ty, range)
-            | SynType.SignatureParameter (attrs, optional, id, usedType, range) ->
-                SynType.SignatureParameter (attrs, optional, id, mapTypar usedType, range)
-            | _ -> failwith $"unexpected SynType case"
+                SynType.WithGlobalConstraints (mapTypar synType, constraints, range)
+            | _ -> applyRecursively mapTypar t
 
         let mapMember (m : SynMemberSig) =
             match m with
