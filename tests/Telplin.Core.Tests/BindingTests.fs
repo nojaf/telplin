@@ -936,3 +936,17 @@ module Telplin
 
 val v: int array * int
 """
+
+[<Test>]
+let ``multidimensional array`` () =
+    assertSignature
+        """
+module Telplin
+
+let v = array2D [ [ 1 ; 0 ] ; [ 0 ; 1 ] ]
+"""
+        """
+module Telplin
+
+val v: int[,]
+"""

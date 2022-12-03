@@ -67,7 +67,8 @@ let rec applyRecursively (f : SynType -> SynType) (t : SynType) : SynType =
 
         SynType.Tuple (isStruct, List.map mapSegment path, r)
     | SynType.AnonRecd (i, fields, r) -> SynType.AnonRecd (i, List.map (fun (ident, t) -> ident, f t) fields, r)
-    | SynType.Array (rank, t, r) -> SynType.App (mkSynTypeLongIdent "array", None, [ f t ], [], None, true, r)
+    | SynType.Array (1, t, r) -> SynType.App (mkSynTypeLongIdent "array", None, [ f t ], [], None, true, r)
+    | SynType.Array (rank, t, r) -> SynType.Array (rank, f t, r)
     | SynType.Fun (argType, returnType, r, tr) -> SynType.Fun (f argType, f returnType, r, tr)
     | SynType.Paren (t, range) -> SynType.Paren (f t, range)
     | SynType.SignatureParameter (a, o, i, t, r) -> SynType.SignatureParameter (a, o, i, f t, r)
