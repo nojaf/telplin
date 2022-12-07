@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,13 +13,13 @@
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="6.*" />
     <PackageReference Include="Fable.Browser.Url" Version="1.1.0" />
-    <PackageReference Include="Fable.Core" Version="3.*" />
+    <PackageReference Include="Fable.Core" Version="4.0.0-theta-007" />
     <PackageReference Include="Fable.Fetch" Version="2.6.0" />
-    <PackageReference Include="Fable.React" Version="8.*" />
-    <PackageReference Include="Feliz.CompilerPlugins" Version="1.*" />
-    <PackageReference Include="Feliz" Version="1.*" />
+    <PackageReference Include="Fable.React" Version="9.1.0" />
+    <PackageReference Include="Feliz.CompilerPlugins" Version="2.0.0-prerelease-003" />
+    <PackageReference Include="Feliz" Version="2.0.0-prerelease-003" />
     <PackageReference Include="Feliz.UseElmish" Version="1.6.0" />
-    <PackageReference Include="Thoth.Json" Version="7.0.0" />
+    <PackageReference Include="Thoth.Json" Version="9.0.0" />
     <PackageReference Include="Zanaptak.TypedCssClasses" Version="1.*" />
   </ItemGroup>
 

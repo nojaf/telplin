@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "fantomas": {
-      "version": "5.1.1",
+      "version": "5.1.4",
       "commands": [
         "fantomas"
       ]
@@ -21,13 +21,13 @@
       ]
     },
     "fable": {
-      "version": "3.7.18",
+      "version": "4.0.0-theta-018",
       "commands": [
         "fable"
       ]
     },
     "fsdocs-tool": {
-      "version": "16.1.1",
+      "version": "17.1.0",
       "commands": [
         "fsdocs"
       ]
