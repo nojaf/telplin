@@ -6,7 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="OptionCE.fs" />
         <Compile Include="Options.fsi" />
         <Compile Include="Options.fs" />
         <Compile Include="TypedTree.fsi" />
