@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 17-12-22
 
 ### Fixed
 * `[<Class>]` should not be added twice. [#1](https://github.com/nojaf/telplin/issues/1)
