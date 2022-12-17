@@ -4,7 +4,6 @@ open System
 open System.IO
 open Microsoft.Build.Logging.StructuredLogger
 open FSharp.Compiler.CodeAnalysis
-open Telplin.OptionCE
 
 let fsharpFiles = set [| ".fs" ; ".fsi" ; ".fsx" |]
 
@@ -14,52 +13,43 @@ let isFSharpFile (file : string) =
 let readCompilerArgsFromBinLog file =
     let build = BinaryLog.ReadBuild file
 
-    let rebuild (build : Build) =
+    let projectName =
         build.Children
-        |> Seq.tryPick (
+        |> Seq.choose (
             function
-            | :? Project as p when (p.TargetsText = "Rebuild") -> Some p
+            | :? Project as p -> Some p.Name
             | _ -> None
         )
-
-    let coreCompile (project : Project) =
-        project.Children
-        |> Seq.tryPick (
-            function
-            | :? Target as t when (t.Name = "CoreCompile") -> Some t
-            | _ -> None
-        )
-
-    let fscTask (target : Target) =
-        target.Children
-        |> Seq.tryPick (
-            function
-            | :? FscTask as fsc -> Some fsc
-            | _ -> None
-        )
+        |> Seq.distinct
+        |> Seq.exactlyOne
 
     let message (fscTask : FscTask) =
         fscTask.Children
         |> Seq.tryPick (
             function
-            | :? Message as m -> Some m.Text
+            | :? Message as m when m.Text.Contains "fsc" -> Some m.Text
             | _ -> None
         )
 
-    option {
-        let! project = rebuild build
-        let! target = coreCompile project
-        let! fscTask = fscTask target
-        let! message = message fscTask
-        let idx = message.IndexOf "-o:"
-        return message.Substring(idx).Split [| '\n' |]
-    }
+    let mutable args = None
+
+    build.VisitAllChildren<Task> (fun task ->
+        match task with
+        | :? FscTask as fscTask ->
+            match fscTask.Parent.Parent with
+            | :? Project as p when p.Name = projectName -> args <- message fscTask
+            | _ -> ()
+        | _ -> ()
+    )
+
+    match args with
+    | None -> failwith $"Could not parse binlog at {file}"
+    | Some args ->
+        let idx = args.IndexOf "-o:"
+        args.Substring(idx).Split [| '\n' |]
 
 let mkOptions binLogPath =
-    let compilerArgs =
-        match readCompilerArgsFromBinLog binLogPath with
-        | None -> failwith $"Could not parse binlog at {binLogPath}"
-        | Some args -> args
+    let compilerArgs = readCompilerArgsFromBinLog binLogPath
 
     let sourceFiles =
         compilerArgs
