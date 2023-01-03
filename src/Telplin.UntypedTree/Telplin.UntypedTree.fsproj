@@ -11,13 +11,10 @@
         <Compile Include="UntypedTree.fsi" />
         <Compile Include="UntypedTree.fs" />
     </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Fantomas.Core" Version="5.2.0" />
-    </ItemGroup>
-
+    
     <ItemGroup>
       <ProjectReference Include="..\Telplin.Common\Telplin.Common.fsproj" />
+      <ProjectReference Include="..\..\..\fantomas\src\Fantomas.Core\Fantomas.Core.fsproj" />
     </ItemGroup>
 
 </Project>
