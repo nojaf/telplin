@@ -25,6 +25,60 @@ let mkTypeFromString (typeText : string) : Type =
     | [ ModuleDecl.Val valNode ] -> valNode.Type
     | _ -> failwith "todo"
 
+let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
+    match md with
+    | MemberDefn.ValField _ -> Some md
+    | _ -> None
+
+let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list =
+    List.choose (mkMember resolver) ms
+
+let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDefn =
+    let tdn = TypeDefn.TypeDefnNode typeDefn
+
+    let typeName =
+        TypeNameNode (
+            tdn.TypeName.XmlDoc,
+            tdn.TypeName.Attributes,
+            tdn.TypeName.LeadingKeyword,
+            tdn.TypeName.Accessibility,
+            tdn.TypeName.Identifier,
+            tdn.TypeName.TypeParameters,
+            tdn.TypeName.Constraints,
+            None,
+            tdn.TypeName.EqualsToken,
+            tdn.TypeName.WithKeyword,
+            zeroRange
+        )
+
+    match typeDefn with
+    | TypeDefn.Record recordNode ->
+        TypeDefnRecordNode (
+            typeName,
+            recordNode.Accessibility,
+            recordNode.OpeningBrace,
+            recordNode.Fields,
+            recordNode.ClosingBrace,
+            mkMembers resolver tdn.Members,
+            zeroRange
+        )
+        |> TypeDefn.Record
+    | TypeDefn.Explicit explicitNode ->
+        let body =
+            TypeDefnExplicitBodyNode (
+                explicitNode.Body.Kind,
+                mkMembers resolver explicitNode.Body.Members,
+                explicitNode.Body.End,
+                zeroRange
+            )
+
+        TypeDefnExplicitNode (typeName, body, mkMembers resolver tdn.Members, zeroRange)
+        |> TypeDefn.Explicit
+    | TypeDefn.Regular _ ->
+        TypeDefnRegularNode (typeName, mkMembers resolver tdn.Members, zeroRange)
+        |> TypeDefn.Regular
+    | _ -> failwith "todo"
+
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl =
     match mdl with
     | ModuleDecl.TopLevelBinding bindingNode ->
@@ -58,6 +112,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             |> ModuleDecl.Val
         | _ -> failwith "todo"
 
+    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn
     | _ -> failwith "todo"
 
 let mkModuleOrNamespace
