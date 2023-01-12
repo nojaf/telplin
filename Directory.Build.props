@@ -18,7 +18,7 @@
         <PackageIcon>icon.png</PackageIcon>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageProjectUrl>https://nojaf/telplin/</PackageProjectUrl>
+        <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -33,7 +33,6 @@
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
         <RepositoryUrl>https://github.com/nojaf/telplin</RepositoryUrl>
-        <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(IsPackable)' == 'true'">
