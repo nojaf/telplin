@@ -175,14 +175,12 @@ let rec mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : str
     let output =
         match input with
         | ParsedInput.SigFile _ -> input
-        | ParsedInput.ImplFile (ParsedImplFileInput (fileName,
-                                                     _isScript,
-                                                     qualifiedNameOfFile,
-                                                     scopedPragmas,
-                                                     parsedHashDirectives,
-                                                     synModuleOrNamespaces,
-                                                     _isLastCompiland,
-                                                     _parsedImplFileInputTrivia)) ->
+        | ParsedInput.ImplFile (ParsedImplFileInput (
+            fileName = fileName
+            qualifiedNameOfFile = qualifiedNameOfFile
+            scopedPragmas = scopedPragmas
+            hashDirectives = parsedHashDirectives
+            contents = synModuleOrNamespaces)) ->
             let fileName = Path.ChangeExtension (fileName, ".fsi")
 
             let synModuleOrNamespaces =
@@ -197,7 +195,8 @@ let rec mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : str
                 {
                     ConditionalDirectives = []
                     CodeComments = []
-                }
+                },
+                Set.empty
             )
             |> ParsedInput.SigFile
 
@@ -342,8 +341,9 @@ and mkSynValSig
         zeroRange,
         {
             LeadingKeyword = leadingKeyword
+            InlineKeyword = synBindingTrivia.InlineKeyword
             WithKeyword = if hasExtraIdent then Some zeroRange else None
-            EqualsRange = None
+            EqualsRange = Option.map (fun _ -> zeroRange) expr
         }
     )
 
@@ -451,7 +451,13 @@ and mkSynTypForSignatureBasedOnTypedTree
                                 | TypedPat (SynPat.OptionalVal (ident, _), _) ->
                                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
                                 | AttribPat (attrs, TypedPat (NamedPat ident, t)) ->
-                                    SynType.SignatureParameter (attrs, false, Some ident, stripOptionType t, zeroRange)
+                                    SynType.SignatureParameter (
+                                        attrs,
+                                        false,
+                                        Some ident,
+                                        stripOptionType t,
+                                        zeroRange
+                                    )
                                 | _ -> t
                             )
 
@@ -546,7 +552,11 @@ and mkSynTypForSignatureBasedOnTypedTree
 
                     c.CoercesToTarget
                     |> Option.map (fun coercesToTarget ->
-                        SynTypeConstraint.WhereTyparSubtypeOfType (typar, mkSynTypFromText coercesToTarget, zeroRange)
+                        SynTypeConstraint.WhereTyparSubtypeOfType (
+                            typar,
+                            mkSynTypFromText coercesToTarget,
+                            zeroRange
+                        )
                     )
                 elif Option.isSome c.MemberConstraint then
                     c.MemberConstraint
@@ -554,7 +564,8 @@ and mkSynTypForSignatureBasedOnTypedTree
                         let memberName =
                             let text =
                                 let memberName =
-                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore memberConstraintData.MemberName
+                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore
+                                        memberConstraintData.MemberName
 
                                 if PrettyNaming.IsOperatorDisplayName memberName then
                                     $"({memberName})"
@@ -577,6 +588,7 @@ and mkSynTypForSignatureBasedOnTypedTree
                                         SynLeadingKeyword.StaticMember (zeroRange, zeroRange)
                                     else
                                         SynLeadingKeyword.Member zeroRange
+                                InlineKeyword = None
                                 WithKeyword = None
                                 EqualsRange = None
                             }
@@ -606,7 +618,8 @@ and mkSynTypForSignatureBasedOnTypedTree
                                     GetterOrSetterIsCompilerGenerated = false
                                     MemberKind = SynMemberKind.Member
                                 },
-                                zeroRange
+                                zeroRange,
+                                SynMemberSigMemberTrivia.Zero
                             ),
                             zeroRange
                         )
@@ -684,8 +697,8 @@ and mkSynTypeDefnSig
 
         let mapMember (m : SynMemberSig) =
             match m with
-            | SynMemberSig.Member (SynValSig (a, i, e, synType, ar, ii, im, x, ac, s, r, t), f, rr) ->
-                SynMemberSig.Member (SynValSig (a, i, e, mapTypar synType, ar, ii, im, x, ac, s, r, t), f, rr)
+            | SynMemberSig.Member (SynValSig (a, i, e, synType, ar, ii, im, x, ac, s, r, t), f, rr, trivia) ->
+                SynMemberSig.Member (SynValSig (a, i, e, mapTypar synType, ar, ii, im, x, ac, s, r, t), f, rr, trivia)
             | _ -> failwith "unexpected SynMemberSig case"
 
         List.map mapMember members
@@ -723,7 +736,8 @@ and mkSynTypeDefnSig
                                         }
                                     ]
                                 Range = zeroRange
-                            } : SynAttributeList)
+                            }
+                            : SynAttributeList)
                             :: synAttributeLists
                         else
                             synAttributeLists
@@ -783,10 +797,10 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                                 valData = SynValData (memberFlags = ForceMemberFlags "SynMemberDefn.Member" memberFlags)) as binding,
                             _range) ->
         let valSig = mkSynValSig resolver binding
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
 
-    | SynMemberDefn.AbstractSlot (synValSig, synMemberFlags, _range) ->
-        Some (SynMemberSig.Member (synValSig, synMemberFlags, zeroRange))
+    | SynMemberDefn.AbstractSlot (slotSig = synValSig ; flags = synMemberFlags) ->
+        Some (SynMemberSig.Member (synValSig, synMemberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
 
     | SynMemberDefn.Interface (interfaceType, _withKeyword, _synMemberDefnsOption, _range) ->
         Some (SynMemberSig.Interface (interfaceType, zeroRange))
@@ -852,7 +866,8 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     GetterOrSetterIsCompilerGenerated = false
                     MemberKind = SynMemberKind.Constructor
                 },
-                zeroRange
+                zeroRange,
+                SynMemberSigMemberTrivia.Zero
             )
         )
     | SynMemberDefn.ImplicitInherit (inheritType, _inheritArgs, _inheritAlias, _range) ->
@@ -884,7 +899,7 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 }
             )
 
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
     | SynMemberDefn.GetSetMember (Some (SynBinding (
                                       valData = SynValData (
                                           memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember" memberFlags)
@@ -906,7 +921,17 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
             | _ -> binding
 
         let valSig = mkSynValSig resolver binding
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+
+        Some (
+            SynMemberSig.Member (
+                valSig,
+                memberFlags,
+                zeroRange,
+                {
+                    GetSetKeywords = Some (GetSetKeywords.Get zeroRange)
+                }
+            )
+        )
 
     | SynMemberDefn.GetSetMember (None,
                                   Some (SynBinding (
@@ -939,15 +964,25 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     zeroRange,
                     {
                         LeadingKeyword = SynLeadingKeyword.Member zeroRange
+                        InlineKeyword = None
                         WithKeyword = Some zeroRange
                         EqualsRange = None
                     }
                 )
 
-            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+            Some (
+                SynMemberSig.Member (
+                    valSig,
+                    memberFlags,
+                    zeroRange,
+                    {
+                        GetSetKeywords = Some (GetSetKeywords.Set zeroRange)
+                    }
+                )
+            )
         | _ ->
             let valSig = mkSynValSig resolver binding
-            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
 
     // member Name: type with get, set
     | SimpleGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags) ->
@@ -971,10 +1006,20 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                     LeadingKeyword = SynLeadingKeyword.Member zeroRange
                     WithKeyword = Some zeroRange
                     EqualsRange = None
+                    InlineKeyword = None
                 }
             )
 
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+        Some (
+            SynMemberSig.Member (
+                valSig,
+                memberFlags,
+                zeroRange,
+                {
+                    GetSetKeywords = Some (GetSetKeywords.GetSet (zeroRange, zeroRange))
+                }
+            )
+        )
 
     | IndexedGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags, indexArgName) ->
         let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
@@ -1007,11 +1052,21 @@ and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMe
                 {
                     LeadingKeyword = SynLeadingKeyword.Member zeroRange
                     WithKeyword = Some zeroRange
+                    InlineKeyword = None
                     EqualsRange = None
                 }
             )
 
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange))
+        Some (
+            SynMemberSig.Member (
+                valSig,
+                memberFlags,
+                zeroRange,
+                {
+                    GetSetKeywords = Some (GetSetKeywords.GetSet (zeroRange, zeroRange))
+                }
+            )
+        )
     | SynMemberDefn.GetSetMember _ -> failwith "todo EF1C9796-DA9D-4810-8BD6-B28983C6C259"
     | SynMemberDefn.ImplicitInherit _
     | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"
