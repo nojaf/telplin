@@ -65,8 +65,7 @@ let decodeRange =
         StartColumn = get.Required.Field "startColumn" Decode.int
         EndLine = get.Required.Field "endLine" Decode.int
         EndColumn = get.Required.Field "endColumn" Decode.int
-    }
-    )
+    })
 
 let decodeDiagnostic =
     Decode.object (fun get -> {
@@ -74,8 +73,7 @@ let decodeDiagnostic =
         Message = get.Required.Field "message" Decode.string
         ErrorNumber = get.Required.Field "errorNumber" Decode.string
         Range = get.Required.Field "range" decodeRange
-    }
-    )
+    })
 
 let decodeBadResult =
     Decode.object (fun get ->
@@ -100,8 +98,7 @@ let encodeUrlModel model =
 let decodeUrlModel : Decoder<UrlModel> =
     Decode.object (fun get -> {
         Implementation = get.Required.Field "implementation" Decode.string
-    }
-    )
+    })
 
 type Model = {
     Implementation : string

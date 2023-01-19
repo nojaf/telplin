@@ -451,7 +451,13 @@ and mkSynTypForSignatureBasedOnTypedTree
                                 | TypedPat (SynPat.OptionalVal (ident, _), _) ->
                                     SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
                                 | AttribPat (attrs, TypedPat (NamedPat ident, t)) ->
-                                    SynType.SignatureParameter (attrs, false, Some ident, stripOptionType t, zeroRange)
+                                    SynType.SignatureParameter (
+                                        attrs,
+                                        false,
+                                        Some ident,
+                                        stripOptionType t,
+                                        zeroRange
+                                    )
                                 | _ -> t
                             )
 
@@ -546,7 +552,11 @@ and mkSynTypForSignatureBasedOnTypedTree
 
                     c.CoercesToTarget
                     |> Option.map (fun coercesToTarget ->
-                        SynTypeConstraint.WhereTyparSubtypeOfType (typar, mkSynTypFromText coercesToTarget, zeroRange)
+                        SynTypeConstraint.WhereTyparSubtypeOfType (
+                            typar,
+                            mkSynTypFromText coercesToTarget,
+                            zeroRange
+                        )
                     )
                 elif Option.isSome c.MemberConstraint then
                     c.MemberConstraint
@@ -554,7 +564,8 @@ and mkSynTypForSignatureBasedOnTypedTree
                         let memberName =
                             let text =
                                 let memberName =
-                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore memberConstraintData.MemberName
+                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore
+                                        memberConstraintData.MemberName
 
                                 if PrettyNaming.IsOperatorDisplayName memberName then
                                     $"({memberName})"
@@ -723,7 +734,8 @@ and mkSynTypeDefnSig
                                         }
                                     ]
                                 Range = zeroRange
-                            } : SynAttributeList)
+                            }
+                            : SynAttributeList)
                             :: synAttributeLists
                         else
                             synAttributeLists
