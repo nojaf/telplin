@@ -950,3 +950,62 @@ module Telplin
 
 val v: int[,]
 """
+
+[<Test>]
+let ``constraint from application of another function`` () =
+    assertSignature 
+        """
+module Telplin
+
+let f<'T when 'T: equality> (x: 'T) = x
+let g (x: 'U) : 'U = f x
+"""
+        """
+module Telplin
+
+val f<'T when 'T: equality> : x: 'T -> 'T
+val g: x: 'U -> 'U when 'U: equality
+"""
+
+[<Test>]
+let ``constraint from application of another function - large example`` () =
+    assertSignature 
+        """
+module Telplin
+
+open System.Collections.Generic
+open System.Linq
+
+type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
+
+let addIfMissing<'Node when 'Node: equality> (nodes: 'Node seq) (graph: Graph<'Node>) : Graph<'Node> =
+    nodes
+    |> Seq.except (graph.Keys |> Seq.toArray)
+    |> fun missing ->
+        let toAdd = missing |> Seq.map (fun n -> KeyValuePair(n, [||])) |> Seq.toArray
+        let x: KeyValuePair<'Node, 'Node[]>[] = Array.append (graph |> Seq.toArray) toAdd
+        x.ToDictionary((fun (KeyValue (x, _)) -> x), (fun (KeyValue (_, v)) -> v)) :> IReadOnlyDictionary<_, _>
+
+/// Create a reverse of the graph
+let reverse (originalGraph: Graph<'Node>) : Graph<'Node> =
+    originalGraph
+    // Collect all edges
+    |> Seq.collect (fun (KeyValue (idx, deps)) -> deps |> Array.map (fun dep -> idx, dep))
+    // Group dependants of the same dependencies together
+    |> Seq.groupBy snd
+    // Construct reversed graph
+    |> Seq.map (fun (dep, edges) -> dep, edges |> Seq.map fst |> Seq.toArray)
+    |> readOnlyDict
+    |> addIfMissing originalGraph.Keys
+"""
+        """
+module Telplin
+
+open System.Collections.Generic
+open System.Linq
+
+type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
+val addIfMissing<'Node when 'Node: equality> : nodes: seq<'Node> -> graph: Graph<'Node> -> Graph<'Node>
+/// Create a reverse of the graph
+val reverse: originalGraph: Graph<'Node> -> Graph<'Node> when 'Node: equality
+"""
