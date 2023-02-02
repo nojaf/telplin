@@ -953,7 +953,7 @@ val v: int[,]
 
 [<Test>]
 let ``constraint from application of another function`` () =
-    assertSignature 
+    assertSignature
         """
 module Telplin
 
@@ -969,7 +969,7 @@ val g: x: 'U -> 'U when 'U: equality
 
 [<Test>]
 let ``constraint from application of another function - large example`` () =
-    assertSignature 
+    assertSignature
         """
 module Telplin
 

@@ -357,9 +357,15 @@ and mkSynTypForSignature
     =
     let isTypedPatWithoutGenerics p =
         match p with
-        | ParenPat (TypedPat(_, SynType.Var _)) -> false
-        | ParenPat (TypedPat(_, SynType.App (typeArgs = typeArgs))) ->
-            typeArgs |> List.exists (function | SynType.Var _ -> true | _ -> false) |> not
+        | ParenPat (TypedPat (_, SynType.Var _)) -> false
+        | ParenPat (TypedPat (_, SynType.App (typeArgs = typeArgs))) ->
+            typeArgs
+            |> List.exists (
+                function
+                | SynType.Var _ -> true
+                | _ -> false
+            )
+            |> not
         | ParenPat (TypedPat _) -> true
         | _ -> false
 
