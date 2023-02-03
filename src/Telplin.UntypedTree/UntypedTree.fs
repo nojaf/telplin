@@ -355,14 +355,22 @@ and mkSynTypForSignature
     (returnTypeInImpl : (SynType list * SynType) option)
     : SynType
     =
-    let isTypedPat p =
+    let isTypedPatWithoutGenerics p =
         match p with
-        | TypedPat _
+        | ParenPat (TypedPat (_, SynType.Var _)) -> false
+        | ParenPat (TypedPat (_, SynType.App (typeArgs = typeArgs))) ->
+            typeArgs
+            |> List.exists (
+                function
+                | SynType.Var _ -> true
+                | _ -> false
+            )
+            |> not
         | ParenPat (TypedPat _) -> true
         | _ -> false
 
     match returnTypeInImpl with
-    | Some (_, returnType) when List.forall isTypedPat argPats ->
+    | Some (_, returnType) when List.forall isTypedPatWithoutGenerics argPats ->
         mkSynTypForSignatureBasedOnUntypedTree argPats returnType
     | _ ->
         mkSynTypForSignatureBasedOnTypedTree
