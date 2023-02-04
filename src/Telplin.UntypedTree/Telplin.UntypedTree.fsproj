@@ -14,7 +14,10 @@
     
     <ItemGroup>
       <ProjectReference Include="..\Telplin.Common\Telplin.Common.fsproj" />
-      <ProjectReference Include="..\..\..\fantomas\src\Fantomas.Core\Fantomas.Core.fsproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="Fantomas.Core" Version="6.0.0-alpha-003" />
     </ItemGroup>
 
 </Project>
