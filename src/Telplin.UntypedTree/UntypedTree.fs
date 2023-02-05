@@ -147,8 +147,34 @@ let mkTypeForValNodeBasedOnTypedTree
     (returnTypeInSource : BindingReturnInfoNode option)
     : Type
     =
-    let returnTypeWithParameterNames =
+    // The `returnType` constructed from the typed tree cannot be trusted 100%.
+    // We might receive `int -> int -> int` while the Oak only contained a single parameter.
+    // This needs to be transformed to `int -> (int -> int)` to reflect that the return type actually is a function type.
+    let returnTypeCorrectByActualParameters =
         match returnType with
+        | Type.Funs funsNode ->
+            if funsNode.Parameters.Length = parameters.Length then
+                returnType
+            else
+                // We need to shift the extra parameters to the funsNode.ReturnType
+                let actualParameters, additionalTypes =
+                    List.take parameters.Length funsNode.Parameters, funsNode.Parameters |> List.skip parameters.Length
+
+                let actualReturnType =
+                    TypeParenNode (
+                        stn "(",
+                        TypeFunsNode (additionalTypes, funsNode.ReturnType, zeroRange) |> Type.Funs,
+                        stn ")",
+                        zeroRange
+                    )
+                    |> Type.Paren
+
+                TypeFunsNode (actualParameters, actualReturnType, zeroRange) |> Type.Funs
+
+        | _ -> returnType
+
+    let returnTypeWithParameterNames =
+        match returnTypeCorrectByActualParameters with
         | Type.Funs funsNode ->
             let parameters =
                 funsNode.Parameters
