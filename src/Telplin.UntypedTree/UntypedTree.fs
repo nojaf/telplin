@@ -125,6 +125,15 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
     | TypeDefn.Regular _ ->
         TypeDefnRegularNode (typeName, mkMembers resolver tdn.Members, zeroRange)
         |> TypeDefn.Regular
+    | TypeDefn.Union unionNode ->
+        TypeDefnUnionNode (
+            typeName,
+            unionNode.Accessibility,
+            unionNode.UnionCases,
+            mkMembers resolver tdn.Members,
+            zeroRange
+        )
+        |> TypeDefn.Union
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
 /// <summary>
