@@ -3,7 +3,9 @@
 open FSharp.Compiler.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
+open Microsoft.FSharp.Core.CompilerServices
 open Telplin.Common
+open Telplin.UntypedTree.SourceParser
 
 let zeroRange = Range.Zero
 
@@ -183,38 +185,64 @@ let mkTypeForValNodeBasedOnTypedTree
         | _ -> returnType
 
     let returnTypeWithParameterNames =
+        let rec updateParameter
+            // Only top level tuples can have parameter names
+            (isTopLevel : bool)
+            (pattern : Pattern)
+            (typeTreeType : Type)
+            : Type
+            =
+            match pattern with
+            | Pattern.Paren parenNode -> updateParameter isTopLevel parenNode.Pattern typeTreeType
+
+            | Pattern.Named namedNode ->
+                Type.SignatureParameter (
+                    TypeSignatureParameterNode (None, Some namedNode.Name, typeTreeType, zeroRange)
+                )
+
+            | Pattern.Parameter parameter ->
+                match parameter.Pattern with
+                | Pattern.Named namedNode ->
+                    Type.SignatureParameter (
+                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, typeTreeType, zeroRange)
+                    )
+                | _ -> typeTreeType
+            | Pattern.Tuple patTupleNode ->
+                match typeTreeType with
+                | Type.Tuple typeTupleNode when
+                    (isTopLevel && patTupleNode.Patterns.Length = typeTupleNode.Types.Length)
+                    ->
+                    (patTupleNode.Patterns, typeTupleNode.Types)
+                    ||> List.zip
+                    |> List.map (fun (pat, t) -> updateParameter false pat t)
+                    |> fun ts ->
+                        let mutable collector = ListCollector<Choice<_, _>> ()
+
+                        let rec visit ts =
+                            match ts with
+                            | [] -> ()
+                            | [ last ] -> collector.Add (Choice1Of2 last)
+                            | head :: rest ->
+                                collector.Add (Choice1Of2 head)
+                                collector.Add (Choice2Of2 (stn "*"))
+                                visit rest
+
+                        visit ts
+                        TypeTupleNode (collector.Close (), zeroRange) |> Type.Tuple
+
+                | _ -> typeTreeType
+            | _ -> typeTreeType
+
         match returnTypeCorrectByActualParameters with
         | Type.Funs funsNode ->
             let parameters =
                 funsNode.Parameters
-                |> List.mapi (fun idx parameterNameAndArrow ->
+                |> List.mapi (fun idx (typeTreeType, arrow) ->
                     if idx > parameters.Length - 1 then
-                        parameterNameAndArrow
+                        typeTreeType, arrow
                     else
                         // We might be able to replace the parameter name with the name we found in the Oak.
-                        match parameters.[idx], parameterNameAndArrow with
-                        | Pattern.Named namedNode, (typedTreeType, arrow) ->
-                            Type.SignatureParameter (
-                                TypeSignatureParameterNode (None, Some namedNode.Name, typedTreeType, zeroRange)
-                            ),
-                            arrow
-                        | Pattern.Paren parenNode, (typedTreeType, arrow) ->
-                            match parenNode.Pattern with
-                            | Pattern.Parameter parameter ->
-                                match parameter.Pattern with
-                                | Pattern.Named namedNode ->
-                                    Type.SignatureParameter (
-                                        TypeSignatureParameterNode (
-                                            parameter.Attributes,
-                                            Some namedNode.Name,
-                                            typedTreeType,
-                                            zeroRange
-                                        )
-                                    ),
-                                    arrow
-                                | _ -> parameterNameAndArrow
-                            | _ -> parameterNameAndArrow
-                        | _ -> parameterNameAndArrow
+                        (updateParameter true parameters.[idx] typeTreeType), arrow
                 )
 
             TypeFunsNode (parameters, funsNode.ReturnType, zeroRange) |> Type.Funs
