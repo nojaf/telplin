@@ -78,6 +78,13 @@ let mkTypeFromString (typeText : string) : Type =
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
     match md with
     | MemberDefn.ValField _ -> Some md
+    | MemberDefn.ImplicitInherit implicitInherit ->
+        match implicitInherit with
+        | InheritConstructor.Unit inheritCtor ->
+            MemberDefnInheritNode (implicitInherit.InheritKeyword, inheritCtor.Type, zeroRange)
+            |> MemberDefn.Inherit
+            |> Some
+        | _ -> None
     | _ -> None
 
 let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list =
@@ -100,6 +107,48 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             tdn.TypeName.WithKeyword,
             zeroRange
         )
+
+    let mkImplicitCtor
+        (resolver : TypedTreeInfoResolver)
+        (identifier : IdentListNode)
+        (implicitCtor : ImplicitConstructorNode)
+        =
+        let { ConstructorInfo = ctor } = resolver.GetTypeInfo identifier.Range.Proxy
+
+        let returnType = Type.LongIdent identifier
+
+        let returnType =
+            match ctor with
+            | None ->
+                TypeFunsNode (
+                    [
+                        Type.LongIdent (IdentListNode ([ IdentifierOrDot.Ident (stn "unit") ], zeroRange)), stn "->"
+                    ],
+                    returnType,
+                    zeroRange
+                )
+                |> Type.Funs
+            | Some (typeString, _) -> mkTypeFromString typeString
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                implicitCtor.XmlDoc,
+                implicitCtor.Attributes,
+                None,
+                None,
+                false,
+                implicitCtor.Accessibility,
+                stn "new",
+                None,
+                returnType,
+                None,
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
 
     match typeDefn with
     | TypeDefn.Record recordNode ->
@@ -125,7 +174,16 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         TypeDefnExplicitNode (typeName, body, mkMembers resolver tdn.Members, zeroRange)
         |> TypeDefn.Explicit
     | TypeDefn.Regular _ ->
-        TypeDefnRegularNode (typeName, mkMembers resolver tdn.Members, zeroRange)
+        TypeDefnRegularNode (
+            typeName,
+            [
+                match tdn.TypeName.ImplicitConstructor with
+                | None -> ()
+                | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
+                yield! mkMembers resolver tdn.Members
+            ],
+            zeroRange
+        )
         |> TypeDefn.Regular
     | TypeDefn.Union unionNode ->
         TypeDefnUnionNode (
@@ -142,8 +200,27 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 /// If a function is fully typed in the input Oak, we can re-use that exact information to construct the return type for the ValNode.
 /// This only works when every parameter was typed and, the return type is present and no generics are involved.
 /// </summary>
-let mkTypeForValNodeBasedOnOak () : Type =
-    failwith "todo, F0C88437-6D47-4D6E-B95C-8A1E74D6DF08"
+let mkTypeForValNodeBasedOnOak
+    (fullyTypedParameters : (Type * PatParameterNode) list)
+    (returnType : BindingReturnInfoNode)
+    : Type
+    =
+    let parameters =
+        fullyTypedParameters
+        |> List.map (fun (t, parameter) ->
+            let name =
+                match parameter.Pattern with
+                | Pattern.Named namedPat -> Some namedPat.Name
+                | _ -> None
+
+            let t =
+                TypeSignatureParameterNode (parameter.Attributes, name, t, zeroRange)
+                |> Type.SignatureParameter
+
+            t, stn "->"
+        )
+
+    TypeFunsNode (parameters, returnType.Type, zeroRange) |> Type.Funs
 
 /// <summary>
 /// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
@@ -264,14 +341,16 @@ let mkTypeForValNode
         match p with
         | Pattern.Paren parenNode ->
             match parenNode.Pattern with
-            | Pattern.Parameter _ -> true
-            | _ -> false
-        | _ -> false
+            | Pattern.Parameter parameterNode -> parameterNode.Type |> Option.map (fun t -> t, parameterNode)
+            | _ -> None
+        | _ -> None
 
     match returnTypeInSource with
-    | Some _ ->
-        if List.forall isTypedPatternWithoutGenerics parameters then
-            mkTypeForValNodeBasedOnOak ()
+    | Some returnType ->
+        let fullyTypedParameters = List.choose isTypedPatternWithoutGenerics parameters
+
+        if parameters.Length = fullyTypedParameters.Length then
+            mkTypeForValNodeBasedOnOak fullyTypedParameters returnType
         else
             mkTypeForValNodeBasedOnTypedTree t parameters returnTypeInSource
     | None -> mkTypeForValNodeBasedOnTypedTree t parameters None
