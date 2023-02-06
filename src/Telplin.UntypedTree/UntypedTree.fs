@@ -307,7 +307,7 @@ let mkTypeForValNode
             mkTypeForValNodeBasedOnTypedTree t parameters returnTypeInSource
     | None -> mkTypeForValNodeBasedOnTypedTree t parameters None
 
-let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl =
+let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
     match mdl with
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
@@ -338,10 +338,12 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 zeroRange
             )
             |> ModuleDecl.Val
+            |> Some
         | _ -> failwith "todo, C98DD050-A18C-4D8D-A025-083B352C57A5"
 
-    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn
-    | ModuleDecl.OpenList _ -> mdl
+    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn |> Some
+    | ModuleDecl.OpenList _ -> Some mdl
+    | ModuleDecl.DeclExpr _ -> None
     | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
 
 let mkModuleOrNamespace
@@ -349,7 +351,7 @@ let mkModuleOrNamespace
     (moduleNode : ModuleOrNamespaceNode)
     : ModuleOrNamespaceNode
     =
-    let decls = List.map (mkModuleDecl resolver) moduleNode.Declarations
+    let decls = List.choose (mkModuleDecl resolver) moduleNode.Declarations
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
 
 let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) =
