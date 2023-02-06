@@ -441,6 +441,18 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         )
         |> ModuleDecl.NestedModule
         |> Some
+    | ModuleDecl.Exception exceptionNode ->
+        ExceptionDefnNode (
+            exceptionNode.XmlDoc,
+            exceptionNode.Attributes,
+            exceptionNode.Accessibility,
+            exceptionNode.UnionCase,
+            exceptionNode.WithKeyword,
+            List.choose (mkMember resolver) exceptionNode.Members,
+            zeroRange
+        )
+        |> ModuleDecl.Exception
+        |> Some
     | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
 
 let mkModuleOrNamespace
