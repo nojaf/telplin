@@ -1,4 +1,4 @@
-﻿module Telplin.UntypedTree.Writer
+﻿module rec Telplin.UntypedTree.Writer
 
 open FSharp.Compiler.Text
 open Fantomas.Core
@@ -114,6 +114,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             zeroRange
         )
         |> TypeDefn.Record
+
     | TypeDefn.Explicit explicitNode ->
         let body =
             TypeDefnExplicitBodyNode (
@@ -125,6 +126,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
         TypeDefnExplicitNode (typeName, body, mkMembers resolver tdn.Members, zeroRange)
         |> TypeDefn.Explicit
+
     | TypeDefn.Regular _ ->
         TypeDefnRegularNode (
             typeName,
@@ -137,6 +139,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             zeroRange
         )
         |> TypeDefn.Regular
+
     | TypeDefn.Union unionNode ->
         TypeDefnUnionNode (
             typeName,
@@ -146,6 +149,10 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             zeroRange
         )
         |> TypeDefn.Union
+
+    | TypeDefn.Abbrev abbrevNode ->
+        TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembers resolver tdn.Members, zeroRange)
+        |> TypeDefn.Abbrev
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
 /// <summary>
@@ -232,8 +239,15 @@ let mkTypeForValNodeBasedOnTypedTree
             | Pattern.Parameter parameter ->
                 match parameter.Pattern with
                 | Pattern.Named namedNode ->
+                    let t =
+                        // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
+                        // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
+                        match parameter.Type with
+                        | Some t -> t
+                        | None -> typeTreeType
+
                     Type.SignatureParameter (
-                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, typeTreeType, zeroRange)
+                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, t, zeroRange)
                     )
                 | _ -> typeTreeType
             | Pattern.Tuple patTupleNode ->
@@ -344,6 +358,20 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
     | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn |> Some
     | ModuleDecl.OpenList _ -> Some mdl
     | ModuleDecl.DeclExpr _ -> None
+    | ModuleDecl.NestedModule nestedModule ->
+        NestedModuleNode (
+            nestedModule.XmlDoc,
+            nestedModule.Attributes,
+            nestedModule.Module,
+            nestedModule.Accessibility,
+            false,
+            nestedModule.Identifier,
+            nestedModule.Equals,
+            List.choose (mkModuleDecl resolver) nestedModule.Declarations,
+            zeroRange
+        )
+        |> ModuleDecl.NestedModule
+        |> Some
     | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
 
 let mkModuleOrNamespace
