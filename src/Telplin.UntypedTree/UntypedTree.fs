@@ -199,6 +199,9 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
+let wrapTypeInParentheses (t : Type) =
+    Type.Paren (TypeParenNode (stn "(", t, stn ")", zeroRange))
+
 /// <summary>
 /// If a function is fully typed in the input Oak, we can re-use that exact information to construct the return type for the ValNode.
 /// This only works when every parameter was typed and, the return type is present and no generics are involved.
@@ -217,10 +220,15 @@ let mkTypeForValNodeBasedOnOak
                 | _ -> None
 
             let t =
+                match t with
+                | Type.Funs _ -> wrapTypeInParentheses t
+                | _ -> t
+
+            let parameterType =
                 TypeSignatureParameterNode (parameter.Attributes, name, t, zeroRange)
                 |> Type.SignatureParameter
 
-            t, stn "->"
+            parameterType, stn "->"
         )
 
     TypeFunsNode (parameters, returnType.Type, zeroRange) |> Type.Funs
@@ -281,17 +289,22 @@ let mkTypeForValNodeBasedOnTypedTree
                 )
 
             | Pattern.Parameter parameter ->
+                let parameterType =
+                    // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
+                    // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
+                    match parameter.Type with
+                    | Some (Type.Funs _ as t) -> wrapTypeInParentheses t
+                    | Some t -> t
+                    | None -> typeTreeType
+
                 match parameter.Pattern with
                 | Pattern.Named namedNode ->
-                    let t =
-                        // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
-                        // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
-                        match parameter.Type with
-                        | Some t -> t
-                        | None -> typeTreeType
-
                     Type.SignatureParameter (
-                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, t, zeroRange)
+                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, parameterType, zeroRange)
+                    )
+                | Pattern.OptionalVal optValNode ->
+                    Type.SignatureParameter (
+                        TypeSignatureParameterNode (parameter.Attributes, Some optValNode, parameterType, zeroRange)
                     )
                 | _ -> typeTreeType
             | Pattern.Tuple patTupleNode ->
