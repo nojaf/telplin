@@ -16,54 +16,6 @@ type Range with
 
 let stn v = SingleTextNode (v, zeroRange)
 
-/// <summary>Replace `char[]` to `char array`</summary>
-/// <remarks>This function is not tail recursive. Hopefully we can remove this function in a future FCS version.</remarks>
-let rec sanitizeType (t : Type) =
-    match t with
-    | Type.Array typeArray ->
-        let array =
-            if typeArray.Rank = 1 then
-                Type.LongIdent (IdentListNode ([ IdentifierOrDot.Ident (stn "array") ], zeroRange))
-            else
-                Type.LongIdent (
-                    IdentListNode ([ IdentifierOrDot.Ident (stn $"array{typeArray.Rank - 1}d") ], zeroRange)
-                )
-
-        TypeAppPostFixNode (typeArray.Type, array, zeroRange) |> Type.AppPostfix
-
-    | Type.AppPrefix appPrefix ->
-        TypeAppPrefixNode (
-            sanitizeType appPrefix.Identifier,
-            appPrefix.PostIdentifier,
-            appPrefix.LessThen,
-            List.map sanitizeType appPrefix.Arguments,
-            appPrefix.GreaterThan,
-            zeroRange
-        )
-        |> Type.AppPrefix
-
-    | Type.Funs funs ->
-        let parameters =
-            funs.Parameters |> List.map (fun (t, arrow) -> sanitizeType t, arrow)
-
-        TypeFunsNode (parameters, sanitizeType funs.ReturnType, zeroRange) |> Type.Funs
-
-    | Type.Paren paren ->
-        TypeParenNode (paren.OpeningParen, sanitizeType paren.Type, paren.ClosingParen, zeroRange)
-        |> Type.Paren
-
-    | Type.Tuple tuple ->
-        let path =
-            tuple.Path
-            |> List.map (
-                function
-                | Choice1Of2 t -> sanitizeType t |> Choice1Of2
-                | Choice2Of2 operator -> Choice2Of2 operator
-            )
-
-        TypeTupleNode (path, zeroRange) |> Type.Tuple
-    | _ -> t
-
 let mkTypeFromString (typeText : string) : Type =
     let oak =
         CodeFormatter.ParseOakAsync (true, $"val v: {typeText}")
@@ -72,7 +24,7 @@ let mkTypeFromString (typeText : string) : Type =
         |> fst
 
     match oak.ModulesOrNamespaces.[0].Declarations with
-    | [ ModuleDecl.Val valNode ] -> sanitizeType valNode.Type
+    | [ ModuleDecl.Val valNode ] -> valNode.Type
     | decls -> failwithf $"Unexpected module decls:%A{decls}"
 
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =

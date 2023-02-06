@@ -6,19 +6,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Options.fsi" />
-        <Compile Include="Options.fs" />
-        <Compile Include="TypedTree.fsi" />
-        <Compile Include="TypedTree.fs" />
+        <Compile Include="Options.fsi"/>
+        <Compile Include="Options.fs"/>
+        <Compile Include="TypedTree.fsi"/>
+        <Compile Include="TypedTree.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="FSharp.Compiler.Service" Version="41.0.6" />
-      <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.669" />
+        <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />
+        <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.669"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Telplin.Common\Telplin.Common.fsproj" />
+        <ProjectReference Include="..\Telplin.Common\Telplin.Common.fsproj"/>
     </ItemGroup>
 
 </Project>
