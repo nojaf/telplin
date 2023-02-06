@@ -30,6 +30,7 @@ let mkTypeFromString (typeText : string) : Type =
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
     match md with
     | MemberDefn.ValField _ -> Some md
+
     | MemberDefn.ImplicitInherit implicitInherit ->
         match implicitInherit with
         | InheritConstructor.Unit inheritCtor ->
@@ -37,7 +38,45 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
             |> MemberDefn.Inherit
             |> Some
         | _ -> None
-    | _ -> None
+
+    | MemberDefn.Member bindingNode ->
+        match bindingNode.FunctionName with
+        | Choice2Of2 _ -> None
+        | Choice1Of2 name ->
+            let valKw = MultipleTextsNode ([ stn "member" ], zeroRange)
+
+            let name =
+                match name.Content with
+                | [ IdentifierOrDot.Ident _this
+                    (IdentifierOrDot.KnownDot _ | IdentifierOrDot.UnknownDot)
+                    IdentifierOrDot.Ident name ] -> name
+                | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+
+            let t =
+                mkTypeForValNode resolver name.Range bindingNode.Parameters bindingNode.ReturnType
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    bindingNode.XmlDoc,
+                    bindingNode.Attributes,
+                    Some valKw,
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    t,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                None,
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+            |> Some
+
+    | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
 let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list =
     List.choose (mkMember resolver) ms
@@ -153,6 +192,11 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
     | TypeDefn.Abbrev abbrevNode ->
         TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembers resolver tdn.Members, zeroRange)
         |> TypeDefn.Abbrev
+
+    | TypeDefn.Augmentation _ ->
+        TypeDefnAugmentationNode (typeName, mkMembers resolver tdn.Members, zeroRange)
+        |> TypeDefn.Augmentation
+
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
 /// <summary>
@@ -311,15 +355,27 @@ let mkTypeForValNode
             | _ -> None
         | _ -> None
 
-    match returnTypeInSource with
-    | Some returnType ->
-        let fullyTypedParameters = List.choose isTypedPatternWithoutGenerics parameters
+    let returnType =
+        match returnTypeInSource with
+        | Some returnType ->
+            let fullyTypedParameters = List.choose isTypedPatternWithoutGenerics parameters
 
-        if parameters.Length = fullyTypedParameters.Length then
-            mkTypeForValNodeBasedOnOak fullyTypedParameters returnType
-        else
-            mkTypeForValNodeBasedOnTypedTree t parameters returnTypeInSource
-    | None -> mkTypeForValNodeBasedOnTypedTree t parameters None
+            if parameters.Length = fullyTypedParameters.Length then
+                mkTypeForValNodeBasedOnOak fullyTypedParameters returnType
+            else
+                mkTypeForValNodeBasedOnTypedTree t parameters returnTypeInSource
+        | None -> mkTypeForValNodeBasedOnTypedTree t parameters None
+
+    // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
+    // See test ``function return type``
+    match returnType with
+    | Type.Funs funsNode ->
+        match funsNode.ReturnType with
+        | Type.Funs _ ->
+            let parenNode = TypeParenNode (stn "(", funsNode.ReturnType, stn ")", zeroRange)
+            TypeFunsNode (funsNode.Parameters, Type.Paren parenNode, zeroRange) |> Type.Funs
+        | _ -> returnType
+    | _ -> returnType
 
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
     match mdl with
