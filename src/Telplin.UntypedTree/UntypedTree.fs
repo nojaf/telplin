@@ -406,6 +406,22 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             let t =
                 mkTypeForValNode resolver nameRange bindingNode.Parameters bindingNode.ReturnType
 
+            let expr =
+                bindingNode.Attributes
+                |> Option.bind (fun attributeListNode ->
+                    attributeListNode.AttributeLists
+                    |> List.collect (fun al -> al.Attributes)
+                    |> List.tryPick (fun a ->
+                        a.TypeName.Content
+                        |> List.tryPick (
+                            function
+                            | IdentifierOrDot.Ident literal -> if literal.Text = "Literal" then Some literal else None
+                            | _ -> None
+                        )
+                    )
+                )
+                |> Option.map (fun _ -> bindingNode.Expr)
+
             ValNode (
                 bindingNode.XmlDoc,
                 bindingNode.Attributes,
@@ -417,7 +433,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 None,
                 t,
                 Some (stn "="),
-                None,
+                expr,
                 zeroRange
             )
             |> ModuleDecl.Val
