@@ -453,6 +453,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         )
         |> ModuleDecl.Exception
         |> Some
+    | ModuleDecl.ModuleAbbrev _ -> Some mdl
     | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
 
 let mkModuleOrNamespace
