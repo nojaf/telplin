@@ -1,5 +1,8 @@
 ﻿module Telplin.TypedTree.Resolver
 
+#nowarn "57"
+
+open System.Collections.Concurrent
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
@@ -12,9 +15,17 @@ let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
     && proxyRange.EndLine = m.EndLine
     && proxyRange.EndColumn = m.EndColumn
 
-let checker = FSharpChecker.Create ()
+let fileCache = ConcurrentDictionary<string, ISourceText> ()
 
-let mkResolverFor sourceFileName sourceText projectOptions =
+let documentSource fileName =
+    match fileCache.TryGetValue fileName with
+    | true, sourceText -> Some sourceText
+    | false, _ -> None
+
+let inMemoryChecker =
+    FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
+
+let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
         |> Async.RunSynchronously
@@ -195,7 +206,7 @@ let mkResolverForCode projectOptions (code : string) : TypedTreeInfoResolver =
 
     let sourceText = SourceText.ofString code
 
-    mkResolverFor sourceFileName sourceText projectOptions
+    mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions
 
 let mapDiagnostics diagnostics =
     diagnostics
@@ -228,19 +239,32 @@ let typeCheckForImplementation projectOptions sourceCode =
         }
 
     let _, result =
-        checker.ParseAndCheckFileInProject ("A.fs", 1, SourceText.ofString sourceCode, projectOptions)
+        inMemoryChecker.ParseAndCheckFileInProject ("A.fs", 1, SourceText.ofString sourceCode, projectOptions)
         |> Async.RunSynchronously
 
     match result with
     | FSharpCheckFileAnswer.Aborted -> Choice1Of2 ()
     | FSharpCheckFileAnswer.Succeeded checkFileResults -> mapDiagnostics checkFileResults.Diagnostics |> Choice2Of2
 
-let typeCheckForPair projectOptions implementationPath signaturePath =
+let typeCheckForPair projectOptions implementation signature =
+    let fileName = System.Guid.NewGuid().ToString "N"
+    let signatureName = $"{fileName}.fsi"
+    let implementationName = $"{fileName}.fs"
+
+    fileCache.TryAdd (signatureName, SourceText.ofString signature) |> ignore
+
+    fileCache.TryAdd (implementationName, SourceText.ofString implementation)
+    |> ignore
+
     let projectOptions : FSharpProjectOptions =
         { projectOptions with
-            SourceFiles = [| signaturePath ; implementationPath |]
+            SourceFiles = [| signatureName ; implementationName |]
         }
 
-    let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+    let result =
+        inMemoryChecker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+
+    fileCache.TryRemove signatureName |> ignore
+    fileCache.TryRemove implementationName |> ignore
 
     mapDiagnostics result.Diagnostics

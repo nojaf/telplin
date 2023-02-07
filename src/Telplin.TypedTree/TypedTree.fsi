@@ -5,6 +5,7 @@ open FSharp.Compiler.CodeAnalysis
 open Telplin.Common
 
 val mkResolverFor :
+    checker : FSharpChecker ->
     sourceFileName : string ->
     sourceText : ISourceText ->
     projectOptions : FSharpProjectOptions ->
@@ -13,10 +14,7 @@ val mkResolverFor :
 val mkResolverForCode : projectOptions : FSharpProjectOptions -> code : string -> TypedTreeInfoResolver
 
 val typeCheckForPair :
-    projectOptions : FSharpProjectOptions ->
-    implementationPath : string ->
-    signaturePath : string ->
-        FSharpDiagnosticInfo array
+    projectOptions : FSharpProjectOptions -> implementation : string -> signature : string -> FSharpDiagnosticInfo array
 
 val typeCheckForImplementation :
     projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnosticInfo array>

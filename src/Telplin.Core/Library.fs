@@ -36,42 +36,27 @@ type internal TelplinInternalApi =
             SignatureVerificationResult.InvalidImplementationFile implCheckDiagnostics
         else
 
-        let randomName = Guid.NewGuid().ToString "N"
-        let tempFolder = Path.Combine (Path.GetTempPath (), randomName)
+        let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
 
-        try
-            let dirInfo = DirectoryInfo tempFolder
-            dirInfo.Create ()
-            let implPath = Path.Combine (tempFolder, "A.fs")
-            File.WriteAllText (implPath, implementation)
+        let signature =
+            try
+                Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation |> Result.Ok
+            with ex ->
+                Result.Error ex.Message
 
-            let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
+        match signature with
+        | Error error -> SignatureVerificationResult.FailedToCreateSignatureFile error
+        | Ok signature ->
 
-            let signature =
-                try
-                    Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation |> Result.Ok
-                with ex ->
-                    Result.Error ex.Message
+        Option.iter (fun assertSignature -> assertSignature signature) assertSignature
 
-            match signature with
-            | Error error -> SignatureVerificationResult.FailedToCreateSignatureFile error
-            | Ok signature ->
+        let pairCheckDiagnostics =
+            Telplin.TypedTree.Resolver.typeCheckForPair options implementation signature
 
-            Option.iter (fun assertSignature -> assertSignature signature) assertSignature
-
-            let sigFPath = Path.Combine (tempFolder, "A.fsi")
-            File.WriteAllText (sigFPath, signature)
-
-            let pairCheckDiagnostics =
-                Telplin.TypedTree.Resolver.typeCheckForPair options implPath sigFPath
-
-            if not (Array.isEmpty pairCheckDiagnostics) then
-                SignatureVerificationResult.InvalidSignatureFile (signature, pairCheckDiagnostics)
-            else
-                SignatureVerificationResult.ValidSignature signature
-        finally
-            if Directory.Exists tempFolder then
-                Directory.Delete (tempFolder, true)
+        if not (Array.isEmpty pairCheckDiagnostics) then
+            SignatureVerificationResult.InvalidSignatureFile (signature, pairCheckDiagnostics)
+        else
+            SignatureVerificationResult.ValidSignature signature
 
 type TelplinApi =
     static member MkSignature (implementation : string, binlog : string) : string =

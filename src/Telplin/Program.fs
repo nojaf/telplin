@@ -1,5 +1,6 @@
 ﻿open System.IO
 open Argu
+open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin
 
@@ -26,8 +27,8 @@ let main args =
         exit 0
     else
 
+    let checker = FSharpChecker.Create ()
     let file = arguments.GetResult <@ Binary_log @>
-
     let projectOptions = TypedTree.Options.mkOptions file
 
     let signatures =
@@ -42,7 +43,10 @@ let main args =
             printfn "process: %s" sourceFile
             let code = File.ReadAllText sourceFile
             let sourceText = SourceText.ofString code
-            let resolver = TypedTree.Resolver.mkResolverFor sourceFile sourceText projectOptions
+
+            let resolver =
+                TypedTree.Resolver.mkResolverFor checker sourceFile sourceText projectOptions
+
             let signature = UntypedTree.Writer.mkSignatureFile resolver code
             sourceFile, signature
         )
