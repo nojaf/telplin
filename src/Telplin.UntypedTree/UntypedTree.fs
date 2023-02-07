@@ -52,7 +52,8 @@ let mkTypeFromString (typeText : string) : Type =
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
     match md with
     | MemberDefn.ValField _
-    | MemberDefn.AbstractSlot _ -> Some md
+    | MemberDefn.AbstractSlot _
+    | MemberDefn.Inherit _ -> Some md
     | MemberDefn.LetBinding _ -> None
 
     | MemberDefn.ImplicitInherit implicitInherit ->
@@ -292,7 +293,12 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         let body =
             TypeDefnExplicitBodyNode (
                 explicitNode.Body.Kind,
-                mkMembers resolver explicitNode.Body.Members,
+                [
+                    match tdn.TypeName.ImplicitConstructor with
+                    | None -> ()
+                    | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
+                    yield! mkMembers resolver explicitNode.Body.Members
+                ],
                 explicitNode.Body.End,
                 zeroRange
             )
