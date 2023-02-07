@@ -16,6 +16,25 @@ type Range with
 
 let stn v = SingleTextNode (v, zeroRange)
 
+let iln v =
+    IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
+
+/// Check if `MultipleAttributeListNode` contains an attribute that contains a given `name`.
+let hasAttribute (name : string) (multipleAttributeListNode : MultipleAttributeListNode option) =
+    match multipleAttributeListNode with
+    | None -> false
+    | Some multipleAttributeListNode ->
+        multipleAttributeListNode.AttributeLists
+        |> List.collect (fun al -> al.Attributes)
+        |> List.exists (fun a ->
+            a.TypeName.Content
+            |> List.exists (
+                function
+                | IdentifierOrDot.Ident attributeName -> attributeName.Text = name
+                | _ -> false
+            )
+        )
+
 let mkTypeFromString (typeText : string) : Type =
     let oak =
         CodeFormatter.ParseOakAsync (true, $"val v: {typeText}")
@@ -85,9 +104,40 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
     let tdn = TypeDefn.TypeDefnNode typeDefn
 
     let typeName =
+        // To overcome
+        // "typecheck error The representation of this type is hidden by the signature."
+        // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
+        // We insert an additional `[<Class>]` attribute when no constructor is present for a TypeDefn.Regular.
+        let attributes =
+            let hasClassAttribute = hasAttribute "Class" tdn.TypeName.Attributes
+
+            match typeDefn with
+            | TypeDefn.Regular _ ->
+                if tdn.TypeName.ImplicitConstructor.IsSome || hasClassAttribute then
+                    tdn.TypeName.Attributes
+                else
+                    let classAttribute =
+                        AttributeListNode (
+                            stn "[<",
+                            [ AttributeNode (iln "Class", None, None, zeroRange) ],
+                            stn ">]",
+                            zeroRange
+                        )
+
+                    match tdn.TypeName.Attributes with
+                    | None -> Some (MultipleAttributeListNode ([ classAttribute ], zeroRange))
+                    | Some multipleAttributeListNode ->
+                        Some (
+                            MultipleAttributeListNode (
+                                classAttribute :: multipleAttributeListNode.AttributeLists,
+                                zeroRange
+                            )
+                        )
+            | _ -> tdn.TypeName.Attributes
+
         TypeNameNode (
             tdn.TypeName.XmlDoc,
-            tdn.TypeName.Attributes,
+            attributes,
             tdn.TypeName.LeadingKeyword,
             tdn.TypeName.Accessibility,
             tdn.TypeName.Identifier,
@@ -111,13 +161,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         let returnType =
             match ctor with
             | None ->
-                TypeFunsNode (
-                    [
-                        Type.LongIdent (IdentListNode ([ IdentifierOrDot.Ident (stn "unit") ], zeroRange)), stn "->"
-                    ],
-                    returnType,
-                    zeroRange
-                )
+                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], returnType, zeroRange)
                 |> Type.Funs
             | Some (typeString, _) -> mkTypeFromString typeString
 
@@ -407,20 +451,10 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 mkTypeForValNode resolver nameRange bindingNode.Parameters bindingNode.ReturnType
 
             let expr =
-                bindingNode.Attributes
-                |> Option.bind (fun attributeListNode ->
-                    attributeListNode.AttributeLists
-                    |> List.collect (fun al -> al.Attributes)
-                    |> List.tryPick (fun a ->
-                        a.TypeName.Content
-                        |> List.tryPick (
-                            function
-                            | IdentifierOrDot.Ident literal -> if literal.Text = "Literal" then Some literal else None
-                            | _ -> None
-                        )
-                    )
-                )
-                |> Option.map (fun _ -> bindingNode.Expr)
+                if hasAttribute "Literal" bindingNode.Attributes then
+                    Some bindingNode.Expr
+                else
+                    None
 
             ValNode (
                 bindingNode.XmlDoc,
