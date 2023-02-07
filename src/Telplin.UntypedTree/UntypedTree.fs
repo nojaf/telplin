@@ -152,9 +152,21 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         let attributes =
             let hasClassAttribute = hasAttribute "Class" tdn.TypeName.Attributes
 
+            let allMembersAreAbstract =
+                tdn.Members
+                |> List.forall (
+                    function
+                    | MemberDefn.AbstractSlot _ -> true
+                    | _ -> false
+                )
+
             match typeDefn with
             | TypeDefn.Regular _ ->
-                if tdn.TypeName.ImplicitConstructor.IsSome || hasClassAttribute then
+                if
+                    tdn.TypeName.ImplicitConstructor.IsSome
+                    || hasClassAttribute
+                    || allMembersAreAbstract
+                then
                     tdn.TypeName.Attributes
                 else
                     let classAttribute =
