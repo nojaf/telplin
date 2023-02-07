@@ -21,8 +21,8 @@ let stn v = SingleTextNode (v, zeroRange)
 let iln v =
     IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
 
-/// Check if `MultipleAttributeListNode` contains an attribute that contains a given `name`.
-let hasAttribute (name : string) (multipleAttributeListNode : MultipleAttributeListNode option) =
+/// Check if `MultipleAttributeListNode` contains an attribute that contains any of the given `name`.
+let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleAttributeListNode option) =
     match multipleAttributeListNode with
     | None -> false
     | Some multipleAttributeListNode ->
@@ -32,7 +32,7 @@ let hasAttribute (name : string) (multipleAttributeListNode : MultipleAttributeL
             a.TypeName.Content
             |> List.exists (
                 function
-                | IdentifierOrDot.Ident attributeName -> attributeName.Text = name
+                | IdentifierOrDot.Ident attributeName -> names.Contains (attributeName.Text)
                 | _ -> false
             )
         )
@@ -71,9 +71,12 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
 
             let name =
                 match name.Content with
-                | [ IdentifierOrDot.Ident _this
+                // member this.Foo
+                | [ IdentifierOrDot.Ident _
                     (IdentifierOrDot.KnownDot _ | IdentifierOrDot.UnknownDot)
-                    IdentifierOrDot.Ident name ] -> name
+                    IdentifierOrDot.Ident name ]
+                // static member Foo
+                | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
             let t =
@@ -150,7 +153,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
         // We insert an additional `[<Class>]` attribute when no constructor is present for a TypeDefn.Regular.
         let attributes =
-            let hasClassAttribute = hasAttribute "Class" tdn.TypeName.Attributes
+            let hasClassAttribute =
+                hasAnyAttribute (set [| "Class" ; "ClassAttribute" |]) tdn.TypeName.Attributes
 
             let allMembersAreAbstract =
                 tdn.Members
@@ -546,7 +550,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 mkTypeForValNode resolver nameRange bindingNode.Parameters rt
 
             let expr =
-                if hasAttribute "Literal" bindingNode.Attributes then
+                if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
                     Some bindingNode.Expr
                 else
                     None
