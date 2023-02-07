@@ -49,7 +49,7 @@ let mkTypeFromString (typeText : string) : Type =
     | [ ModuleDecl.Val valNode ] -> valNode.Type
     | decls -> failwithf $"Unexpected module decls:%A{decls}"
 
-let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
+let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDefn) : MemberDefn option =
     match md with
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
@@ -111,9 +111,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
 
     | MemberDefn.AutoProperty autoProperty ->
         let valKw = MultipleTextsNode ([ stn "member" ], zeroRange)
-
         let name = autoProperty.Identifier
-
         let t = mkTypeForValNode resolver name.Range [] autoProperty.Type
 
         MemberDefnSigMemberNode (
@@ -137,10 +135,37 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
         |> MemberDefn.SigMember
         |> Some
 
+    | MemberDefn.ExplicitCtor explicitNode ->
+        let name = explicitNode.New
+
+        let t =
+            mkTypeForValNode resolver name.Range [ explicitNode.Pattern ] (Some typeName)
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                explicitNode.XmlDoc,
+                explicitNode.Attributes,
+                None,
+                None,
+                false,
+                None,
+                name,
+                None,
+                t,
+                Some (stn "="),
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
+
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
-let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list =
-    List.choose (mkMember resolver) ms
+let mkMembers (resolver : TypedTreeInfoResolver) (typeName : Type) (ms : MemberDefn list) : MemberDefn list =
+    List.choose (mkMember resolver typeName) ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.
@@ -211,6 +236,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             zeroRange
         )
 
+    let typeNameType = Type.LongIdent tdn.TypeName.Identifier
+
     let mkImplicitCtor
         (resolver : TypedTreeInfoResolver)
         (identifier : IdentListNode)
@@ -218,12 +245,10 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         =
         let { ConstructorInfo = ctor } = resolver.GetTypeInfo identifier.Range.Proxy
 
-        let returnTypeFromIdentifier = Type.LongIdent identifier
-
         let returnType =
             match ctor with
             | None ->
-                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], returnTypeFromIdentifier, zeroRange)
+                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], typeNameType, zeroRange)
                 |> Type.Funs
             | Some (typeString, _) -> mkTypeFromString typeString
 
@@ -254,7 +279,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 |> wrapAsTupleIfMultiple
 
         let returnType =
-            mkTypeForValNodeBasedOnTypedTree returnType parameters (Some returnTypeFromIdentifier)
+            mkTypeForValNodeBasedOnTypedTree returnType parameters (Some typeNameType)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -276,6 +301,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         )
         |> MemberDefn.SigMember
 
+    let mkMembersForType members = mkMembers resolver typeNameType members
+
     match typeDefn with
     | TypeDefn.Record recordNode ->
         TypeDefnRecordNode (
@@ -284,7 +311,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             recordNode.OpeningBrace,
             recordNode.Fields,
             recordNode.ClosingBrace,
-            mkMembers resolver tdn.Members,
+            mkMembersForType tdn.Members,
             zeroRange
         )
         |> TypeDefn.Record
@@ -297,13 +324,13 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                     match tdn.TypeName.ImplicitConstructor with
                     | None -> ()
                     | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
-                    yield! mkMembers resolver explicitNode.Body.Members
+                    yield! mkMembersForType explicitNode.Body.Members
                 ],
                 explicitNode.Body.End,
                 zeroRange
             )
 
-        TypeDefnExplicitNode (typeName, body, mkMembers resolver tdn.Members, zeroRange)
+        TypeDefnExplicitNode (typeName, body, mkMembersForType tdn.Members, zeroRange)
         |> TypeDefn.Explicit
 
     | TypeDefn.Regular _ ->
@@ -313,7 +340,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 match tdn.TypeName.ImplicitConstructor with
                 | None -> ()
                 | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
-                yield! mkMembers resolver tdn.Members
+                yield! mkMembersForType tdn.Members
             ],
             zeroRange
         )
@@ -324,17 +351,17 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             typeName,
             unionNode.Accessibility,
             unionNode.UnionCases,
-            mkMembers resolver tdn.Members,
+            mkMembersForType tdn.Members,
             zeroRange
         )
         |> TypeDefn.Union
 
     | TypeDefn.Abbrev abbrevNode ->
-        TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembers resolver tdn.Members, zeroRange)
+        TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembersForType tdn.Members, zeroRange)
         |> TypeDefn.Abbrev
 
     | TypeDefn.Augmentation _ ->
-        TypeDefnAugmentationNode (typeName, mkMembers resolver tdn.Members, zeroRange)
+        TypeDefnAugmentationNode (typeName, mkMembersForType tdn.Members, zeroRange)
         |> TypeDefn.Augmentation
 
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
@@ -601,13 +628,15 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         |> ModuleDecl.NestedModule
         |> Some
     | ModuleDecl.Exception exceptionNode ->
+        let exceptionNameType = Type.LongIdent (iln exceptionNode.UnionCase.Identifier.Text)
+
         ExceptionDefnNode (
             exceptionNode.XmlDoc,
             exceptionNode.Attributes,
             exceptionNode.Accessibility,
             exceptionNode.UnionCase,
             exceptionNode.WithKeyword,
-            List.choose (mkMember resolver) exceptionNode.Members,
+            mkMembers resolver exceptionNameType exceptionNode.Members,
             zeroRange
         )
         |> ModuleDecl.Exception
