@@ -56,12 +56,16 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
     | MemberDefn.LetBinding _ -> None
 
     | MemberDefn.ImplicitInherit implicitInherit ->
-        match implicitInherit with
-        | InheritConstructor.Unit inheritCtor ->
-            MemberDefnInheritNode (implicitInherit.InheritKeyword, inheritCtor.Type, zeroRange)
-            |> MemberDefn.Inherit
-            |> Some
-        | _ -> None
+        let t =
+            match implicitInherit with
+            | InheritConstructor.Unit inheritCtor -> inheritCtor.Type
+            | InheritConstructor.Paren inheritCtor -> inheritCtor.Type
+            | InheritConstructor.Other inheritCtor -> inheritCtor.Type
+            | InheritConstructor.TypeOnly inheritCtor -> inheritCtor.Type
+
+        MemberDefnInheritNode (implicitInherit.InheritKeyword, t, zeroRange)
+        |> MemberDefn.Inherit
+        |> Some
 
     | MemberDefn.Member bindingNode ->
         match bindingNode.FunctionName with
