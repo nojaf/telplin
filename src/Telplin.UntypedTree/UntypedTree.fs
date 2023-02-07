@@ -14,8 +14,10 @@ type Range with
     member r.Proxy : RangeProxy =
         RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
 
+/// Create a `SingleTextNode` based on the value string.
 let stn v = SingleTextNode (v, zeroRange)
 
+/// Create an `IdentListNode` with a single IdentifierOrDot.Ident value.
 let iln v =
     IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
 
@@ -35,6 +37,7 @@ let hasAttribute (name : string) (multipleAttributeListNode : MultipleAttributeL
             )
         )
 
+/// Transform a string into Type by parsing a dummy `val` in a signature file.
 let mkTypeFromString (typeText : string) : Type =
     let oak =
         CodeFormatter.ParseOakAsync (true, $"val v: {typeText}")
@@ -48,7 +51,9 @@ let mkTypeFromString (typeText : string) : Type =
 
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn option =
     match md with
-    | MemberDefn.ValField _ -> Some md
+    | MemberDefn.ValField _
+    | MemberDefn.AbstractSlot _ -> Some md
+    | MemberDefn.LetBinding _ -> None
 
     | MemberDefn.ImplicitInherit implicitInherit ->
         match implicitInherit with
@@ -62,7 +67,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
         match bindingNode.FunctionName with
         | Choice2Of2 _ -> None
         | Choice1Of2 name ->
-            let valKw = MultipleTextsNode ([ stn "member" ], zeroRange)
+            let valKw = bindingNode.LeadingKeyword
 
             let name =
                 match name.Content with
@@ -72,7 +77,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
             let t =
-                mkTypeForValNode resolver name.Range bindingNode.Parameters bindingNode.ReturnType
+                let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
+                mkTypeForValNode resolver name.Range bindingNode.Parameters rt
 
             MemberDefnSigMemberNode (
                 ValNode (
@@ -95,11 +101,46 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefn o
             |> MemberDefn.SigMember
             |> Some
 
+    | MemberDefn.AutoProperty autoProperty ->
+        let valKw = MultipleTextsNode ([ stn "member" ], zeroRange)
+
+        let name = autoProperty.Identifier
+
+        let t = mkTypeForValNode resolver name.Range [] autoProperty.Type
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                autoProperty.XmlDoc,
+                autoProperty.Attributes,
+                Some valKw,
+                None,
+                false,
+                None,
+                name,
+                None,
+                t,
+                Some (stn "="),
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
+
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
 let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list =
     List.choose (mkMember resolver) ms
 
+/// <summary>
+/// Map a TypeDefn to its signature counterpart.
+/// A lot of information can typically be re-used when the same syntax applies.
+/// The most important things that need mapping are the implicit constructor and the type members.
+/// </summary>
+/// <param name="resolver">Resolves information from the Typed tree.</param>
+/// <param name="typeDefn">Type definition DU case from the Untyped tree.</param>
 let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDefn =
     let tdn = TypeDefn.TypeDefnNode typeDefn
 
@@ -156,14 +197,43 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         =
         let { ConstructorInfo = ctor } = resolver.GetTypeInfo identifier.Range.Proxy
 
-        let returnType = Type.LongIdent identifier
+        let returnTypeFromIdentifier = Type.LongIdent identifier
 
         let returnType =
             match ctor with
             | None ->
-                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], returnType, zeroRange)
+                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], returnTypeFromIdentifier, zeroRange)
                 |> Type.Funs
             | Some (typeString, _) -> mkTypeFromString typeString
+
+        // Convert the SimplePats to Patterns
+        let parameters =
+            match implicitCtor.Parameters with
+            | [] ->
+                // Even when there are new explicit parameters we still need to pass `()` as a unit parameter.
+                [ Pattern.Unit (UnitNode (stn "(", stn ")", zeroRange)) ]
+            | parameters ->
+                let wrapAsTupleIfMultiple (parameters : Pattern list) =
+                    if parameters.Length < 2 then
+                        parameters
+                    else
+                        // Wrap as tuple as that is the only way parameters can behave in an implicit constructor.
+                        [ Pattern.Tuple (PatTupleNode (parameters, zeroRange)) ]
+
+                parameters
+                |> List.map (fun simplePat ->
+                    PatParameterNode (
+                        simplePat.Attributes,
+                        Pattern.Named (PatNamedNode (None, simplePat.Identifier, zeroRange)),
+                        simplePat.Type,
+                        zeroRange
+                    )
+                    |> Pattern.Parameter
+                )
+                |> wrapAsTupleIfMultiple
+
+        let returnType =
+            mkTypeForValNodeBasedOnTypedTree returnType parameters (Some returnTypeFromIdentifier)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -250,11 +320,7 @@ let wrapTypeInParentheses (t : Type) =
 /// If a function is fully typed in the input Oak, we can re-use that exact information to construct the return type for the ValNode.
 /// This only works when every parameter was typed and, the return type is present and no generics are involved.
 /// </summary>
-let mkTypeForValNodeBasedOnOak
-    (fullyTypedParameters : (Type * PatParameterNode) list)
-    (returnType : BindingReturnInfoNode)
-    : Type
-    =
+let mkTypeForValNodeBasedOnOak (fullyTypedParameters : (Type * PatParameterNode) list) (returnType : Type) : Type =
     let parameters =
         fullyTypedParameters
         |> List.map (fun (t, parameter) ->
@@ -275,7 +341,7 @@ let mkTypeForValNodeBasedOnOak
             parameterType, stn "->"
         )
 
-    TypeFunsNode (parameters, returnType.Type, zeroRange) |> Type.Funs
+    TypeFunsNode (parameters, returnType, zeroRange) |> Type.Funs
 
 /// <summary>
 /// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
@@ -287,7 +353,7 @@ let mkTypeForValNodeBasedOnOak
 let mkTypeForValNodeBasedOnTypedTree
     (returnType : Type)
     (parameters : Pattern list)
-    (returnTypeInSource : BindingReturnInfoNode option)
+    (returnTypeInSource : Type option)
     : Type
     =
     // The `returnType` constructed from the typed tree cannot be trusted 100%.
@@ -414,7 +480,7 @@ let mkTypeForValNode
     (resolver : TypedTreeInfoResolver)
     (nameRange : range)
     (parameters : Pattern list)
-    (returnTypeInSource : BindingReturnInfoNode option)
+    (returnTypeInSource : Type option)
     : Type
     =
     let returnTypeString, _ = resolver.GetFullForBinding nameRange.Proxy
@@ -464,7 +530,8 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
             let t =
-                mkTypeForValNode resolver nameRange bindingNode.Parameters bindingNode.ReturnType
+                let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
+                mkTypeForValNode resolver nameRange bindingNode.Parameters rt
 
             let expr =
                 if hasAttribute "Literal" bindingNode.Attributes then
