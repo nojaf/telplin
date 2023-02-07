@@ -188,8 +188,10 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
         // We insert an additional `[<Class>]` attribute when no constructor is present for a TypeDefn.Regular.
         let attributes =
-            let hasClassAttribute =
-                hasAnyAttribute (set [| "Class" ; "ClassAttribute" |]) tdn.TypeName.Attributes
+            let hasExistingAttribute =
+                hasAnyAttribute
+                    (set [| "Class" ; "ClassAttribute" ; "Struct" ; "StructAttribute" |])
+                    tdn.TypeName.Attributes
 
             let allMembersAreAbstract =
                 tdn.Members
@@ -203,7 +205,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             | TypeDefn.Regular _ ->
                 if
                     tdn.TypeName.ImplicitConstructor.IsSome
-                    || hasClassAttribute
+                    || hasExistingAttribute
                     || allMembersAreAbstract
                 then
                     tdn.TypeName.Attributes
