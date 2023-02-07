@@ -332,6 +332,22 @@ let mkTypeForValNodeBasedOnTypedTree
                     TypeSignatureParameterNode (None, Some namedNode.Name, typeTreeType, zeroRange)
                 )
 
+            | Pattern.OptionalVal optionalValNode ->
+                let t =
+                    // Remove the `option` if the type is `int option`.
+                    // Because the parameter name will already start with an "?" like `?x`.
+                    match typeTreeType with
+                    | Type.AppPostfix appPostFix ->
+                        match appPostFix.Last with
+                        | Type.LongIdent optionType ->
+                            match optionType.Content with
+                            | [ IdentifierOrDot.Ident optionIdent ] when optionIdent.Text = "option" -> appPostFix.First
+                            | _ -> typeTreeType
+                        | _ -> typeTreeType
+                    | _ -> typeTreeType
+
+                Type.SignatureParameter (TypeSignatureParameterNode (None, Some optionalValNode, t, zeroRange))
+
             | Pattern.Parameter parameter ->
                 let parameterType =
                     // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
