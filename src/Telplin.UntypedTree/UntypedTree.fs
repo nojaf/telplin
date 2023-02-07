@@ -162,6 +162,11 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
         |> MemberDefn.SigMember
         |> Some
 
+    | MemberDefn.Interface interfaceNode ->
+        MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
+        |> MemberDefn.Interface
+        |> Some
+
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
 let mkMembers (resolver : TypedTreeInfoResolver) (typeName : Type) (ms : MemberDefn list) : MemberDefn list =
