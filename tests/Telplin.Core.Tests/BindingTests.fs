@@ -948,7 +948,7 @@ let v = array2D [ [ 1 ; 0 ] ; [ 0 ; 1 ] ]
         """
 module Telplin
 
-val v: int[,]
+val v: int array2d
 """
 
 [<Test>]
