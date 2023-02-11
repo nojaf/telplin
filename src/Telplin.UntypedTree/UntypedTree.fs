@@ -21,6 +21,10 @@ let stn v = SingleTextNode (v, zeroRange)
 let iln v =
     IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
 
+/// Create an `MultipleTextsNode` with a single value.
+let mtn v =
+    MultipleTextsNode ([ stn v ], zeroRange)
+
 /// Check if `MultipleAttributeListNode` contains an attribute that contains any of the given `name`.
 let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleAttributeListNode option) =
     match multipleAttributeListNode with
@@ -39,14 +43,26 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
 
 /// Transform a string into Type by parsing a dummy `val` in a signature file.
 let mkTypeFromString (typeText : string) : Type =
+    let pseudoSignature =
+        $"""
+[<AbstractClass>]
+type X =
+    abstract member Y : {typeText}
+"""
+
     let oak =
-        CodeFormatter.ParseOakAsync (true, $"val v: {typeText}")
+        CodeFormatter.ParseOakAsync (true, pseudoSignature)
         |> Async.RunSynchronously
         |> Array.head
         |> fst
 
     match oak.ModulesOrNamespaces.[0].Declarations with
-    | [ ModuleDecl.Val valNode ] -> valNode.Type
+    | [ ModuleDecl.TypeDefn typeDefn ] ->
+        let tdn = TypeDefn.TypeDefnNode typeDefn
+
+        match tdn.Members with
+        | [ MemberDefn.SigMember sigMember ] -> sigMember.Val.Type
+        | members -> failwith $"Unexpected members of type definition: %A{members}"
     | decls -> failwithf $"Unexpected module decls:%A{decls}"
 
 let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDefn) : MemberDefn option =
@@ -110,7 +126,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
             |> Some
 
     | MemberDefn.AutoProperty autoProperty ->
-        let valKw = MultipleTextsNode ([ stn "member" ], zeroRange)
+        let valKw = mtn "member"
         let name = autoProperty.Identifier
         let t = mkTypeForValNode resolver name.Range [] autoProperty.Type
 
@@ -166,6 +182,43 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
         MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
         |> MemberDefn.Interface
         |> Some
+
+    | MemberDefn.PropertyGetSet propertyNode ->
+        match propertyNode.LastBinding with
+        | None ->
+            // get or set only
+            let name =
+                match List.tryLast propertyNode.MemberName.Content with
+                | Some (IdentifierOrDot.Ident name) -> name
+                | _ -> failwith "Property does not have a name?"
+
+            let t =
+                let returnTypeInSource =
+                    propertyNode.FirstBinding.ReturnType |> Option.map (fun b -> b.Type)
+
+                mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    propertyNode.XmlDoc,
+                    propertyNode.Attributes,
+                    Some (mtn "member"),
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    t,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                Some (MultipleTextsNode ([ stn "with" ; propertyNode.FirstBinding.LeadingKeyword ], zeroRange)),
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+            |> Some
+        | Some lastBinding -> failwith "todo, 5CAD1289-8D81-4A94-A947-F5084C947AE1"
 
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
@@ -581,7 +634,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
-            let valKw = MultipleTextsNode ([ stn "val" ], zeroRange)
+            let valKw = mtn "val"
             let nameRange = (name :> Node).Range
 
             let name =

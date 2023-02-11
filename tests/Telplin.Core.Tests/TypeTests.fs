@@ -355,6 +355,23 @@ type X =
 """
 
 [<Test>]
+let ``member with set only`` () =
+    assertSignature
+        """
+module FA
+
+type X() =
+    member this.MyWriteOnlyProperty with set (value: string) = ()
+"""
+        """
+module FA
+
+type X =
+    new: unit -> X
+    member MyWriteOnlyProperty: string with set
+"""
+
+[<Test>]
 let ``member with indexed get/set`` () =
     assertSignature
         """
