@@ -406,7 +406,7 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with get, set
+    member Item: m: int -> string with set, get
 """
 
 [<Test>]

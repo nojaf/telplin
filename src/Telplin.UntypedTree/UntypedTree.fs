@@ -184,41 +184,93 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
         |> Some
 
     | MemberDefn.PropertyGetSet propertyNode ->
-        match propertyNode.LastBinding with
-        | None ->
-            // get or set only
-            let name =
-                match List.tryLast propertyNode.MemberName.Content with
-                | Some (IdentifierOrDot.Ident name) -> name
-                | _ -> failwith "Property does not have a name?"
+        let name =
+            match List.tryLast propertyNode.MemberName.Content with
+            | Some (IdentifierOrDot.Ident name) -> name
+            | _ -> failwith "Property does not have a name?"
 
-            let t =
-                let returnTypeInSource =
-                    propertyNode.FirstBinding.ReturnType |> Option.map (fun b -> b.Type)
+        let t =
+            let returnTypeInSource =
+                propertyNode.FirstBinding.ReturnType |> Option.map (fun b -> b.Type)
 
-                mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+            let (|ParameterNameInParen|_|) p =
+                match p with
+                | Pattern.Paren parenNode ->
+                    match parenNode.Pattern with
+                    | Pattern.Parameter parameterNode ->
+                        match parameterNode.Pattern with
+                        | Pattern.Named parameterName -> Some parameterName.Name
+                        | _ -> None
+                    | _ -> None
+                | _ -> None
 
-            MemberDefnSigMemberNode (
-                ValNode (
-                    propertyNode.XmlDoc,
-                    propertyNode.Attributes,
-                    Some (mtn "member"),
-                    None,
-                    false,
-                    None,
-                    name,
-                    None,
-                    t,
-                    Some (stn "="),
-                    None,
-                    zeroRange
-                ),
-                Some (MultipleTextsNode ([ stn "with" ; propertyNode.FirstBinding.LeadingKeyword ], zeroRange)),
+            // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
+            match propertyNode.LastBinding with
+            | None -> mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+            | Some lastBinding ->
+                match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
+                | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
+                | [ ParameterNameInParen p1 ; _ ], [ ParameterNameInParen p2 ] when p1.Text <> p2.Text ->
+                    // Example:
+                    //     member x.Item
+                    //          with get (a: int) = ""
+                    //          and set (b:int) (c:string) = ()
+
+                    // Throw in a fake parameter that represents the indexer pattern.
+                    // This is to avoid additional parentheses around the return type.
+                    mkTypeForValNode resolver name.Range [ Pattern.Wild (stn "_") ] returnTypeInSource
+                | [ _ ], [ _ ; _ ] ->
+                    // Indexer where the index pattern has the same name, example:
+                    //     member x.Item
+                    //          with get (m: int) = ""
+                    //          and set (m:int) (y:string) = ()
+
+                    // Use the shortest parameter list
+                    mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+                | [ _ ; _ ], [ _ ] ->
+                    // Indexer where the index pattern has the same name, example:
+                    //     member x.Item
+                    //          with set (m:int) (y:string) = ()
+                    //          and get (m: int) = ""
+                    mkTypeForValNode resolver name.Range lastBinding.Parameters returnTypeInSource
+                | [ Pattern.Unit _ ], [ _ ]
+                | [ _ ], [ Pattern.Unit _ ] ->
+                    // The getter takes a unit argument:
+                    //     member __.DisableInMemoryProjectReferences
+                    //          with get () = disableInMemoryProjectReferences
+                    //          and set (value) = disableInMemoryProjectReferences <- value
+                    mkTypeForValNode resolver name.Range [] returnTypeInSource
+                | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
+
+        let withGetSet =
+            match propertyNode.LastBinding with
+            | None -> [ propertyNode.FirstBinding.LeadingKeyword ]
+            | Some lastBinding ->
+                [
+                    stn $"%s{propertyNode.FirstBinding.LeadingKeyword.Text},"
+                    lastBinding.LeadingKeyword
+                ]
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                propertyNode.XmlDoc,
+                propertyNode.Attributes,
+                Some (mtn "member"),
+                None,
+                false,
+                None,
+                name,
+                None,
+                t,
+                Some (stn "="),
+                None,
                 zeroRange
-            )
-            |> MemberDefn.SigMember
-            |> Some
-        | Some lastBinding -> failwith "todo, 5CAD1289-8D81-4A94-A947-F5084C947AE1"
+            ),
+            Some (MultipleTextsNode ([ stn "with" ; yield! withGetSet ], zeroRange)),
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
 
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
