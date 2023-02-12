@@ -10,7 +10,7 @@ type RangeProxy =
         override ToString : unit -> string
     end
 
-type GenericConstraintForParameter =
+type GenericParameter =
     {
         ParameterName : string
         IsHeadType : bool
@@ -35,7 +35,7 @@ and MemberConstraintData =
         Type : string
     }
 
-type BindingInfo = string * GenericConstraintForParameter list
+type BindingInfo = string * GenericParameter list
 
 type TypeInfoResponse =
     {

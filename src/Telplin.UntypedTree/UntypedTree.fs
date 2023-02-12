@@ -1,69 +1,10 @@
 ﻿module rec Telplin.UntypedTree.Writer
 
-open FSharp.Compiler.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
-open Microsoft.FSharp.Core.CompilerServices
 open Telplin.Common
-open Telplin.UntypedTree.SourceParser
-
-let zeroRange = Range.Zero
-
-type Range with
-
-    member r.Proxy : RangeProxy =
-        RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
-
-/// Create a `SingleTextNode` based on the value string.
-let stn v = SingleTextNode (v, zeroRange)
-
-/// Create an `IdentListNode` with a single IdentifierOrDot.Ident value.
-let iln v =
-    IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
-
-/// Create an `MultipleTextsNode` with a single value.
-let mtn v =
-    MultipleTextsNode ([ stn v ], zeroRange)
-
-/// Check if `MultipleAttributeListNode` contains an attribute that contains any of the given `name`.
-let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleAttributeListNode option) =
-    match multipleAttributeListNode with
-    | None -> false
-    | Some multipleAttributeListNode ->
-        multipleAttributeListNode.AttributeLists
-        |> List.collect (fun al -> al.Attributes)
-        |> List.exists (fun a ->
-            a.TypeName.Content
-            |> List.exists (
-                function
-                | IdentifierOrDot.Ident attributeName -> names.Contains (attributeName.Text)
-                | _ -> false
-            )
-        )
-
-/// Transform a string into Type by parsing a dummy `val` in a signature file.
-let mkTypeFromString (typeText : string) : Type =
-    let pseudoSignature =
-        $"""
-[<AbstractClass>]
-type X =
-    abstract member Y : {typeText}
-"""
-
-    let oak =
-        CodeFormatter.ParseOakAsync (true, pseudoSignature)
-        |> Async.RunSynchronously
-        |> Array.head
-        |> fst
-
-    match oak.ModulesOrNamespaces.[0].Declarations with
-    | [ ModuleDecl.TypeDefn typeDefn ] ->
-        let tdn = TypeDefn.TypeDefnNode typeDefn
-
-        match tdn.Members with
-        | [ MemberDefn.SigMember sigMember ] -> sigMember.Val.Type
-        | members -> failwith $"Unexpected members of type definition: %A{members}"
-    | decls -> failwithf $"Unexpected module decls:%A{decls}"
+open ASTCreation
+open TypeForValNode
 
 let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDefn) : MemberDefn option =
     match md with
@@ -100,9 +41,9 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                 | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-            let t =
+            let returnType, typarDeclsOpt =
                 let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver name.Range bindingNode.Parameters rt
+                mkTypeForValNode resolver name.Range bindingNode.GenericTypeParameters bindingNode.Parameters rt
 
             MemberDefnSigMemberNode (
                 ValNode (
@@ -113,8 +54,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                     false,
                     None,
                     name,
-                    None,
-                    t,
+                    typarDeclsOpt,
+                    returnType,
                     Some (stn "="),
                     None,
                     zeroRange
@@ -128,7 +69,9 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
     | MemberDefn.AutoProperty autoProperty ->
         let valKw = mtn "member"
         let name = autoProperty.Identifier
-        let t = mkTypeForValNode resolver name.Range [] autoProperty.Type
+
+        let returnType, typarDeclsOpt =
+            mkTypeForValNode resolver name.Range None [] autoProperty.Type
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -139,8 +82,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                 false,
                 None,
                 name,
-                None,
-                t,
+                typarDeclsOpt,
+                returnType,
                 Some (stn "="),
                 None,
                 zeroRange
@@ -154,8 +97,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
 
-        let t =
-            mkTypeForValNode resolver name.Range [ explicitNode.Pattern ] (Some typeName)
+        let returnType, typarDeclsOpt =
+            mkTypeForValNode resolver name.Range None [ explicitNode.Pattern ] (Some typeName)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -166,8 +109,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                 false,
                 None,
                 name,
-                None,
-                t,
+                typarDeclsOpt,
+                returnType,
                 Some (stn "="),
                 None,
                 zeroRange
@@ -189,7 +132,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
-        let t =
+        let returnType, typarDeclsOpt =
             let returnTypeInSource =
                 propertyNode.FirstBinding.ReturnType |> Option.map (fun b -> b.Type)
 
@@ -206,7 +149,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
             // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
             match propertyNode.LastBinding with
-            | None -> mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+            | None -> mkTypeForValNode resolver name.Range None propertyNode.FirstBinding.Parameters returnTypeInSource
             | Some lastBinding ->
                 match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
                 | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
@@ -218,7 +161,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
                     // Throw in a fake parameter that represents the indexer pattern.
                     // This is to avoid additional parentheses around the return type.
-                    mkTypeForValNode resolver name.Range [ Pattern.Wild (stn "_") ] returnTypeInSource
+                    mkTypeForValNode resolver name.Range None [ Pattern.Wild (stn "_") ] returnTypeInSource
                 | [ _ ], [ _ ; _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
@@ -226,20 +169,20 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                     //          and set (m:int) (y:string) = ()
 
                     // Use the shortest parameter list
-                    mkTypeForValNode resolver name.Range propertyNode.FirstBinding.Parameters returnTypeInSource
+                    mkTypeForValNode resolver name.Range None propertyNode.FirstBinding.Parameters returnTypeInSource
                 | [ _ ; _ ], [ _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
                     //          with set (m:int) (y:string) = ()
                     //          and get (m: int) = ""
-                    mkTypeForValNode resolver name.Range lastBinding.Parameters returnTypeInSource
+                    mkTypeForValNode resolver name.Range None lastBinding.Parameters returnTypeInSource
                 | [ Pattern.Unit _ ], [ _ ]
                 | [ _ ], [ Pattern.Unit _ ] ->
                     // The getter takes a unit argument:
                     //     member __.DisableInMemoryProjectReferences
                     //          with get () = disableInMemoryProjectReferences
                     //          and set (value) = disableInMemoryProjectReferences <- value
-                    mkTypeForValNode resolver name.Range [] returnTypeInSource
+                    mkTypeForValNode resolver name.Range None [] returnTypeInSource
                 | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
 
         let withGetSet =
@@ -260,8 +203,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                 false,
                 None,
                 name,
-                None,
-                t,
+                typarDeclsOpt,
+                returnType,
                 Some (stn "="),
                 None,
                 zeroRange
@@ -390,8 +333,14 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 )
                 |> wrapAsTupleIfMultiple
 
-        let returnType =
-            mkTypeForValNodeBasedOnTypedTree returnType parameters (Some typeNameType)
+        let returnType, typarDeclsOpt =
+            let typedTreeInfo =
+                {
+                    ReturnType = returnType
+                    GenericParameters = []
+                }
+
+            mkTypeForValNodeBasedOnTypedTree typedTreeInfo None parameters (Some typeNameType)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -402,7 +351,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 false,
                 implicitCtor.Accessibility,
                 stn "new",
-                None,
+                typarDeclsOpt,
                 returnType,
                 None,
                 None,
@@ -478,209 +427,6 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
-let wrapTypeInParentheses (t : Type) =
-    Type.Paren (TypeParenNode (stn "(", t, stn ")", zeroRange))
-
-/// <summary>
-/// If a function is fully typed in the input Oak, we can re-use that exact information to construct the return type for the ValNode.
-/// This only works when every parameter was typed and, the return type is present and no generics are involved.
-/// </summary>
-let mkTypeForValNodeBasedOnOak (fullyTypedParameters : (Type * PatParameterNode) list) (returnType : Type) : Type =
-    let parameters =
-        fullyTypedParameters
-        |> List.map (fun (t, parameter) ->
-            let name =
-                match parameter.Pattern with
-                | Pattern.Named namedPat -> Some namedPat.Name
-                | _ -> None
-
-            let t =
-                match t with
-                | Type.Funs _ -> wrapTypeInParentheses t
-                | _ -> t
-
-            let parameterType =
-                TypeSignatureParameterNode (parameter.Attributes, name, t, zeroRange)
-                |> Type.SignatureParameter
-
-            parameterType, stn "->"
-        )
-
-    TypeFunsNode (parameters, returnType, zeroRange) |> Type.Funs
-
-/// <summary>
-/// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
-/// And it might need some additional parentheses. For example, when the return type is a function type.
-/// </summary>
-/// <param name="returnType">Resolved type from the typed tree.</param>
-/// <param name="parameters">Parameters found in the input Oak. These will be used to enhance the parameters in the `returnType` by adding the name (if present).</param>
-/// <param name="returnTypeInSource">Optional return type from the input Oak.</param>
-let mkTypeForValNodeBasedOnTypedTree
-    (returnType : Type)
-    (parameters : Pattern list)
-    (returnTypeInSource : Type option)
-    : Type
-    =
-    // The `returnType` constructed from the typed tree cannot be trusted 100%.
-    // We might receive `int -> int -> int` while the Oak only contained a single parameter.
-    // This needs to be transformed to `int -> (int -> int)` to reflect that the return type actually is a function type.
-    let returnTypeCorrectByActualParameters =
-        match returnType with
-        | Type.Funs funsNode ->
-            if funsNode.Parameters.Length = parameters.Length then
-                returnType
-            else
-                // We need to shift the extra parameters to the funsNode.ReturnType
-                let actualParameters, additionalTypes =
-                    List.take parameters.Length funsNode.Parameters, funsNode.Parameters |> List.skip parameters.Length
-
-                let actualReturnType =
-                    TypeParenNode (
-                        stn "(",
-                        TypeFunsNode (additionalTypes, funsNode.ReturnType, zeroRange) |> Type.Funs,
-                        stn ")",
-                        zeroRange
-                    )
-                    |> Type.Paren
-
-                TypeFunsNode (actualParameters, actualReturnType, zeroRange) |> Type.Funs
-
-        | _ -> returnType
-
-    let returnTypeWithParameterNames =
-        let rec updateParameter
-            // Only top level tuples can have parameter names
-            (isTopLevel : bool)
-            (pattern : Pattern)
-            (typeTreeType : Type)
-            : Type
-            =
-            match pattern with
-            | Pattern.Paren parenNode -> updateParameter isTopLevel parenNode.Pattern typeTreeType
-
-            | Pattern.Named namedNode ->
-                Type.SignatureParameter (
-                    TypeSignatureParameterNode (None, Some namedNode.Name, typeTreeType, zeroRange)
-                )
-
-            | Pattern.OptionalVal optionalValNode ->
-                let t =
-                    // Remove the `option` if the type is `int option`.
-                    // Because the parameter name will already start with an "?" like `?x`.
-                    match typeTreeType with
-                    | Type.AppPostfix appPostFix ->
-                        match appPostFix.Last with
-                        | Type.LongIdent optionType ->
-                            match optionType.Content with
-                            | [ IdentifierOrDot.Ident optionIdent ] when optionIdent.Text = "option" -> appPostFix.First
-                            | _ -> typeTreeType
-                        | _ -> typeTreeType
-                    | _ -> typeTreeType
-
-                Type.SignatureParameter (TypeSignatureParameterNode (None, Some optionalValNode, t, zeroRange))
-
-            | Pattern.Parameter parameter ->
-                let parameterType =
-                    // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
-                    // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
-                    match parameter.Type with
-                    | Some (Type.Funs _ as t) -> wrapTypeInParentheses t
-                    | Some t -> t
-                    | None -> typeTreeType
-
-                match parameter.Pattern with
-                | Pattern.Named namedNode ->
-                    Type.SignatureParameter (
-                        TypeSignatureParameterNode (parameter.Attributes, Some namedNode.Name, parameterType, zeroRange)
-                    )
-                | Pattern.OptionalVal optValNode ->
-                    Type.SignatureParameter (
-                        TypeSignatureParameterNode (parameter.Attributes, Some optValNode, parameterType, zeroRange)
-                    )
-                | _ -> typeTreeType
-            | Pattern.Tuple patTupleNode ->
-                match typeTreeType with
-                | Type.Tuple typeTupleNode when
-                    (isTopLevel && patTupleNode.Patterns.Length = typeTupleNode.Types.Length)
-                    ->
-                    (patTupleNode.Patterns, typeTupleNode.Types)
-                    ||> List.zip
-                    |> List.map (fun (pat, t) -> updateParameter false pat t)
-                    |> fun ts ->
-                        let mutable collector = ListCollector<Choice<_, _>> ()
-
-                        let rec visit ts =
-                            match ts with
-                            | [] -> ()
-                            | [ last ] -> collector.Add (Choice1Of2 last)
-                            | head :: rest ->
-                                collector.Add (Choice1Of2 head)
-                                collector.Add (Choice2Of2 (stn "*"))
-                                visit rest
-
-                        visit ts
-                        TypeTupleNode (collector.Close (), zeroRange) |> Type.Tuple
-
-                | _ -> typeTreeType
-            | _ -> typeTreeType
-
-        match returnTypeCorrectByActualParameters with
-        | Type.Funs funsNode ->
-            let parameters =
-                funsNode.Parameters
-                |> List.mapi (fun idx (typeTreeType, arrow) ->
-                    if idx > parameters.Length - 1 then
-                        typeTreeType, arrow
-                    else
-                        // We might be able to replace the parameter name with the name we found in the Oak.
-                        (updateParameter true parameters.[idx] typeTreeType), arrow
-                )
-
-            TypeFunsNode (parameters, funsNode.ReturnType, zeroRange) |> Type.Funs
-        | _ -> returnType
-
-    returnTypeWithParameterNames
-
-let mkTypeForValNode
-    (resolver : TypedTreeInfoResolver)
-    (nameRange : range)
-    (parameters : Pattern list)
-    (returnTypeInSource : Type option)
-    : Type
-    =
-    let returnTypeString, _ = resolver.GetFullForBinding nameRange.Proxy
-    let t = mkTypeFromString returnTypeString
-
-    let isTypedPatternWithoutGenerics (p : Pattern) =
-        match p with
-        | Pattern.Paren parenNode ->
-            match parenNode.Pattern with
-            | Pattern.Parameter parameterNode -> parameterNode.Type |> Option.map (fun t -> t, parameterNode)
-            | _ -> None
-        | _ -> None
-
-    let returnType =
-        match returnTypeInSource with
-        | Some returnType ->
-            let fullyTypedParameters = List.choose isTypedPatternWithoutGenerics parameters
-
-            if parameters.Length = fullyTypedParameters.Length then
-                mkTypeForValNodeBasedOnOak fullyTypedParameters returnType
-            else
-                mkTypeForValNodeBasedOnTypedTree t parameters returnTypeInSource
-        | None -> mkTypeForValNodeBasedOnTypedTree t parameters None
-
-    // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
-    // See test ``function return type``
-    match returnType with
-    | Type.Funs funsNode ->
-        match funsNode.ReturnType with
-        | Type.Funs _ ->
-            let parenNode = TypeParenNode (stn "(", funsNode.ReturnType, stn ")", zeroRange)
-            TypeFunsNode (funsNode.Parameters, Type.Paren parenNode, zeroRange) |> Type.Funs
-        | _ -> returnType
-    | _ -> returnType
-
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
     match mdl with
     | ModuleDecl.TopLevelBinding bindingNode ->
@@ -694,9 +440,9 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-            let t =
+            let returnType, typarDeclsOpt =
                 let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver nameRange bindingNode.Parameters rt
+                mkTypeForValNode resolver nameRange bindingNode.GenericTypeParameters bindingNode.Parameters rt
 
             let expr =
                 if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
@@ -712,8 +458,8 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 false,
                 bindingNode.Accessibility,
                 name,
-                None,
-                t,
+                typarDeclsOpt,
+                returnType,
                 Some (stn "="),
                 expr,
                 zeroRange
