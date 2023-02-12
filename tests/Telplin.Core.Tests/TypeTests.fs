@@ -145,6 +145,7 @@ type T =
     override F: x: int -> int
 """
 
+[<Ignore("https://github.com/dotnet/fsharp/issues/14712")>]
 [<Test>]
 let ``type extension`` () =
     assertSignature
@@ -333,7 +334,7 @@ open System
 [<Sealed>]
 type MaybeBuilder =
     new: unit -> MaybeBuilder
-    member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
+    member Using<'T, 'a when 'T :> IDisposable> : resource: 'T * body: ('T -> 'a option) -> 'a option
 """
 
 [<Test>]
@@ -474,7 +475,9 @@ open System
 [<Sealed>]
 type AsyncMaybeBuilder =
     new: unit -> AsyncMaybeBuilder
-    member Using: resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
+
+    member Using<'T, 'a when 'T :> IDisposable and 'T: null> :
+        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option>
 """
 
 [<Test>]

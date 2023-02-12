@@ -210,7 +210,7 @@ let inline fmap (f: ^a -> ^b) (a: ^a list) = List.map f a
         """
 module Foo
 
-val inline fmap: f: (^a -> ^b) -> a: ^a list -> ^b list
+val inline fmap< ^a, ^b> : f: (^a -> ^b) -> a: ^a list -> ^b list
 """
 
 [<Test>]
@@ -497,6 +497,7 @@ type DU = DU of one: string * two: int
 val (|Two|): DU -> int
 """
 
+[<Ignore("https://github.com/dotnet/fsharp/issues/14736")>]
 [<Test>]
 let ``wildcard pattern`` () =
     assertSignature
@@ -513,7 +514,7 @@ do
         """
 module W
 
-val (|Fst|): a: 'a * 'b -> 'a
+val (|Fst|)<'a, 'b> : a: 'a * 'b -> 'a
 """
 
 [<Test>]
@@ -741,7 +742,7 @@ module Dict =
 namespace Utils
 
 module Dict =
-    val tryGet: k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
+    val tryGet<'a, 'b> : k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
 """
 
 [<Test>]
@@ -812,7 +813,7 @@ let memoizeBy (g: 'a -> 'c) (f: 'a -> 'b) =
         """
 module I
 
-val memoizeBy: g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b) when 'c: equality
+val memoizeBy<'a, 'c, 'b when 'c: equality> : g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b)
 """
 
 [<Test>]
@@ -920,7 +921,7 @@ let inline sum xs = List.sum xs
         """
 module Telplin
 
-val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
+val inline sum< ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)> : xs: ^a list -> ^a
 """
 
 [<Test>]
@@ -964,7 +965,7 @@ let g (x: 'U) : 'U = f x
 module Telplin
 
 val f<'T when 'T: equality> : x: 'T -> 'T
-val g: x: 'U -> 'U when 'U: equality
+val g<'U when 'U: equality> : x: 'U -> 'U
 """
 
 [<Test>]
@@ -1005,7 +1006,7 @@ open System.Collections.Generic
 open System.Linq
 
 type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
-val addIfMissing<'Node when 'Node: equality> : nodes: seq<'Node> -> graph: Graph<'Node> -> Graph<'Node>
+val addIfMissing<'Node when 'Node: equality> : nodes: 'Node seq -> graph: Graph<'Node> -> Graph<'Node>
 /// Create a reverse of the graph
-val reverse: originalGraph: Graph<'Node> -> Graph<'Node> when 'Node: equality
+val reverse<'Node when 'Node: equality> : originalGraph: Graph<'Node> -> Graph<'Node>
 """

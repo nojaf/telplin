@@ -75,70 +75,93 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
             )
             |> String.concat ""
 
-        let mkBindingInfo displayContext (valSymbol : FSharpMemberOrFunctionOrValue) =
-            let s = valSymbol.FormatLayout displayContext |> taggedTextToString
+        let mkGenericParameters
+            (displayContext : FSharpDisplayContext)
+            (genericParameters : FSharpGenericParameter seq)
+            : GenericParameter list
+            =
+            genericParameters
+            |> Seq.map (fun gp ->
+                let constraints =
+                    gp.Constraints
+                    |> Seq.map (fun c ->
+                        let memberConstraintData =
+                            if not c.IsMemberConstraint then
+                                None
+                            else
+                                let fullType =
+                                    let parameters =
+                                        c.MemberConstraintData.MemberArgumentTypes
+                                        |> Seq.map (fun at -> at.Format displayContext)
+                                        |> String.concat " * "
+
+                                    let rt = c.MemberConstraintData.MemberReturnType.Format displayContext
+
+                                    let arrow =
+                                        if Seq.isEmpty c.MemberConstraintData.MemberArgumentTypes then
+                                            ""
+                                        else
+                                            " -> "
+
+                                    $"{parameters} {arrow} {rt}".TrimStart ()
+
+                                Some
+                                    {
+                                        IsStatic = c.MemberConstraintData.MemberIsStatic
+                                        MemberName = c.MemberConstraintData.MemberName
+                                        Type = fullType
+                                    }
+
+                        let coercesToTarget =
+                            if c.IsCoercesToConstraint then
+                                Some (c.CoercesToTarget.Format displayContext)
+                            else
+                                None
+
+                        {
+                            IsEqualityConstraint = c.IsEqualityConstraint
+                            IsComparisonConstraint = c.IsComparisonConstraint
+                            IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
+                            IsSupportsNullConstraint = c.IsSupportsNullConstraint
+                            CoercesToTarget = coercesToTarget
+                            MemberConstraint = memberConstraintData
+                        }
+                    )
+                    |> Seq.toList
+
+                {
+                    ParameterName = gp.DisplayName
+                    IsHeadType = gp.IsSolveAtCompileTime
+                    IsCompilerGenerated = gp.IsCompilerGenerated
+                    Constraints = constraints
+                }
+            )
+            |> Seq.toList
+
+        let mkBindingInfo displayContext (valSymbol : FSharpMemberOrFunctionOrValue) : BindingInfo =
+            let typeGenericParameters =
+                match valSymbol.DeclaringEntity with
+                | None -> []
+                | Some entity -> entity.GenericParameters |> mkGenericParameters displayContext
+
+            let isTypeGenericParameter : string -> bool =
+                let typeGenericParameterNames =
+                    typeGenericParameters |> List.map (fun gp -> gp.ParameterName) |> set
+
+                fun name -> Set.contains name typeGenericParameterNames
+
+            let returnTypeText = valSymbol.FormatLayout displayContext |> taggedTextToString
 
             let genericParameters =
                 valSymbol.GenericParameters
-                |> Seq.choose (fun gp ->
-                    let constraints =
-                        gp.Constraints
-                        |> Seq.map (fun c ->
-                            let memberConstraintData =
-                                if not c.IsMemberConstraint then
-                                    None
-                                else
-                                    let fullType =
-                                        let parameters =
-                                            c.MemberConstraintData.MemberArgumentTypes
-                                            |> Seq.map (fun at -> at.Format displayContext)
-                                            |> String.concat " * "
+                |> Seq.filter (fun gp -> not (isTypeGenericParameter gp.Name))
+                |> mkGenericParameters displayContext
 
-                                        let rt = c.MemberConstraintData.MemberReturnType.Format displayContext
-
-                                        let arrow =
-                                            if Seq.isEmpty c.MemberConstraintData.MemberArgumentTypes then
-                                                ""
-                                            else
-                                                " -> "
-
-                                        $"{parameters} {arrow} {rt}".TrimStart ()
-
-                                    Some
-                                        {
-                                            IsStatic = c.MemberConstraintData.MemberIsStatic
-                                            MemberName = c.MemberConstraintData.MemberName
-                                            Type = fullType
-                                        }
-
-                            let coercesToTarget =
-                                if c.IsCoercesToConstraint then
-                                    Some (c.CoercesToTarget.Format displayContext)
-                                else
-                                    None
-
-                            {
-                                IsEqualityConstraint = c.IsEqualityConstraint
-                                IsComparisonConstraint = c.IsComparisonConstraint
-                                IsReferenceTypeConstraint = c.IsReferenceTypeConstraint
-                                IsSupportsNullConstraint = c.IsSupportsNullConstraint
-                                CoercesToTarget = coercesToTarget
-                                MemberConstraint = memberConstraintData
-                            }
-                        )
-                        |> Seq.toList
-
-                    Some
-                        {
-                            ParameterName = gp.DisplayName
-                            IsHeadType = gp.IsSolveAtCompileTime
-                            IsCompilerGenerated = gp.IsCompilerGenerated
-                            Constraints = constraints
-                        }
-                )
-                |> Seq.toList
-
-            s, genericParameters
+            {
+                ReturnTypeString = returnTypeText
+                BindingGenericParameters = genericParameters
+                TypeGenericParameters = typeGenericParameters
+            }
 
         { new TypedTreeInfoResolver with
             member resolver.GetTypeInfo proxyRange =
@@ -149,7 +172,8 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                         typeSymbol.TryGetMembersFunctionsAndValues ()
                         |> Seq.choose (fun (valSymbol : FSharpMemberOrFunctionOrValue) ->
                             if valSymbol.CompiledName = ".ctor" then
-                                Some (mkBindingInfo displayContext valSymbol)
+                                let bindingInfo = mkBindingInfo displayContext valSymbol
+                                Some bindingInfo
                             else
                                 None
                         )

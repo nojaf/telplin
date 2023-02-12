@@ -298,14 +298,14 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         (identifier : IdentListNode)
         (implicitCtor : ImplicitConstructorNode)
         =
-        let { ConstructorInfo = ctor } = resolver.GetTypeInfo identifier.Range.Proxy
+        let bindingInfo = resolver.GetTypeInfo identifier.Range.Proxy
 
         let returnType =
-            match ctor with
+            match bindingInfo.ConstructorInfo with
             | None ->
                 TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], typeNameType, zeroRange)
                 |> Type.Funs
-            | Some (typeString, _) -> mkTypeFromString typeString
+            | Some { ReturnTypeString = typeString } -> mkTypeFromString typeString
 
         // Convert the SimplePats to Patterns
         let parameters =
@@ -337,7 +337,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
             let typedTreeInfo =
                 {
                     ReturnType = returnType
-                    GenericParameters = []
+                    BindingGenericParameters = []
+                    TypeGenericParameters = []
                 }
 
             mkTypeForValNodeBasedOnTypedTree typedTreeInfo None parameters (Some typeNameType)

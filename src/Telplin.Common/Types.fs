@@ -44,7 +44,12 @@ and MemberConstraintData =
         Type : string
     }
 
-type BindingInfo = string * GenericParameter list
+type BindingInfo =
+    {
+        ReturnTypeString : string
+        BindingGenericParameters : GenericParameter list
+        TypeGenericParameters : GenericParameter list
+    }
 
 type TypeInfoResponse =
     {

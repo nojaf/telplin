@@ -1,5 +1,6 @@
 module Telplin.UntypedTree.TypeForValNode
 
+open FSharp.Compiler.Syntax
 open FSharp.Compiler.Text
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core.CompilerServices
@@ -11,7 +12,8 @@ open ASTCreation
 type TypedTreeInfo =
     {
         ReturnType : Type
-        GenericParameters : GenericParameter list
+        BindingGenericParameters : GenericParameter list
+        TypeGenericParameters : GenericParameter list
     }
 
 /// <summary>
@@ -148,7 +150,7 @@ let mkTypeForValNodeBasedOnTypedTree
         | _ -> returnTypeCorrectByActualParameters
 
     let genericParameters : TyparDecls option =
-        if typedTreeInfo.GenericParameters.Length = 0 then
+        if typedTreeInfo.BindingGenericParameters.Length = 0 then
             None
         else
 
@@ -160,17 +162,67 @@ let mkTypeForValNodeBasedOnTypedTree
 
             // There are generic parameter but nothing was listed in the untyped tree.
             let gps =
-                typedTreeInfo.GenericParameters
+                typedTreeInfo.BindingGenericParameters
                 |> List.map (fun gp -> TyparDeclNode (None, mkTypar gp, zeroRange))
 
             let constraints =
-                typedTreeInfo.GenericParameters
+                typedTreeInfo.BindingGenericParameters
                 |> List.collect (fun gp ->
                     gp.Constraints
                     |> List.map (fun gc ->
                         if gc.IsComparisonConstraint then
                             TypeConstraintSingleNode (mkTypar gp, stn "comparison", zeroRange)
                             |> TypeConstraint.Single
+                        elif gc.IsEqualityConstraint then
+                            TypeConstraintSingleNode (mkTypar gp, stn "equality", zeroRange)
+                            |> TypeConstraint.Single
+                        elif gc.IsSupportsNullConstraint then
+                            TypeConstraintSingleNode (mkTypar gp, stn "null", zeroRange)
+                            |> TypeConstraint.Single
+                        elif gc.CoercesToTarget.IsSome then
+                            let t = gc.CoercesToTarget.Value |> mkTypeFromString
+
+                            TypeConstraintSubtypeOfTypeNode (mkTypar gp, t, zeroRange)
+                            |> TypeConstraint.SubtypeOfType
+                        elif gc.MemberConstraint.IsSome then
+                            let memberConstraintData = gc.MemberConstraint.Value
+                            let t = mkTypeFromString memberConstraintData.Type
+
+                            let memberName =
+                                let memberName =
+                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore
+                                        memberConstraintData.MemberName
+
+                                if PrettyNaming.IsOperatorDisplayName memberName then
+                                    $"({memberName})"
+                                elif memberName = "get_Zero" then
+                                    "Zero"
+                                else
+                                    memberName
+
+                            let memberSig =
+                                MemberDefnSigMemberNode (
+                                    ValNode (
+                                        None,
+                                        None,
+                                        Some (MultipleTextsNode ([ stn "static" ; stn "member" ], zeroRange)),
+                                        None,
+                                        false,
+                                        None,
+                                        stn memberName,
+                                        None,
+                                        t,
+                                        None,
+                                        None,
+                                        zeroRange
+                                    ),
+                                    None,
+                                    zeroRange
+                                )
+                                |> MemberDefn.SigMember
+
+                            TypeConstraintSupportsMemberNode (Type.Var (mkTypar gp), memberSig, zeroRange)
+                            |> TypeConstraint.SupportsMember
                         else
                             failwith "todo, 8E6CDDF3-7AFE-4AA6-A4C8-A02BEC773AD1"
                     )
@@ -182,7 +234,7 @@ let mkTypeForValNodeBasedOnTypedTree
         | Some untypedGenericParameters ->
             match untypedGenericParameters with
             | TyparDecls.PostfixList typarDecls ->
-                if typarDecls.Decls.Length = typedTreeInfo.GenericParameters.Length then
+                if typarDecls.Decls.Length = typedTreeInfo.BindingGenericParameters.Length then
                     // All the generic parameters were present in the untyped tree.
                     // We can safely re-use them.
                     Some untypedGenericParameters
@@ -200,13 +252,14 @@ let mkTypeForValNode
     (returnTypeInSource : Type option)
     : Type * TyparDecls option
     =
-    let returnTypeString, constraints = resolver.GetFullForBinding nameRange.Proxy
-    let t = mkTypeFromString returnTypeString
+    let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+    let t = mkTypeFromString bindingInfo.ReturnTypeString
 
     let typedTreeInfo =
         {
             ReturnType = t
-            GenericParameters = constraints
+            BindingGenericParameters = bindingInfo.BindingGenericParameters
+            TypeGenericParameters = bindingInfo.TypeGenericParameters
         }
 
     let returnType, typarDeclsOpt =
