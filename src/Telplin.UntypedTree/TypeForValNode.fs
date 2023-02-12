@@ -154,8 +154,31 @@ let mkTypeForValNodeBasedOnTypedTree
 
         match untypedGenericParameters with
         | None ->
+            let mkTypar gp =
+                let prefix = if gp.IsHeadType then "^" else "'"
+                stn $"{prefix}{gp.ParameterName}"
+
             // There are generic parameter but nothing was listed in the untyped tree.
-            failwith "todo 02BE7B6A-DADC-4C9D-AA37-10BC310D235E"
+            let gps =
+                typedTreeInfo.GenericParameters
+                |> List.map (fun gp -> TyparDeclNode (None, mkTypar gp, zeroRange))
+
+            let constraints =
+                typedTreeInfo.GenericParameters
+                |> List.collect (fun gp ->
+                    gp.Constraints
+                    |> List.map (fun gc ->
+                        if gc.IsComparisonConstraint then
+                            TypeConstraintSingleNode (mkTypar gp, stn "comparison", zeroRange)
+                            |> TypeConstraint.Single
+                        else
+                            failwith "todo, 8E6CDDF3-7AFE-4AA6-A4C8-A02BEC773AD1"
+                    )
+                )
+
+            TyparDeclsPostfixListNode (stn "<", gps, constraints, stn ">", zeroRange)
+            |> TyparDecls.PostfixList
+            |> Some
         | Some untypedGenericParameters ->
             match untypedGenericParameters with
             | TyparDecls.PostfixList typarDecls ->

@@ -174,7 +174,7 @@ let k l m n o = l m n o
         """
 module Foo
 
-val k: l: ('a -> 'b -> 'c -> 'd) -> m: 'a -> n: 'b -> o: 'c -> 'd
+val k<'a, 'b, 'c, 'd> : l: ('a -> 'b -> 'c -> 'd) -> m: 'a -> n: 'b -> o: 'c -> 'd
 """
 
 [<Test>]
@@ -196,7 +196,7 @@ type Teq<'a, 'b> =
     class
     end
 
-val map: f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
+val map<'b, 'c, 'a> : f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
 """
 
 [<Test>]
@@ -636,7 +636,7 @@ let f _ = (*) 3
         """
 module V
 
-val f: 'a -> (int -> int)
+val f<'a> : 'a -> (int -> int)
 """
 
 [<Test>]
@@ -826,7 +826,7 @@ let minBy f = List.map (List.minBy f) >> List.minBy f
         """
 module List2D
 
-val minBy: f: ('a -> 'b) -> ('a list list -> 'a) when 'b: comparison
+val minBy<'a, 'b when 'b: comparison> : f: ('a -> 'b) -> ('a list list -> 'a)
 """
 
 [<Test>]
