@@ -146,29 +146,47 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 |> Seq.filter (fun gp -> not (isTypeGenericParameter gp.Name))
                 |> mkGenericParameters displayContext
 
-            let returnTypeText =
+            let stripParens (returnTypeText : string) =
+                if returnTypeText.[0] = '(' && returnTypeText.[returnTypeText.Length - 1] = ')' then
+                    returnTypeText.Substring (1, returnTypeText.Length - 2)
+                else
+                    returnTypeText
+
+            let getReturnTypeText () =
                 if List.isEmpty genericParameters then
                     valSymbol.FullType.Format displayContext
                 else
                     valSymbol.FullType.FormatWithConstraints displayContext
+                |> stripParens
 
-            let returnTypeText =
-                if not valSymbol.IsInstanceMember then
-                    returnTypeText
-                else
+            let stripFirstType (returnTypeText : string) =
                 // The owning type of the member will be included in the returnTypeText.
                 // For example:
                 // type Meh =
-                //     member x.Foo (a:int : int = 0
+                //     member x.Foo (a:int) : int = 0
                 // Will be: "Meh -> int -> int"
                 // We need to strip the first arrow.
-                let firstArrowIdx = returnTypeText.IndexOf ("->")
+                let firstArrowIdx = returnTypeText.IndexOf "->"
 
                 if firstArrowIdx = -1 then
                     returnTypeText
                 else
 
                 returnTypeText.Substring(firstArrowIdx + 2).TrimStart ()
+
+            let takeLastType (returnTypeText : string) =
+                let lastArrowIdx = returnTypeText.LastIndexOf "->"
+                returnTypeText.Substring(lastArrowIdx + 2).TrimStart ()
+
+            let returnTypeText =
+                let returnTypeText = getReturnTypeText ()
+
+                if valSymbol.IsPropertyGetterMethod then
+                    takeLastType returnTypeText
+                elif valSymbol.IsInstanceMember then
+                    stripFirstType returnTypeText
+                else
+                    returnTypeText
 
             {
                 ReturnTypeString = returnTypeText
@@ -222,7 +240,11 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
             member resolver.GetTypeTyparNames range =
                 try
                     let typeSymbol, _ = findTypeSymbol range
-                    let getName (typar : FSharpGenericParameter) = typar.FullName
+
+                    let getName (typar : FSharpGenericParameter) =
+                        let prefix = "'"
+                        $"{prefix}{typar.FullName}"
+
                     typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList
                 with ex ->
                     printException ex range

@@ -6,7 +6,13 @@ open Telplin.Common
 open ASTCreation
 open TypeForValNode
 
-let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDefn) : MemberDefn option =
+let mkMember
+    (resolver : TypedTreeInfoResolver)
+    (typeName : Type)
+    (typeParameterMap : Map<string, string>)
+    (md : MemberDefn)
+    : MemberDefn option
+    =
     match md with
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
@@ -43,7 +49,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
             let returnType, typarDeclsOpt =
                 let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver name.Range bindingNode.GenericTypeParameters bindingNode.Parameters rt
+                mkTypeForValNode resolver name.Range typeParameterMap bindingNode.Parameters rt
 
             MemberDefnSigMemberNode (
                 ValNode (
@@ -71,7 +77,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
         let name = autoProperty.Identifier
 
         let returnType, typarDeclsOpt =
-            mkTypeForValNode resolver name.Range None [] autoProperty.Type
+            mkTypeForValNode resolver name.Range Map.empty [] autoProperty.Type
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -98,7 +104,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
         let name = explicitNode.New
 
         let returnType, typarDeclsOpt =
-            mkTypeForValNode resolver name.Range None [ explicitNode.Pattern ] (Some typeName)
+            mkTypeForValNode resolver name.Range Map.empty [ explicitNode.Pattern ] (Some typeName)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -149,7 +155,8 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
             // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
             match propertyNode.LastBinding with
-            | None -> mkTypeForValNode resolver name.Range None propertyNode.FirstBinding.Parameters returnTypeInSource
+            | None ->
+                mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters returnTypeInSource
             | Some lastBinding ->
                 match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
                 | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
@@ -161,7 +168,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
                     // Throw in a fake parameter that represents the indexer pattern.
                     // This is to avoid additional parentheses around the return type.
-                    mkTypeForValNode resolver name.Range None [ Pattern.Wild (stn "_") ] returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty [ Pattern.Wild (stn "_") ] returnTypeInSource
                 | [ _ ], [ _ ; _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
@@ -169,20 +176,25 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
                     //          and set (m:int) (y:string) = ()
 
                     // Use the shortest parameter list
-                    mkTypeForValNode resolver name.Range None propertyNode.FirstBinding.Parameters returnTypeInSource
+                    mkTypeForValNode
+                        resolver
+                        name.Range
+                        Map.empty
+                        propertyNode.FirstBinding.Parameters
+                        returnTypeInSource
                 | [ _ ; _ ], [ _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
                     //          with set (m:int) (y:string) = ()
                     //          and get (m: int) = ""
-                    mkTypeForValNode resolver name.Range None lastBinding.Parameters returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty lastBinding.Parameters returnTypeInSource
                 | [ Pattern.Unit _ ], [ _ ]
                 | [ _ ], [ Pattern.Unit _ ] ->
                     // The getter takes a unit argument:
                     //     member __.DisableInMemoryProjectReferences
                     //          with get () = disableInMemoryProjectReferences
                     //          and set (value) = disableInMemoryProjectReferences <- value
-                    mkTypeForValNode resolver name.Range None [] returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty [] returnTypeInSource
                 | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
 
         let withGetSet =
@@ -217,8 +229,14 @@ let mkMember (resolver : TypedTreeInfoResolver) (typeName : Type) (md : MemberDe
 
     | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
 
-let mkMembers (resolver : TypedTreeInfoResolver) (typeName : Type) (ms : MemberDefn list) : MemberDefn list =
-    List.choose (mkMember resolver typeName) ms
+let mkMembers
+    (resolver : TypedTreeInfoResolver)
+    (typeName : Type)
+    (typeParameterMap : Map<string, string>)
+    (ms : MemberDefn list)
+    : MemberDefn list
+    =
+    List.choose (mkMember resolver typeName typeParameterMap) ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.
@@ -293,6 +311,23 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
     let typeNameType = Type.LongIdent tdn.TypeName.Identifier
 
+    let typarMap =
+        match tdn.TypeName.TypeParameters with
+        | Some (TyparDecls.PostfixList prefixListNode) ->
+            let untypedTreeNames =
+                prefixListNode.Decls |> List.map (fun typarDecl -> typarDecl.TypeParameter.Text)
+
+            let typedTreeNames : string list =
+                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.Proxy
+
+            if untypedTreeNames.Length <> typedTreeNames.Length then
+                failwith "unexpected difference in typar count"
+            else
+                List.zip typedTreeNames untypedTreeNames |> Map
+        | _ -> Map.empty
+
+    ignore typarMap
+
     let mkImplicitCtor
         (resolver : TypedTreeInfoResolver)
         (identifier : IdentListNode)
@@ -341,7 +376,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                     TypeGenericParameters = []
                 }
 
-            mkTypeForValNodeBasedOnTypedTree typedTreeInfo None parameters (Some typeNameType)
+            mkTypeForValNodeBasedOnTypedTree typedTreeInfo Map.empty parameters (Some typeNameType)
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -363,7 +398,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         )
         |> MemberDefn.SigMember
 
-    let mkMembersForType members = mkMembers resolver typeNameType members
+    let mkMembersForType members =
+        mkMembers resolver typeNameType typarMap members
 
     match typeDefn with
     | TypeDefn.Record recordNode ->
@@ -443,7 +479,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
 
             let returnType, typarDeclsOpt =
                 let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver nameRange bindingNode.GenericTypeParameters bindingNode.Parameters rt
+                mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters rt
 
             let expr =
                 if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
@@ -495,7 +531,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             exceptionNode.Accessibility,
             exceptionNode.UnionCase,
             exceptionNode.WithKeyword,
-            mkMembers resolver exceptionNameType exceptionNode.Members,
+            mkMembers resolver exceptionNameType Map.empty exceptionNode.Members,
             zeroRange
         )
         |> ModuleDecl.Exception

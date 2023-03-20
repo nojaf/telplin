@@ -37,7 +37,7 @@ type TypedTreeInfo =
 /// <param name="returnTypeInSource">Optional return type from the input Oak.</param>
 let mkTypeForValNodeBasedOnTypedTree
     (typedTreeInfo : TypedTreeInfo)
-    (untypedGenericParameters : TyparDecls option)
+    (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
     (returnTypeInSource : Type option)
     : Type
@@ -166,7 +166,21 @@ let mkTypeForValNodeBasedOnTypedTree
 
         mapTypeWithGlobalConstraintsNode updateParameters returnTypeCorrectByActualParameters
 
-    returnTypeWithParameterNames
+    let returnTypeWithCorrectGenericParameterNames =
+        if Map.isEmpty typeParameterMap then
+            returnTypeWithParameterNames
+        else
+
+        let mapTypar (typar : SingleTextNode) =
+            match Map.tryFind typar.Text typeParameterMap with
+            | None -> typar
+            | Some untypedName -> stn untypedName
+
+        match returnTypeWithParameterNames with
+        | Type.Var typar -> mapTypar typar |> Type.Var
+        | _ -> returnTypeWithParameterNames
+
+    returnTypeWithCorrectGenericParameterNames
 
 let stripParens (t : Type) =
     let strip t =
@@ -179,7 +193,7 @@ let stripParens (t : Type) =
 let mkTypeForValNode
     (resolver : TypedTreeInfoResolver)
     (nameRange : range)
-    (untypedGenericParameters : TyparDecls option)
+    (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
     (returnTypeInSource : Type option)
     : Type * TyparDecls option
@@ -188,7 +202,7 @@ let mkTypeForValNode
 
     let t =
         mkTypeFromString bindingInfo.ReturnTypeString
-        // NicePrint from FCS will always wrap a function in parentheses.
+        // Type may have unwanted parentheses.
         |> stripParens
 
     let typedTreeInfo =
@@ -199,7 +213,7 @@ let mkTypeForValNode
         }
 
     let returnType =
-        mkTypeForValNodeBasedOnTypedTree typedTreeInfo untypedGenericParameters parameters returnTypeInSource
+        mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters returnTypeInSource
 
     let returnType =
         // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
