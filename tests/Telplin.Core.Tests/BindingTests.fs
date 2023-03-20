@@ -637,7 +637,7 @@ let f _ = (*) 3
         """
 module V
 
-val f<'a> : 'a -> (int -> int)
+val f: 'a -> (int -> int)
 """
 
 [<Test>]
@@ -795,7 +795,7 @@ let alreadyVisited<'key when 'key: not struct> () =
         """
 module G
 
-val alreadyVisited<'key when 'key: not struct> : unit -> ('key -> bool)
+val alreadyVisited: unit -> ('key -> bool) when 'key: not struct
 """
 
 [<Test>]
@@ -964,8 +964,8 @@ let g (x: 'U) : 'U = f x
         """
 module Telplin
 
-val f<'T when 'T: equality> : x: 'T -> 'T
-val g<'U when 'U: equality> : x: 'U -> 'U
+val f: x: 'T -> 'T when 'T: equality
+val g: x: 'U -> 'U when 'U: equality
 """
 
 [<Test>]
@@ -1006,7 +1006,7 @@ open System.Collections.Generic
 open System.Linq
 
 type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
-val addIfMissing<'Node when 'Node: equality> : nodes: 'Node seq -> graph: Graph<'Node> -> Graph<'Node>
+val addIfMissing: nodes: 'Node seq -> graph: Graph<'Node> -> Graph<'Node> when 'Node: equality
 /// Create a reverse of the graph
-val reverse<'Node when 'Node: equality> : originalGraph: Graph<'Node> -> Graph<'Node>
+val reverse: originalGraph: Graph<'Node> -> Graph<'Node> when 'Node: equality
 """

@@ -333,7 +333,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 )
                 |> wrapAsTupleIfMultiple
 
-        let returnType, typarDeclsOpt =
+        let returnType =
             let typedTreeInfo =
                 {
                     ReturnType = returnType
@@ -352,7 +352,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 false,
                 implicitCtor.Accessibility,
                 stn "new",
-                typarDeclsOpt,
+                None,
                 returnType,
                 None,
                 None,

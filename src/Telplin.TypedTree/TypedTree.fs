@@ -66,15 +66,6 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 | :? FSharpEntity as typeSymbol -> typeSymbol, symbol.DisplayContext
                 | _ -> failwith $"Failed to resolve FSharpType for for {proxyRange}"
 
-        let taggedTextToString tags =
-            tags
-            |> Array.choose (fun (t : TaggedText) ->
-                match t.Tag with
-                | TextTag.UnknownEntity -> None
-                | _ -> Some t.Text
-            )
-            |> String.concat ""
-
         let mkGenericParameters
             (displayContext : FSharpDisplayContext)
             (genericParameters : FSharpGenericParameter seq)
@@ -150,12 +141,34 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
 
                 fun name -> Set.contains name typeGenericParameterNames
 
-            let returnTypeText = valSymbol.FormatLayout displayContext |> taggedTextToString
-
             let genericParameters =
                 valSymbol.GenericParameters
                 |> Seq.filter (fun gp -> not (isTypeGenericParameter gp.Name))
                 |> mkGenericParameters displayContext
+
+            let returnTypeText =
+                if List.isEmpty genericParameters then
+                    valSymbol.FullType.Format displayContext
+                else
+                    valSymbol.FullType.FormatWithConstraints displayContext
+
+            let returnTypeText =
+                if not valSymbol.IsInstanceMember then
+                    returnTypeText
+                else
+                // The owning type of the member will be included in the returnTypeText.
+                // For example:
+                // type Meh =
+                //     member x.Foo (a:int : int = 0
+                // Will be: "Meh -> int -> int"
+                // We need to strip the first arrow.
+                let firstArrowIdx = returnTypeText.IndexOf ("->")
+
+                if firstArrowIdx = -1 then
+                    returnTypeText
+                else
+
+                returnTypeText.Substring(firstArrowIdx + 2).TrimStart ()
 
             {
                 ReturnTypeString = returnTypeText

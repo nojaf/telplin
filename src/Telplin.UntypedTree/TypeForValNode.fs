@@ -8,6 +8,17 @@ open Telplin.Common
 open SourceParser
 open ASTCreation
 
+let mapTypeWithGlobalConstraintsNode (map : Type -> Type) (t : Type) =
+    match t with
+    | Type.WithGlobalConstraints globalConstraintsNode ->
+        TypeWithGlobalConstraintsNode (
+            map globalConstraintsNode.Type,
+            globalConstraintsNode.TypeConstraints,
+            globalConstraintsNode.Range
+        )
+        |> Type.WithGlobalConstraints
+    | _ -> map t
+
 /// Typed tree information for a `FSharpMemberOrFunctionOrValue`
 type TypedTreeInfo =
     {
@@ -29,16 +40,16 @@ let mkTypeForValNodeBasedOnTypedTree
     (untypedGenericParameters : TyparDecls option)
     (parameters : Pattern list)
     (returnTypeInSource : Type option)
-    : Type * TyparDecls option
+    : Type
     =
     // The `returnType` constructed from the typed tree cannot be trusted 100%.
     // We might receive `int -> int -> int` while the Oak only contained a single parameter.
     // This needs to be transformed to `int -> (int -> int)` to reflect that the return type actually is a function type.
-    let returnTypeCorrectByActualParameters =
-        match typedTreeInfo.ReturnType with
+    let correctReturnTypeByActualParameters (returnType : Type) =
+        match returnType with
         | Type.Funs funsNode ->
             if funsNode.Parameters.Length = parameters.Length then
-                typedTreeInfo.ReturnType
+                returnType
             else
                 // We need to shift the extra parameters to the funsNode.ReturnType
                 let actualParameters, additionalTypes =
@@ -55,7 +66,10 @@ let mkTypeForValNodeBasedOnTypedTree
 
                 TypeFunsNode (actualParameters, actualReturnType, zeroRange) |> Type.Funs
 
-        | _ -> typedTreeInfo.ReturnType
+        | _ -> returnType
+
+    let returnTypeCorrectByActualParameters =
+        mapTypeWithGlobalConstraintsNode correctReturnTypeByActualParameters typedTreeInfo.ReturnType
 
     let returnTypeWithParameterNames =
         let rec updateParameter
@@ -134,115 +148,33 @@ let mkTypeForValNodeBasedOnTypedTree
                 | _ -> typeTreeType
             | _ -> typeTreeType
 
-        match returnTypeCorrectByActualParameters with
-        | Type.Funs funsNode ->
-            let parameters =
-                funsNode.Parameters
-                |> List.mapi (fun idx (typeTreeType, arrow) ->
-                    if idx > parameters.Length - 1 then
-                        typeTreeType, arrow
-                    else
-                        // We might be able to replace the parameter name with the name we found in the Oak.
-                        (updateParameter true parameters.[idx] typeTreeType), arrow
-                )
-
-            TypeFunsNode (parameters, funsNode.ReturnType, zeroRange) |> Type.Funs
-        | _ -> returnTypeCorrectByActualParameters
-
-    let genericParameters : TyparDecls option =
-        if typedTreeInfo.BindingGenericParameters.Length = 0 then
-            None
-        else
-
-        match untypedGenericParameters with
-        | None ->
-            let mkTypar gp =
-                let prefix = if gp.IsHeadType then "^" else "'"
-                stn $"{prefix}{gp.ParameterName}"
-
-            // There are generic parameter but nothing was listed in the untyped tree.
-            let gps =
-                typedTreeInfo.BindingGenericParameters
-                |> List.map (fun gp -> TyparDeclNode (None, mkTypar gp, zeroRange))
-
-            let constraints =
-                typedTreeInfo.BindingGenericParameters
-                |> List.collect (fun gp ->
-                    gp.Constraints
-                    |> List.map (fun gc ->
-                        if gc.IsComparisonConstraint then
-                            TypeConstraintSingleNode (mkTypar gp, stn "comparison", zeroRange)
-                            |> TypeConstraint.Single
-                        elif gc.IsEqualityConstraint then
-                            TypeConstraintSingleNode (mkTypar gp, stn "equality", zeroRange)
-                            |> TypeConstraint.Single
-                        elif gc.IsSupportsNullConstraint then
-                            TypeConstraintSingleNode (mkTypar gp, stn "null", zeroRange)
-                            |> TypeConstraint.Single
-                        elif gc.CoercesToTarget.IsSome then
-                            let t = gc.CoercesToTarget.Value |> mkTypeFromString
-
-                            TypeConstraintSubtypeOfTypeNode (mkTypar gp, t, zeroRange)
-                            |> TypeConstraint.SubtypeOfType
-                        elif gc.MemberConstraint.IsSome then
-                            let memberConstraintData = gc.MemberConstraint.Value
-                            let t = mkTypeFromString memberConstraintData.Type
-
-                            let memberName =
-                                let memberName =
-                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore
-                                        memberConstraintData.MemberName
-
-                                if PrettyNaming.IsOperatorDisplayName memberName then
-                                    $"({memberName})"
-                                elif memberName = "get_Zero" then
-                                    "Zero"
-                                else
-                                    memberName
-
-                            let memberSig =
-                                MemberDefnSigMemberNode (
-                                    ValNode (
-                                        None,
-                                        None,
-                                        Some (MultipleTextsNode ([ stn "static" ; stn "member" ], zeroRange)),
-                                        None,
-                                        false,
-                                        None,
-                                        stn memberName,
-                                        None,
-                                        t,
-                                        None,
-                                        None,
-                                        zeroRange
-                                    ),
-                                    None,
-                                    zeroRange
-                                )
-                                |> MemberDefn.SigMember
-
-                            TypeConstraintSupportsMemberNode (Type.Var (mkTypar gp), memberSig, zeroRange)
-                            |> TypeConstraint.SupportsMember
+        let updateParameters (t : Type) =
+            match t with
+            | Type.Funs funsNode ->
+                let parameters =
+                    funsNode.Parameters
+                    |> List.mapi (fun idx (typeTreeType, arrow) ->
+                        if idx > parameters.Length - 1 then
+                            typeTreeType, arrow
                         else
-                            failwith "todo, 8E6CDDF3-7AFE-4AA6-A4C8-A02BEC773AD1"
+                            // We might be able to replace the parameter name with the name we found in the Oak.
+                            (updateParameter true parameters.[idx] typeTreeType), arrow
                     )
-                )
 
-            TyparDeclsPostfixListNode (stn "<", gps, constraints, stn ">", zeroRange)
-            |> TyparDecls.PostfixList
-            |> Some
-        | Some untypedGenericParameters ->
-            match untypedGenericParameters with
-            | TyparDecls.PostfixList typarDecls ->
-                if typarDecls.Decls.Length = typedTreeInfo.BindingGenericParameters.Length then
-                    // All the generic parameters were present in the untyped tree.
-                    // We can safely re-use them.
-                    Some untypedGenericParameters
-                else
-                    failwith "todo CB7021C6-CD5B-4940-9B60-25AAFCFE3E2D"
-            | _ -> failwith "todo D3C2E061-7415-4B10-90B0-843D4C9142D7"
+                TypeFunsNode (parameters, funsNode.ReturnType, zeroRange) |> Type.Funs
+            | _ -> t
 
-    returnTypeWithParameterNames, genericParameters
+        mapTypeWithGlobalConstraintsNode updateParameters returnTypeCorrectByActualParameters
+
+    returnTypeWithParameterNames
+
+let stripParens (t : Type) =
+    let strip t =
+        match t with
+        | Type.Paren parenNode -> parenNode.Type
+        | _ -> t
+
+    mapTypeWithGlobalConstraintsNode strip t
 
 let mkTypeForValNode
     (resolver : TypedTreeInfoResolver)
@@ -253,7 +185,11 @@ let mkTypeForValNode
     : Type * TyparDecls option
     =
     let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
-    let t = mkTypeFromString bindingInfo.ReturnTypeString
+
+    let t =
+        mkTypeFromString bindingInfo.ReturnTypeString
+        // NicePrint from FCS will always wrap a function in parentheses.
+        |> stripParens
 
     let typedTreeInfo =
         {
@@ -262,7 +198,7 @@ let mkTypeForValNode
             TypeGenericParameters = bindingInfo.TypeGenericParameters
         }
 
-    let returnType, typarDeclsOpt =
+    let returnType =
         mkTypeForValNodeBasedOnTypedTree typedTreeInfo untypedGenericParameters parameters returnTypeInSource
 
     let returnType =
@@ -277,4 +213,4 @@ let mkTypeForValNode
             | _ -> returnType
         | _ -> returnType
 
-    returnType, typarDeclsOpt
+    returnType, None
