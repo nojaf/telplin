@@ -19,7 +19,8 @@
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
-        <FCSVersion>43.7.300-preview.23106.4</FCSVersion>
+        <!-- Also bump FSharp.Core down below -->
+        <FCSVersion>43.7.300-preview.23167.4</FCSVersion>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -29,7 +30,7 @@
         <OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="FSharp.Core" Version="7.0.300-beta.23106.4" />
+        <PackageReference Include="FSharp.Core" Version="7.0.300-beta.23167.4" />
     </ItemGroup>
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
