@@ -1,4 +1,4 @@
-﻿module Temp
+﻿module App
 
 open System
 open Fable.Core
@@ -183,8 +183,8 @@ let update msg (model : Model) =
             Diagnostics = Array.empty
         },
         Cmd.batch [
-            Cmd.ofSub (fetchSignature model.Implementation)
-            Cmd.ofSub (fun _ ->
+            Cmd.ofEffect (fetchSignature model.Implementation)
+            Cmd.ofEffect (fun _ ->
                 {
                     Implementation = model.Implementation
                 }
