@@ -109,7 +109,34 @@ let mkTypeForValNodeBasedOnTypedTree
                     // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
                     match parameter.Type with
                     | Some (Type.Funs _ as t) -> wrapTypeInParentheses t
-                    | Some t -> t
+                    | Some parameterType ->
+                        match parameterType, typeTreeType with
+                        | Type.AppPrefix untypedAppPrefix, Type.AppPrefix typedAppPrefix ->
+                            // go over type parameter per type parameter and pick the best on.
+                            if untypedAppPrefix.Arguments.Length <> typedAppPrefix.Arguments.Length then
+                                typeTreeType
+                            else
+
+                            let arguments =
+                                (untypedAppPrefix.Arguments, typedAppPrefix.Arguments)
+                                ||> List.zip
+                                |> List.map (fun (untypedArg, typedArg) ->
+                                    match untypedArg, typedArg with
+                                    // Don't use wildcard
+                                    | Type.Anon _, _ -> typedArg
+                                    | _ -> untypedArg
+                                )
+
+                            TypeAppPrefixNode (
+                                typedAppPrefix.Identifier,
+                                typedAppPrefix.PostIdentifier,
+                                typedAppPrefix.LessThen,
+                                arguments,
+                                typedAppPrefix.GreaterThan,
+                                typedAppPrefix.Range
+                            )
+                            |> Type.AppPrefix
+                        | _ -> parameterType
                     | None -> typeTreeType
 
                 match parameter.Pattern with

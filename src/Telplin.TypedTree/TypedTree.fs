@@ -156,7 +156,17 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 if List.isEmpty genericParameters then
                     valSymbol.FullType.Format displayContext
                 else
-                    valSymbol.FullType.FormatWithConstraints displayContext
+                    // Remove parentheses around the type (before the constraints)
+                    let withoutConstraints = valSymbol.FullType.Format displayContext
+                    let withConstraints = valSymbol.FullType.FormatWithConstraints displayContext
+
+                    if withConstraints.Contains (" when ") then
+                        let constraintText =
+                            withConstraints.Substring(withoutConstraints.Length + 2).Trim ()
+
+                        $"{withoutConstraints} {constraintText}"
+                    else
+                        withConstraints
                 |> stripParens
 
             let stripFirstType (returnTypeText : string) =

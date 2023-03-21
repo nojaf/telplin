@@ -160,7 +160,7 @@ let g<'t> (h: 't list) = List.length h
         """
 module Foo
 
-val g<'t> : h: 't list -> int
+val g: h: 't list -> int
 """
 
 [<Test>]
@@ -174,7 +174,7 @@ let k l m n o = l m n o
         """
 module Foo
 
-val k<'a, 'b, 'c, 'd> : l: ('a -> 'b -> 'c -> 'd) -> m: 'a -> n: 'b -> o: 'c -> 'd
+val k: l: ('a -> 'b -> 'c -> 'd) -> m: 'a -> n: 'b -> o: 'c -> 'd
 """
 
 [<Test>]
@@ -196,7 +196,7 @@ type Teq<'a, 'b> =
     class
     end
 
-val map<'b, 'c, 'a> : f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
+val map: f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
 """
 
 [<Test>]
@@ -210,7 +210,7 @@ let inline fmap (f: ^a -> ^b) (a: ^a list) = List.map f a
         """
 module Foo
 
-val inline fmap< ^a, ^b> : f: (^a -> ^b) -> a: ^a list -> ^b list
+val inline fmap: f: (^a -> ^b) -> a: ^a list -> ^b list
 """
 
 [<Test>]
@@ -742,7 +742,7 @@ module Dict =
 namespace Utils
 
 module Dict =
-    val tryGet<'a, 'b> : k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
+    val tryGet: k: 'a -> d: System.Collections.Generic.IDictionary<'a, 'b> -> 'b option
 """
 
 [<Test>]
@@ -813,7 +813,7 @@ let memoizeBy (g: 'a -> 'c) (f: 'a -> 'b) =
         """
 module I
 
-val memoizeBy<'a, 'c, 'b when 'c: equality> : g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b)
+val memoizeBy: g: ('a -> 'c) -> f: ('a -> 'b) -> ('a -> 'b) when 'c: equality
 """
 
 [<Test>]
@@ -827,7 +827,7 @@ let minBy f = List.map (List.minBy f) >> List.minBy f
         """
 module List2D
 
-val minBy<'a, 'b when 'b: comparison> : f: ('a -> 'b) -> ('a list list -> 'a)
+val minBy: f: ('a -> 'b) -> ('a list list -> 'a) when 'b: comparison
 """
 
 [<Test>]
@@ -921,7 +921,7 @@ let inline sum xs = List.sum xs
         """
 module Telplin
 
-val inline sum< ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)> : xs: ^a list -> ^a
+val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
 """
 
 [<Test>]
