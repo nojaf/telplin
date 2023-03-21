@@ -45,35 +45,41 @@ type FetchSignatureResponse =
     | InvalidSignature of signature : string * diagnostics : Diagnostic array
     | InternalError of string
 
-and Diagnostic = {
-    Severity : string
-    Message : string
-    ErrorNumber : string
-    Range : Range
-}
+and Diagnostic =
+    {
+        Severity : string
+        Message : string
+        ErrorNumber : string
+        Range : Range
+    }
 
-and Range = {
-    StartLine : int
-    StartColumn : int
-    EndLine : int
-    EndColumn : int
-}
+and Range =
+    {
+        StartLine : int
+        StartColumn : int
+        EndLine : int
+        EndColumn : int
+    }
 
 let decodeRange =
-    Decode.object (fun get -> {
-        StartLine = get.Required.Field "startLine" Decode.int
-        StartColumn = get.Required.Field "startColumn" Decode.int
-        EndLine = get.Required.Field "endLine" Decode.int
-        EndColumn = get.Required.Field "endColumn" Decode.int
-    })
+    Decode.object (fun get ->
+        {
+            StartLine = get.Required.Field "startLine" Decode.int
+            StartColumn = get.Required.Field "startColumn" Decode.int
+            EndLine = get.Required.Field "endLine" Decode.int
+            EndColumn = get.Required.Field "endColumn" Decode.int
+        }
+    )
 
 let decodeDiagnostic =
-    Decode.object (fun get -> {
-        Severity = get.Required.Field "severity" Decode.string
-        Message = get.Required.Field "message" Decode.string
-        ErrorNumber = get.Required.Field "errorNumber" Decode.string
-        Range = get.Required.Field "range" decodeRange
-    })
+    Decode.object (fun get ->
+        {
+            Severity = get.Required.Field "severity" Decode.string
+            Message = get.Required.Field "message" Decode.string
+            ErrorNumber = get.Required.Field "errorNumber" Decode.string
+            Range = get.Required.Field "range" decodeRange
+        }
+    )
 
 let decodeBadResult =
     Decode.object (fun get ->
@@ -96,17 +102,20 @@ let encodeUrlModel model =
     Encode.object [ "implementation", Encode.string model.Implementation ]
 
 let decodeUrlModel : Decoder<UrlModel> =
-    Decode.object (fun get -> {
-        Implementation = get.Required.Field "implementation" Decode.string
-    })
+    Decode.object (fun get ->
+        {
+            Implementation = get.Required.Field "implementation" Decode.string
+        }
+    )
 
-type Model = {
-    Implementation : string
-    Signature : string
-    IsLoading : bool
-    Error : string
-    Diagnostics : Diagnostic array
-}
+type Model =
+    {
+        Implementation : string
+        Signature : string
+        IsLoading : bool
+        Error : string
+        Diagnostics : Diagnostic array
+    }
 
 type Msg =
     | UpdateImplementation of string

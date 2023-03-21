@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.1.8"
+#r "nuget: Fun.Build, 0.3.7"
 
 open System.IO
 open Fun.Build
@@ -23,7 +23,7 @@ pipeline "Build" {
     }
     stage "lint" {
         run "dotnet tool restore"
-        run "dotnet fantomas . -r --check"
+        run "dotnet fantomas . --check"
     }
     stage "build" {
         run "dotnet fsi ./docs/.style/style.fsx"
@@ -38,7 +38,7 @@ pipeline "Build" {
             run (fun _ ->
                 let dist = __SOURCE_DIRECTORY__ </> "docs" </> ".tool" </> "dist"
 
-                System.IO.Directory.EnumerateFiles (dist, "*.*")
+                Directory.EnumerateFiles (dist, "*.*")
                 |> Seq.iter (fun srcFile ->
                     let destFile = __SOURCE_DIRECTORY__ </> "docs" </> Path.GetFileName srcFile
 
