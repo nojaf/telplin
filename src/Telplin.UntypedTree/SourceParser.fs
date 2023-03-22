@@ -11,3 +11,8 @@ type TypeTupleNode with
             | Choice1Of2 t -> Some t
             | Choice2Of2 _ -> None
         )
+
+let (|TParen|_|) =
+    function
+    | Type.Paren parenNode -> Some parenNode.Type
+    | _ -> None

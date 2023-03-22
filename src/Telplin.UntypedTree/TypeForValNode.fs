@@ -26,6 +26,84 @@ type TypedTreeInfo =
         TypeGenericParameters : GenericParameter list
     }
 
+let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type) : Type =
+    // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
+    // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
+    match untypedTreeType, typedTreeType with
+    // Don't take a wildcard
+    | Type.Anon _, typedTreeType
+    // The typed tree will have any constraints at the end as part of a Type.WithGlobalConstraints
+    | Type.WithSubTypeConstraint _, typedTreeType
+    | TParen (Type.WithSubTypeConstraint _), typedTreeType -> typedTreeType
+    | Type.Funs _ as untypedFuns, TParen (Type.Funs _ as typedFuns) ->
+        updateTypeBasedOnUnTyped typedFuns untypedFuns |> wrapTypeInParentheses
+    | Type.Funs untypedFuns, Type.Funs typedFuns when untypedFuns.Parameters.Length = typedFuns.Parameters.Length ->
+        let parameters =
+            (untypedFuns.Parameters, typedFuns.Parameters)
+            ||> List.zip
+            |> List.map (fun ((ut, _), (tt, arrow)) -> updateTypeBasedOnUnTyped tt ut, arrow)
+
+        let returnType =
+            updateTypeBasedOnUnTyped typedFuns.ReturnType untypedFuns.ReturnType
+
+        TypeFunsNode (parameters, returnType, untypedFuns.Range) |> Type.Funs
+    // An optional parameter that is a function type.
+    | Type.Funs _, Type.AppPostfix _ -> wrapTypeInParentheses untypedTreeType
+    | Type.AppPrefix untypedAppPrefix, Type.AppPrefix typedAppPrefix when
+        (untypedAppPrefix.Arguments.Length = typedAppPrefix.Arguments.Length)
+        ->
+        let arguments =
+            (untypedAppPrefix.Arguments, typedAppPrefix.Arguments)
+            ||> List.zip
+            |> List.map (fun (ut, tt) -> updateTypeBasedOnUnTyped tt ut)
+
+        TypeAppPrefixNode (
+            typedAppPrefix.Identifier,
+            typedAppPrefix.PostIdentifier,
+            typedAppPrefix.LessThen,
+            arguments,
+            typedAppPrefix.GreaterThan,
+            typedAppPrefix.Range
+        )
+        |> Type.AppPrefix
+    | Type.AppPostfix untypedAppPostFix, Type.AppPostfix typedAppPostFix ->
+        TypeAppPostFixNode (
+            updateTypeBasedOnUnTyped typedAppPostFix.First untypedAppPostFix.First,
+            updateTypeBasedOnUnTyped typedAppPostFix.Last typedAppPostFix.Last,
+            untypedAppPostFix.Range
+        )
+        |> Type.AppPostfix
+    | _ -> untypedTreeType
+// | Type.Funs _ -> wrapTypeInParentheses untypedTreeType
+// | parameterType ->
+//     match parameterType, typeTreeType with
+//     | Type.AppPrefix untypedAppPrefix, Type.AppPrefix typedAppPrefix ->
+//         // go over type parameter per type parameter and pick the best on.
+//         if untypedAppPrefix.Arguments.Length <> typedAppPrefix.Arguments.Length then
+//             typeTreeType
+//         else
+//
+//         let arguments =
+//             (untypedAppPrefix.Arguments, typedAppPrefix.Arguments)
+//             ||> List.zip
+//             |> List.map (fun (untypedArg, typedArg) ->
+//                 match untypedArg, typedArg with
+//                 // Don't use wildcard
+//                 | Type.Anon _, _ -> typedArg
+//                 | _ -> untypedArg
+//             )
+//
+//         TypeAppPrefixNode (
+//             typedAppPrefix.Identifier,
+//             typedAppPrefix.PostIdentifier,
+//             typedAppPrefix.LessThen,
+//             arguments,
+//             typedAppPrefix.GreaterThan,
+//             typedAppPrefix.Range
+//         )
+//         |> Type.AppPrefix
+//     | _ -> parameterType
+
 /// <summary>
 /// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
 /// And it might need some additional parentheses. For example, when the return type is a function type.
@@ -42,32 +120,35 @@ let mkTypeForValNodeBasedOnTypedTree
     // The `returnType` constructed from the typed tree cannot be trusted 100%.
     // We might receive `int -> int -> int` while the Oak only contained a single parameter.
     // This needs to be transformed to `int -> (int -> int)` to reflect that the return type actually is a function type.
-    let correctReturnTypeByActualParameters (returnType : Type) =
-        match returnType with
-        | Type.Funs funsNode ->
-            if funsNode.Parameters.Length = parameters.Length then
-                returnType
-            else
-                // We need to shift the extra parameters to the funsNode.ReturnType
-                let actualParameters, additionalTypes =
-                    List.take parameters.Length funsNode.Parameters, funsNode.Parameters |> List.skip parameters.Length
-
-                let actualReturnType =
-                    TypeParenNode (
-                        stn "(",
-                        TypeFunsNode (additionalTypes, funsNode.ReturnType, zeroRange) |> Type.Funs,
-                        stn ")",
-                        zeroRange
-                    )
-                    |> Type.Paren
-
-                TypeFunsNode (actualParameters, actualReturnType, zeroRange) |> Type.Funs
-
-        | _ -> returnType
-
     let returnTypeCorrectByActualParameters =
+        let correctReturnTypeByActualParameters (returnType : Type) =
+            match returnType with
+            | Type.Funs funsNode ->
+                if funsNode.Parameters.Length = parameters.Length then
+                    returnType
+                else
+                    // We need to shift the extra parameters to the funsNode.ReturnType
+                    let actualParameters, additionalTypes =
+                        List.take parameters.Length funsNode.Parameters,
+                        funsNode.Parameters |> List.skip parameters.Length
+
+                    let actualReturnType =
+                        TypeParenNode (
+                            stn "(",
+                            TypeFunsNode (additionalTypes, funsNode.ReturnType, zeroRange) |> Type.Funs,
+                            stn ")",
+                            zeroRange
+                        )
+                        |> Type.Paren
+
+                    TypeFunsNode (actualParameters, actualReturnType, zeroRange) |> Type.Funs
+
+            | _ -> returnType
+
         mapTypeWithGlobalConstraintsNode correctReturnTypeByActualParameters typedTreeInfo.ReturnType
 
+    // Try and insert found information from the untyped tree.
+    // The typed tree won't give us any parameter names for example.
     let returnTypeWithParameterNames =
         let rec updateParameter
             // Only top level tuples can have parameter names
@@ -105,36 +186,8 @@ let mkTypeForValNodeBasedOnTypedTree
                     // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
                     // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
                     match parameter.Type with
-                    | Some (Type.Funs _ as t) -> wrapTypeInParentheses t
-                    | Some parameterType ->
-                        match parameterType, typeTreeType with
-                        | Type.AppPrefix untypedAppPrefix, Type.AppPrefix typedAppPrefix ->
-                            // go over type parameter per type parameter and pick the best on.
-                            if untypedAppPrefix.Arguments.Length <> typedAppPrefix.Arguments.Length then
-                                typeTreeType
-                            else
-
-                            let arguments =
-                                (untypedAppPrefix.Arguments, typedAppPrefix.Arguments)
-                                ||> List.zip
-                                |> List.map (fun (untypedArg, typedArg) ->
-                                    match untypedArg, typedArg with
-                                    // Don't use wildcard
-                                    | Type.Anon _, _ -> typedArg
-                                    | _ -> untypedArg
-                                )
-
-                            TypeAppPrefixNode (
-                                typedAppPrefix.Identifier,
-                                typedAppPrefix.PostIdentifier,
-                                typedAppPrefix.LessThen,
-                                arguments,
-                                typedAppPrefix.GreaterThan,
-                                typedAppPrefix.Range
-                            )
-                            |> Type.AppPrefix
-                        | _ -> parameterType
                     | None -> typeTreeType
+                    | Some untypedTreeType -> updateTypeBasedOnUnTyped typeTreeType untypedTreeType
 
                 match parameter.Pattern with
                 | Pattern.Named namedNode ->
@@ -190,6 +243,8 @@ let mkTypeForValNodeBasedOnTypedTree
 
         mapTypeWithGlobalConstraintsNode updateParameters returnTypeCorrectByActualParameters
 
+    // Update any generic parameters using the typeParameterMap.
+    // This is to re-use the generic parameter names from the untyped tree.
     let returnTypeWithCorrectGenericParameterNames =
         if Map.isEmpty typeParameterMap then
             returnTypeWithParameterNames

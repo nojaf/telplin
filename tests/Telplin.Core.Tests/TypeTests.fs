@@ -334,7 +334,7 @@ open System
 [<Sealed>]
 type MaybeBuilder =
     new: unit -> MaybeBuilder
-    member Using: resource: 'T :> IDisposable * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
+    member Using: resource: 'T * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
 """
 
 [<Test>]
@@ -475,9 +475,7 @@ open System
 [<Sealed>]
 type AsyncMaybeBuilder =
     new: unit -> AsyncMaybeBuilder
-
-    member Using:
-        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
+    member Using: resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
 """
 
 [<Test>]
