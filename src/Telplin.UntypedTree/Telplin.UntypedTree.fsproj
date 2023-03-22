@@ -9,6 +9,7 @@
         <Compile Include="SourceParser.fsi" />
         <Compile Include="SourceParser.fs" />
         <Compile Include="ASTCreation.fs" />
+        <Compile Include="TypeTransformer.fs" />
         <Compile Include="TypeForValNode.fs" />
         <Compile Include="UntypedTree.fsi" />
         <Compile Include="UntypedTree.fs" />

@@ -334,7 +334,7 @@ open System
 [<Sealed>]
 type MaybeBuilder =
     new: unit -> MaybeBuilder
-    member Using<'T, 'a when 'T :> IDisposable> : resource: 'T * body: ('T -> 'a option) -> 'a option
+    member Using: resource: 'T :> IDisposable * body: ('T -> 'a option) -> 'a option when 'T :> IDisposable
 """
 
 [<Test>]
@@ -538,7 +538,7 @@ module Telplin
 
 type Map<'K, 'V when 'K: comparison> with
 
-    member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int)
+    member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int) when 'K: comparison
 """
 
 [<Test>]

@@ -1,6 +1,5 @@
 module Telplin.UntypedTree.TypeForValNode
 
-open FSharp.Compiler.Syntax
 open FSharp.Compiler.Text
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core.CompilerServices
@@ -32,7 +31,7 @@ type TypedTreeInfo =
 /// And it might need some additional parentheses. For example, when the return type is a function type.
 /// </summary>
 /// <param name="typedTreeInfo">Resolved type information from the typed tree.</param>
-/// <param name="untypedGenericParameters">Generic parameters found in the untyped tree.</param>
+/// <param name="typeParameterMap">A map of generic parameters found in the untyped tree with the ones found in the typed tree.</param>
 /// <param name="parameters">Parameters found in the input Oak. These will be used to enhance the parameters in the `returnType` by adding the name (if present).</param>
 /// <param name="returnTypeInSource">Optional return type from the input Oak.</param>
 let mkTypeForValNodeBasedOnTypedTree
@@ -203,9 +202,28 @@ let mkTypeForValNodeBasedOnTypedTree
             | None -> typar
             | Some untypedName -> stn untypedName
 
-        match returnTypeWithParameterNames with
-        | Type.Var typar -> mapTypar typar |> Type.Var
-        | _ -> returnTypeWithParameterNames
+        let mapTypeConstraint (tc : TypeConstraint) =
+            match tc with
+            | TypeConstraint.Single singleConstraint ->
+                TypeConstraintSingleNode (
+                    mapTypar singleConstraint.Typar,
+                    singleConstraint.Kind,
+                    singleConstraint.Range
+                )
+                |> TypeConstraint.Single
+            | _ -> tc
+
+        { new TypeTransformerBase() with
+            member x.TransformVar typar = mapTypar typar
+
+            member x.TransformWithGlobalConstraints globalConstraintsNode =
+                TypeWithGlobalConstraintsNode (
+                    x.TransformType globalConstraintsNode.Type,
+                    List.map mapTypeConstraint globalConstraintsNode.TypeConstraints,
+                    globalConstraintsNode.Range
+                )
+        }
+        |> TypeTransformer.transform returnTypeWithParameterNames
 
     returnTypeWithCorrectGenericParameterNames
 
