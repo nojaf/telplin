@@ -33,12 +33,10 @@ type TypedTreeInfo =
 /// <param name="typedTreeInfo">Resolved type information from the typed tree.</param>
 /// <param name="typeParameterMap">A map of generic parameters found in the untyped tree with the ones found in the typed tree.</param>
 /// <param name="parameters">Parameters found in the input Oak. These will be used to enhance the parameters in the `returnType` by adding the name (if present).</param>
-/// <param name="returnTypeInSource">Optional return type from the input Oak.</param>
 let mkTypeForValNodeBasedOnTypedTree
     (typedTreeInfo : TypedTreeInfo)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
-    (returnTypeInSource : Type option)
     : Type
     =
     // The `returnType` constructed from the typed tree cannot be trusted 100%.
@@ -240,8 +238,7 @@ let mkTypeForValNode
     (nameRange : range)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
-    (returnTypeInSource : Type option)
-    : Type * TyparDecls option
+    : Type
     =
     let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
 
@@ -258,7 +255,7 @@ let mkTypeForValNode
         }
 
     let returnType =
-        mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters returnTypeInSource
+        mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters
 
     let returnType =
         // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
@@ -272,4 +269,4 @@ let mkTypeForValNode
             | _ -> returnType
         | _ -> returnType
 
-    returnType, None
+    returnType

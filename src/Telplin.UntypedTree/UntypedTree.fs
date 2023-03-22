@@ -8,7 +8,6 @@ open TypeForValNode
 
 let mkMember
     (resolver : TypedTreeInfoResolver)
-    (typeName : Type)
     (typeParameterMap : Map<string, string>)
     (md : MemberDefn)
     : MemberDefn option
@@ -47,9 +46,8 @@ let mkMember
                 | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-            let returnType, typarDeclsOpt =
-                let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver name.Range typeParameterMap bindingNode.Parameters rt
+            let returnType =
+                mkTypeForValNode resolver name.Range typeParameterMap bindingNode.Parameters
 
             MemberDefnSigMemberNode (
                 ValNode (
@@ -60,7 +58,7 @@ let mkMember
                     false,
                     None,
                     name,
-                    typarDeclsOpt,
+                    None,
                     returnType,
                     Some (stn "="),
                     None,
@@ -76,8 +74,7 @@ let mkMember
         let valKw = mtn "member"
         let name = autoProperty.Identifier
 
-        let returnType, typarDeclsOpt =
-            mkTypeForValNode resolver name.Range Map.empty [] autoProperty.Type
+        let returnType = mkTypeForValNode resolver name.Range Map.empty []
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -88,7 +85,7 @@ let mkMember
                 false,
                 None,
                 name,
-                typarDeclsOpt,
+                None,
                 returnType,
                 Some (stn "="),
                 None,
@@ -103,8 +100,8 @@ let mkMember
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
 
-        let returnType, typarDeclsOpt =
-            mkTypeForValNode resolver name.Range Map.empty [ explicitNode.Pattern ] (Some typeName)
+        let returnType =
+            mkTypeForValNode resolver name.Range Map.empty [ explicitNode.Pattern ]
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -115,7 +112,7 @@ let mkMember
                 false,
                 None,
                 name,
-                typarDeclsOpt,
+                None,
                 returnType,
                 Some (stn "="),
                 None,
@@ -138,10 +135,7 @@ let mkMember
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
-        let returnType, typarDeclsOpt =
-            let returnTypeInSource =
-                propertyNode.FirstBinding.ReturnType |> Option.map (fun b -> b.Type)
-
+        let returnType =
             let (|ParameterNameInParen|_|) p =
                 match p with
                 | Pattern.Paren parenNode ->
@@ -162,14 +156,9 @@ let mkMember
                     // If we are dealing with an indexed setter, the signature is rather funky.
                     // member x.Set (idx:int) (v: string) = ()
                     // Will become member Set: idx: int -> string with set
-                    mkTypeForValNode resolver name.Range Map.empty [ binding.Parameters.[0] ] returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty [ binding.Parameters.[0] ]
                 else
-                    mkTypeForValNode
-                        resolver
-                        name.Range
-                        Map.empty
-                        propertyNode.FirstBinding.Parameters
-                        returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
             | Some lastBinding ->
                 match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
                 | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
@@ -181,7 +170,7 @@ let mkMember
 
                     // Throw in a fake parameter that represents the indexer pattern.
                     // This is to avoid additional parentheses around the return type.
-                    mkTypeForValNode resolver name.Range Map.empty [ Pattern.Wild (stn "_") ] returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty [ Pattern.Wild (stn "_") ]
                 | [ _ ], [ _ ; _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
@@ -189,25 +178,20 @@ let mkMember
                     //          and set (m:int) (y:string) = ()
 
                     // Use the shortest parameter list
-                    mkTypeForValNode
-                        resolver
-                        name.Range
-                        Map.empty
-                        propertyNode.FirstBinding.Parameters
-                        returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
                 | [ _ ; _ ], [ _ ] ->
                     // Indexer where the index pattern has the same name, example:
                     //     member x.Item
                     //          with set (m:int) (y:string) = ()
                     //          and get (m: int) = ""
-                    mkTypeForValNode resolver name.Range Map.empty lastBinding.Parameters returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty lastBinding.Parameters
                 | [ Pattern.Unit _ ], [ _ ]
                 | [ _ ], [ Pattern.Unit _ ] ->
                     // The getter takes a unit argument:
                     //     member __.DisableInMemoryProjectReferences
                     //          with get () = disableInMemoryProjectReferences
                     //          and set (value) = disableInMemoryProjectReferences <- value
-                    mkTypeForValNode resolver name.Range Map.empty [] returnTypeInSource
+                    mkTypeForValNode resolver name.Range Map.empty []
                 | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
 
         let withGetSet =
@@ -228,7 +212,7 @@ let mkMember
                 false,
                 None,
                 name,
-                typarDeclsOpt,
+                None,
                 returnType,
                 Some (stn "="),
                 None,
@@ -244,12 +228,11 @@ let mkMember
 
 let mkMembers
     (resolver : TypedTreeInfoResolver)
-    (typeName : Type)
     (typeParameterMap : Map<string, string>)
     (ms : MemberDefn list)
     : MemberDefn list
     =
-    List.choose (mkMember resolver typeName typeParameterMap) ms
+    List.choose (mkMember resolver typeParameterMap) ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.
@@ -389,7 +372,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                     TypeGenericParameters = []
                 }
 
-            mkTypeForValNodeBasedOnTypedTree typedTreeInfo Map.empty parameters (Some typeNameType)
+            mkTypeForValNodeBasedOnTypedTree typedTreeInfo Map.empty parameters
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -411,8 +394,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         )
         |> MemberDefn.SigMember
 
-    let mkMembersForType members =
-        mkMembers resolver typeNameType typarMap members
+    let mkMembersForType members = mkMembers resolver typarMap members
 
     match typeDefn with
     | TypeDefn.Record recordNode ->
@@ -490,9 +472,8 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-            let returnType, typarDeclsOpt =
-                let rt = bindingNode.ReturnType |> Option.map (fun rt -> rt.Type)
-                mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters rt
+            let returnType =
+                mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters
 
             let expr =
                 if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
@@ -508,7 +489,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 false,
                 bindingNode.Accessibility,
                 name,
-                typarDeclsOpt,
+                None,
                 returnType,
                 Some (stn "="),
                 expr,
@@ -536,15 +517,13 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         |> ModuleDecl.NestedModule
         |> Some
     | ModuleDecl.Exception exceptionNode ->
-        let exceptionNameType = Type.LongIdent (iln exceptionNode.UnionCase.Identifier.Text)
-
         ExceptionDefnNode (
             exceptionNode.XmlDoc,
             exceptionNode.Attributes,
             exceptionNode.Accessibility,
             exceptionNode.UnionCase,
             exceptionNode.WithKeyword,
-            mkMembers resolver exceptionNameType Map.empty exceptionNode.Members,
+            mkMembers resolver Map.empty exceptionNode.Members,
             zeroRange
         )
         |> ModuleDecl.Exception
