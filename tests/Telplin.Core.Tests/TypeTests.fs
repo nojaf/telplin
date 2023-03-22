@@ -145,6 +145,7 @@ type T =
     override F: x: int -> int
 """
 
+[<Ignore("https://github.com/dotnet/fsharp/issues/14712")>]
 [<Test>]
 let ``type extension`` () =
     assertSignature
@@ -355,6 +356,23 @@ type X =
 """
 
 [<Test>]
+let ``member with set only`` () =
+    assertSignature
+        """
+module FA
+
+type X() =
+    member this.MyWriteOnlyProperty with set (value: string) = ()
+"""
+        """
+module FA
+
+type X =
+    new: unit -> X
+    member MyWriteOnlyProperty: string with set
+"""
+
+[<Test>]
 let ``member with indexed get/set`` () =
     assertSignature
         """
@@ -389,7 +407,7 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with get, set
+    member Item: m: int -> string with set, get
 """
 
 [<Test>]
@@ -518,7 +536,7 @@ module Telplin
 
 type Map<'K, 'V when 'K: comparison> with
 
-    member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int)
+    member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int) when 'K: comparison
 """
 
 [<Test>]
@@ -586,6 +604,25 @@ namespace FA
 type Hej =
     new: unit -> Hej
     member DisableInMemoryProjectReferences: bool with set
+"""
+
+[<Test>]
+let ``single indexed setter`` () =
+    assertSignature
+        """
+namespace FA
+
+type Hej() =
+    let mutable disableInMemoryProjectReferences : bool = false
+    member __.DisableInMemoryProjectReferences
+        with set (idx: int) (value) = disableInMemoryProjectReferences <- value
+"""
+        """
+namespace FA
+
+type Hej =
+    new: unit -> Hej
+    member DisableInMemoryProjectReferences: idx: int -> bool with set
 """
 
 [<Test>]

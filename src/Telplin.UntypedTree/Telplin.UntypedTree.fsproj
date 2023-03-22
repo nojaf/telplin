@@ -8,16 +8,20 @@
     <ItemGroup>
         <Compile Include="SourceParser.fsi" />
         <Compile Include="SourceParser.fs" />
+        <Compile Include="ASTCreation.fs" />
+        <Compile Include="TypeTransformer.fs" />
+        <Compile Include="TypeForValNode.fsi" />
+        <Compile Include="TypeForValNode.fs" />
         <Compile Include="UntypedTree.fsi" />
         <Compile Include="UntypedTree.fs" />
     </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Fantomas.Core" Version="5.2.0" />
-    </ItemGroup>
-
+    
     <ItemGroup>
       <ProjectReference Include="..\Telplin.Common\Telplin.Common.fsproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="Fantomas.Core" Version="6.0.0-alpha-006" />
     </ItemGroup>
 
 </Project>

@@ -10,7 +10,7 @@ type RangeProxy =
         override ToString : unit -> string
     end
 
-type GenericConstraintForParameter =
+type GenericParameter =
     {
         ParameterName : string
         IsHeadType : bool
@@ -35,7 +35,15 @@ and MemberConstraintData =
         Type : string
     }
 
-type BindingInfo = string * GenericConstraintForParameter list
+type BindingInfo =
+    {
+        /// The return type of a FSharpMemberOrFunctionOrValue
+        ReturnTypeString : string
+        /// Generic parameters found in the FSharpMemberOrFunctionOrValue
+        BindingGenericParameters : GenericParameter list
+        /// Generic parameters found in the (optional) DeclaringEntity (FSharpEntity option)
+        TypeGenericParameters : GenericParameter list
+    }
 
 type TypeInfoResponse =
     {

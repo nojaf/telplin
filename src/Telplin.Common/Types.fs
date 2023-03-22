@@ -19,7 +19,7 @@ type RangeProxy =
             $"({this.StartLine}, {this.StartColumn}) ({this.EndLine},{this.EndColumn})"
     end
 
-type GenericConstraintForParameter =
+type GenericParameter =
     {
         ParameterName : string
         IsHeadType : bool
@@ -44,7 +44,12 @@ and MemberConstraintData =
         Type : string
     }
 
-type BindingInfo = string * GenericConstraintForParameter list
+type BindingInfo =
+    {
+        ReturnTypeString : string
+        BindingGenericParameters : GenericParameter list
+        TypeGenericParameters : GenericParameter list
+    }
 
 type TypeInfoResponse =
     {

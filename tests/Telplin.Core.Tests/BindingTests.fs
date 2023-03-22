@@ -160,7 +160,7 @@ let g<'t> (h: 't list) = List.length h
         """
 module Foo
 
-val g<'t> : h: 't list -> int
+val g: h: 't list -> int
 """
 
 [<Test>]
@@ -497,6 +497,7 @@ type DU = DU of one: string * two: int
 val (|Two|): DU -> int
 """
 
+[<Ignore("https://github.com/dotnet/fsharp/issues/14736")>]
 [<Test>]
 let ``wildcard pattern`` () =
     assertSignature
@@ -513,7 +514,7 @@ do
         """
 module W
 
-val (|Fst|): a: 'a * 'b -> 'a
+val (|Fst|)<'a, 'b> : a: 'a * 'b -> 'a
 """
 
 [<Test>]
@@ -794,7 +795,7 @@ let alreadyVisited<'key when 'key: not struct> () =
         """
 module G
 
-val alreadyVisited<'key when 'key: not struct> : unit -> ('key -> bool)
+val alreadyVisited: unit -> ('key -> bool) when 'key: not struct
 """
 
 [<Test>]
@@ -948,7 +949,7 @@ let v = array2D [ [ 1 ; 0 ] ; [ 0 ; 1 ] ]
         """
 module Telplin
 
-val v: int[,]
+val v: int array2d
 """
 
 [<Test>]
@@ -963,7 +964,7 @@ let g (x: 'U) : 'U = f x
         """
 module Telplin
 
-val f<'T when 'T: equality> : x: 'T -> 'T
+val f: x: 'T -> 'T when 'T: equality
 val g: x: 'U -> 'U when 'U: equality
 """
 
@@ -1005,7 +1006,7 @@ open System.Collections.Generic
 open System.Linq
 
 type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
-val addIfMissing<'Node when 'Node: equality> : nodes: seq<'Node> -> graph: Graph<'Node> -> Graph<'Node>
+val addIfMissing: nodes: 'Node seq -> graph: Graph<'Node> -> Graph<'Node> when 'Node: equality
 /// Create a reverse of the graph
 val reverse: originalGraph: Graph<'Node> -> Graph<'Node> when 'Node: equality
 """

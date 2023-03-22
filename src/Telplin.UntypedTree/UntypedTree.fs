@@ -1,1080 +1,555 @@
-﻿module Telplin.UntypedTree.Writer
+﻿module rec Telplin.UntypedTree.Writer
 
-open System
-open System.IO
-open FSharp.Compiler.Syntax
-open FSharp.Compiler.SyntaxTrivia
-open FSharp.Compiler.Text
+open Fantomas.Core
+open Fantomas.Core.SyntaxOak
 open Telplin.Common
-open Telplin.UntypedTree.SourceParser
+open ASTCreation
+open TypeForValNode
 
-let zeroRange : range = Range.Zero
-let zeroXml = FSharp.Compiler.Xml.PreXmlDoc.Empty
-let unitExpr : SynExpr = SynExpr.Const (SynConst.Unit, zeroRange)
-let emptyValInfo = SynValInfo ([], SynArgInfo ([], false, None))
-
-[<RequireQualifiedAccess>]
-type TypesFromPattern =
-    | FailedToResolve of fullType : SynType
-    | HasNoParameters
-    | HasParameters of types : SynType list
-
-let rec mkSynTypeFun (types : SynType list) : SynType =
-    match types with
-    | [] -> failwith "unexpected empty list"
-    | [ t ] -> t
-    | t :: rest -> SynType.Fun (t, mkSynTypeFun rest, zeroRange, { ArrowRange = zeroRange })
-
-let stripOptionType t =
-    match t with
-    | SynType.App (typeName = SynType.LongIdent (longDotId = SynLongIdent (id = [ optionIdent ])) ; typeArgs = [ t ]) when
-        optionIdent.idText = "option"
-        ->
-        t
-    | _ -> t
-
-let mkSynTypeParen (t : SynType) : SynType = SynType.Paren (t, zeroRange)
-
-let mkSynTypeTuple ts =
-    match ts with
-    | []
-    | [ _ ] -> failwith "ts cannot have a single or zero types"
-    | h :: rest ->
-        let types =
-            SynTupleTypeSegment.Type h
-            :: List.collect (fun t -> [ SynTupleTypeSegment.Star zeroRange ; SynTupleTypeSegment.Type t ]) rest
-
-        SynType.Tuple (false, types, zeroRange)
-
-let mkIdent text = Ident (text, zeroRange)
-
-let mkSynIdent text = SynIdent (mkIdent text, None)
-
-let mkSynLongIdent text =
-    SynLongIdent ([ mkIdent text ], [], [ None ])
-
-let mkSynTypeLongIdent text = SynType.LongIdent (mkSynLongIdent text)
-
-let rec applyRecursively (f : SynType -> SynType) (t : SynType) : SynType =
-    match t with
-    | IdentType "Int32" _ -> mkSynTypeLongIdent "int"
-    | SynType.App (t, lr, typeArgs, cr, gr, isp, r) -> SynType.App (f t, lr, List.map f typeArgs, cr, gr, isp, r)
-    | SynType.Tuple (isStruct, path, r) ->
-        let mapSegment p =
-            match p with
-            | SynTupleTypeSegment.Type t -> SynTupleTypeSegment.Type (f t)
-            | _ -> p
-
-        SynType.Tuple (isStruct, List.map mapSegment path, r)
-    | SynType.AnonRecd (i, fields, r) -> SynType.AnonRecd (i, List.map (fun (ident, t) -> ident, f t) fields, r)
-    | SynType.Array (1, t, r) -> SynType.App (mkSynTypeLongIdent "array", None, [ f t ], [], None, true, r)
-    | SynType.Array (rank, t, r) -> SynType.Array (rank, f t, r)
-    | SynType.Fun (argType, returnType, r, tr) -> SynType.Fun (f argType, f returnType, r, tr)
-    | SynType.Paren (t, range) -> SynType.Paren (f t, range)
-    | SynType.SignatureParameter (a, o, i, t, r) -> SynType.SignatureParameter (a, o, i, f t, r)
-    | _ -> t
-
-/// Clean up some less nice results from the typed tree.
-/// Change `Int32` to `int`, or `int[]` to `int array`.
-let rec sanitizeType (synType : SynType) : SynType = applyRecursively sanitizeType synType
-
-/// The type in the source code could have had more information
-/// For example: it could have been prefixed with a namespace
-/// `Regex` was resolved by the typed tree, but the untyped tree had `System.Text.RegularExpressions.Regex`
-/// or have a different generic type argument name
-let enhanceResolvedType (typeInSource : SynType) (resolvedType : SynType) : SynType =
-    let resolveNameDifference
-        (originalName : Ident list)
-        (resolvedName : Ident list)
-        (originalType : SynType)
-        (resolvedType : SynType)
-        : SynType
-        =
-        let idText o =
-            Option.map (fun (i : Ident) -> i.idText) o
-
-        let originalNameEnd = List.tryLast originalName |> idText
-        let resolvedNameEnd = List.tryLast resolvedName |> idText
-
-        if originalName.Length > resolvedName.Length && originalNameEnd = resolvedNameEnd then
-            originalType
-        else
-            resolvedType
-
-    let rec visit tis rt =
-        match tis, rt with
-        | SynType.App (typeName = otn ; typeArgs = oArgs),
-          SynType.App (rtn, rangeOption, rArgs, commaRanges, greaterRange, isPostfix, range) ->
-            let typeName = visit otn rtn
-
-            let typeArgs =
-                if oArgs.Length <> rArgs.Length then
-                    rArgs
-                else
-                    List.zip oArgs rArgs |> List.map (fun (o, r) -> visit o r)
-
-            SynType.App (typeName, rangeOption, typeArgs, commaRanges, greaterRange, isPostfix, range)
-
-        | LongIdentType originalName, LongIdentType resolvedName ->
-            resolveNameDifference originalName resolvedName tis rt
-        | _ -> rt
-
-    match typeInSource, resolvedType with
-    | SynType.HashConstraint _, _ -> typeInSource
-    | _ -> visit typeInSource resolvedType
-
-let rec convertToSynPat (simplePat : SynSimplePat) : SynPat =
-    match simplePat with
-    | SynSimplePat.Attrib (pat, attributes, range) -> SynPat.Attrib (convertToSynPat pat, attributes, range)
-    | SynSimplePat.Id (ident = ident ; isThisVal = isThisVal ; isOptional = isOptional ; range = range) ->
-        if isOptional then
-            SynPat.OptionalVal (ident, range)
-        else
-            SynPat.Named (SynIdent (ident, None), isThisVal, None, range)
-    | SynSimplePat.Typed (pat, t, range) -> SynPat.Typed (convertToSynPat pat, t, range)
-
-let mkSynTypFromText (typeText : string) : SynType =
-    let aliasAST, _ =
-        Fantomas.FCS.Parse.parseFile true (SourceText.ofString $"val v: {typeText}") []
-
-    match aliasAST with
-    | ParsedInput.SigFile (ParsedSigFileInput (
-        contents = [ SynModuleOrNamespaceSig (decls = [ SynModuleSigDecl.Val (valSig = SynValSig (synType = t)) ]) ])) ->
-        t
-    | _ -> failwith $"should not fail, but did for {typeText}"
-
-type Range with
-
-    member r.Proxy : RangeProxy =
-        RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
-
-let wrapInParenWhenFunType (t : SynType) : SynType =
-    match t with
-    | SynType.Fun _ as ft -> mkSynTypeParen ft
-    | t -> t
-
-let removeParensInPat (pat : SynPat) =
-    let rec visit (pat : SynPat) : SynPat =
-        match pat with
-        | SynPat.Paren (pat = pat) -> visit pat
-        | pat -> pat
-
-    visit pat
-
-let removeParensInType (t : SynType) : SynType =
-    let rec visit t =
-        match t with
-        | SynType.Paren (t, _) -> visit t
-        | _ -> t
-
-    visit t
-
-let rec mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string =
-    let input, _ = Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) []
-
-    let output =
-        match input with
-        | ParsedInput.SigFile _ -> input
-        | ParsedInput.ImplFile (ParsedImplFileInput (
-            fileName = fileName
-            qualifiedNameOfFile = qualifiedNameOfFile
-            scopedPragmas = scopedPragmas
-            hashDirectives = parsedHashDirectives
-            contents = synModuleOrNamespaces)) ->
-            let fileName = Path.ChangeExtension (fileName, ".fsi")
-
-            let synModuleOrNamespaces =
-                List.map (mkSynModuleOrNamespaceSig resolver) synModuleOrNamespaces
-
-            ParsedSigFileInput (
-                fileName,
-                qualifiedNameOfFile,
-                scopedPragmas,
-                parsedHashDirectives,
-                synModuleOrNamespaces,
-                {
-                    ConditionalDirectives = []
-                    CodeComments = []
-                },
-                Set.empty
-            )
-            |> ParsedInput.SigFile
-
-    Fantomas.Core.CodeFormatter.FormatASTAsync output |> Async.RunSynchronously
-
-and mkSynModuleOrNamespaceSig
+let mkMember
     (resolver : TypedTreeInfoResolver)
-    (SynModuleOrNamespace (longId,
-                           isRecursive,
-                           synModuleOrNamespaceKind,
-                           synModuleDecls,
-                           preXmlDoc,
-                           synAttributeLists,
-                           synAccessOption,
-                           range,
-                           synModuleOrNamespaceTrivia))
-    : SynModuleOrNamespaceSig
+    (typeParameterMap : Map<string, string>)
+    (md : MemberDefn)
+    : MemberDefn option
     =
-    let decls = List.collect (mkSynModuleSigDecl resolver) synModuleDecls
-
-    let trivia : SynModuleOrNamespaceSigTrivia =
-        {
-            LeadingKeyword = synModuleOrNamespaceTrivia.LeadingKeyword
-        }
-
-    SynModuleOrNamespaceSig (
-        longId,
-        isRecursive,
-        synModuleOrNamespaceKind,
-        decls,
-        preXmlDoc,
-        synAttributeLists,
-        synAccessOption,
-        range,
-        trivia
-    )
-
-and mkSynModuleSigDecl (resolver : TypedTreeInfoResolver) (decl : SynModuleDecl) : SynModuleSigDecl list =
-    match decl with
-    | SynModuleDecl.Let (_, bindings, _) ->
-        bindings
-        |> List.map (fun binding ->
-            let valSig = mkSynValSig resolver binding
-            SynModuleSigDecl.Val (valSig, zeroRange)
-        )
-    | SynModuleDecl.Open (synOpenDeclTarget, _range) -> [ SynModuleSigDecl.Open (synOpenDeclTarget, zeroRange) ]
-    | SynModuleDecl.Types (typeDefns, _) ->
-        let types = List.map (mkSynTypeDefnSig resolver) typeDefns
-        [ SynModuleSigDecl.Types (types, zeroRange) ]
-    | SynModuleDecl.Exception (synExceptionDefn, _range) ->
-        let exnSig = mkSynExceptionDefn resolver synExceptionDefn
-        [ SynModuleSigDecl.Exception (exnSig, zeroRange) ]
-    | SynModuleDecl.ModuleAbbrev (ident, longId, _range) -> [ SynModuleSigDecl.ModuleAbbrev (ident, longId, zeroRange) ]
-    | SynModuleDecl.NestedModule (synComponentInfo, isRecursive, synModuleDecls, _isContinuing, _range, trivia) ->
-        [
-            mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia
-        ]
-    | _ -> []
-
-and mkSynValSig
-    (resolver : TypedTreeInfoResolver)
-    (SynBinding (_synAccessOption,
-                 _synBindingKind,
-                 isInline,
-                 isMutable,
-                 synAttributeLists,
-                 preXmlDoc,
-                 synValData,
-                 headPat,
-                 synBindingReturnInfoOption,
-                 synExpr,
-                 _range,
-                 _debugPointAtBinding,
-                 synBindingTrivia))
-    : SynValSig
-    =
-    let ident, mBindingName, argPats, constraintsFromSource, vis, hasExtraIdent =
-        match headPat with
-        | SynPat.LongIdent (
-            longDotId = longDotId
-            argPats = SynArgPats.Pats argPats
-            typarDecls = constraints
-            accessibility = vis
-            extraId = extraId) ->
-            let identTrivia = List.tryLast longDotId.Trivia
-            let lastIdent = (List.last longDotId.LongIdent)
-            let mBindingName = lastIdent.idRange
-
-            SynIdent (lastIdent, identTrivia), mBindingName, argPats, constraints, vis, Option.isSome extraId
-
-        | SynPat.Named (ident = SynIdent (ident, _) as synIdent ; accessibility = vis) ->
-            synIdent, ident.idRange, [], None, vis, false
-
-        | _ -> failwith $"todo 245B29E5-9303-4911-ABBE-0C3EA80DB536 {headPat.Range.Proxy}"
-
-    let expr =
-        match synAttributeLists with
-        | [ {
-                Attributes = [ {
-                                   TypeName = SynLongIdent (id = [ literalIdent ])
-                               } ]
-            } ] when literalIdent.idText = "Literal" -> Some synExpr
-        | _ -> None
-
-    let returnTypeText, resolvedConstraints =
-        resolver.GetFullForBinding mBindingName.Proxy
-
-    let returnTypeInImpl : (SynType list * SynType) option =
-        match synBindingReturnInfoOption with
-        | Some (SynBindingReturnInfo (typeName = TFuns ts as t)) -> Some (ts, t)
-        | _ -> None
-
-    let t =
-        mkSynTypForSignature returnTypeText resolvedConstraints constraintsFromSource argPats returnTypeInImpl
-
-    let synValTyparDecls =
-        match constraintsFromSource with
-        | Some c -> c
-        | None -> SynValTyparDecls (None, false)
-
-    let leadingKeyword =
-        match synBindingTrivia.LeadingKeyword with
-        | SynLeadingKeyword.Member _
-        | SynLeadingKeyword.StaticMember _
-        | SynLeadingKeyword.Default _
-        | SynLeadingKeyword.Override _
-        | SynLeadingKeyword.New _ -> synBindingTrivia.LeadingKeyword
-        | _ -> SynLeadingKeyword.Val zeroRange
-
-    SynValSig (
-        synAttributeLists,
-        ident,
-        synValTyparDecls,
-        t,
-        // This isn't correct but doesn't matter for Fantomas
-        synValData.SynValInfo,
-        isInline,
-        isMutable,
-        preXmlDoc,
-        vis,
-        expr,
-        zeroRange,
-        {
-            LeadingKeyword = leadingKeyword
-            InlineKeyword = synBindingTrivia.InlineKeyword
-            WithKeyword = if hasExtraIdent then Some zeroRange else None
-            EqualsRange = Option.map (fun _ -> zeroRange) expr
-        }
-    )
-
-and mkSynTypForSignature
-    returnTypeText
-    resolvedConstraints
-    constraintsFromSource
-    (argPats : SynPat list)
-    (returnTypeInImpl : (SynType list * SynType) option)
-    : SynType
-    =
-    let isTypedPatWithoutGenerics p =
-        match p with
-        | ParenPat (TypedPat (_, SynType.Var _)) -> false
-        | ParenPat (TypedPat (_, SynType.App (typeArgs = typeArgs))) ->
-            typeArgs
-            |> List.exists (
-                function
-                | SynType.Var _ -> true
-                | _ -> false
-            )
-            |> not
-        | ParenPat (TypedPat _) -> true
-        | _ -> false
-
-    match returnTypeInImpl with
-    | Some (_, returnType) when List.forall isTypedPatWithoutGenerics argPats ->
-        mkSynTypForSignatureBasedOnUntypedTree argPats returnType
-    | _ ->
-        mkSynTypForSignatureBasedOnTypedTree
-            returnTypeText
-            resolvedConstraints
-            constraintsFromSource
-            argPats
-            returnTypeInImpl
-
-and mkSynTypForSignatureBasedOnUntypedTree (argPats : SynPat list) (returnType : SynType) : SynType =
-    let parameters =
-        argPats
-        |> List.choose (
-            function
-            | ParenPat (TypedPat (NamedPat parameterName, t)) ->
-                Some (SynType.SignatureParameter ([], false, Some parameterName, wrapInParenWhenFunType t, zeroRange))
-            | _ -> None
-        )
-
-    [ yield! parameters ; yield (wrapInParenWhenFunType returnType) ]
-    |> mkSynTypeFun
-
-and mkSynTypForSignatureBasedOnTypedTree
-    returnTypeText
-    resolvedConstraints
-    constraintsFromSource
-    (argPats : SynPat list)
-    (returnTypeInImpl : (SynType list * SynType) option)
-    : SynType
-    =
-    let fullType =
-        let ts =
-            match mkSynTypFromText returnTypeText with
-            | SynType.WithGlobalConstraints (typeName = TFuns ts)
-            | TFuns ts -> List.map sanitizeType ts
-
-        let ts =
-            match returnTypeInImpl with
-            | Some (rts, rt) when rts.Length > 1 ->
-                let skipEnd = List.take (ts.Length - rts.Length) ts
-                [ yield! skipEnd ; wrapInParenWhenFunType rt ]
-            | _ ->
-                if argPats.Length = 0 then
-                    [ ts |> mkSynTypeFun |> wrapInParenWhenFunType ]
-                elif ts.Length = argPats.Length + 1 then
-                    ts
-                else
-                    let parameterTypes = List.take argPats.Length ts
-
-                    let returnType =
-                        List.skip argPats.Length ts |> mkSynTypeFun |> wrapInParenWhenFunType
-
-                    [ yield! parameterTypes ; yield returnType ]
-
-        let ps =
-            [
-                yield! List.map Some argPats
-                yield! List.replicate (ts.Length - argPats.Length) None
-            ]
-
-        List.zip ts ps
-        |> List.map (fun (t, p) ->
-            match p with
-            | None -> t
-            | Some p ->
-                match p with
-                | ParenPat (NamedPat ident)
-                | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
-                | ParenPat (SynPat.Tuple (elementPats = ps)) ->
-                    match t with
-                    | SynType.Tuple (path = TupleTypes ts) ->
-                        let ts =
-                            List.zip ts ps
-                            |> List.map (fun (t, p) ->
-                                match p with
-                                | NamedPat ident -> SynType.SignatureParameter ([], false, Some ident, t, zeroRange)
-                                | TypedPat (NamedPat ident, st) ->
-                                    SynType.SignatureParameter (
-                                        [],
-                                        false,
-                                        Some ident,
-                                        enhanceResolvedType st t,
-                                        zeroRange
-                                    )
-                                | SynPat.OptionalVal (ident, _)
-                                | TypedPat (SynPat.OptionalVal (ident, _), _) ->
-                                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
-                                | AttribPat (attrs, TypedPat (NamedPat ident, t)) ->
-                                    SynType.SignatureParameter (
-                                        attrs,
-                                        false,
-                                        Some ident,
-                                        stripOptionType t,
-                                        zeroRange
-                                    )
-                                | _ -> t
-                            )
-
-                        mkSynTypeTuple ts
-                    | _ -> t
-                | ParenPat (TypedPat (NamedPat ident, st)) ->
-                    SynType.SignatureParameter ([], false, Some ident, enhanceResolvedType st t, zeroRange)
-
-                | ParenPat (TypedPat (SynPat.OptionalVal (ident, _), tis)) ->
-                    let t = enhanceResolvedType tis (stripOptionType t)
-                    SynType.SignatureParameter ([], true, Some ident, t, zeroRange)
-                | ParenPat (AttribPat (attributes, (SynPat.Typed (pat = NamedPat ident) | NamedPat ident))) ->
-                    SynType.SignatureParameter (attributes, false, Some ident, t, zeroRange)
-                | ParenPat (SynPat.OptionalVal (ident, _)) ->
-                    SynType.SignatureParameter ([], true, Some ident, stripOptionType t, zeroRange)
-                | _ -> t
-        )
-        |> mkSynTypeFun
-
-    if resolvedConstraints.IsEmpty then
-        fullType
-    else
-
-    let existingTypars =
-        match constraintsFromSource with
-        | Some (SynValTyparDecls (typars = Some typar)) ->
-            typar.Constraints
-            |> List.choose (
-                function
-                | TyparInConstraint typar -> Some typar
-                | _ -> None
-            )
-        | _ -> []
-
-    // This isn't bullet proof but good enough for now.
-    let typarComparer =
-        { new System.Collections.Generic.IEqualityComparer<SynTypar> with
-            member this.Equals (x, y) =
-                match x, y with
-                | SynTypar (identX, typarStaticReqX, _), SynTypar (identY, typarStaticReqY, _) ->
-                    identX.idText = identY.idText && typarStaticReqX = typarStaticReqY
-
-            member this.GetHashCode (SynTypar (identX, typarStaticReqX, isCompGenX)) =
-                HashCode.Combine (identX, typarStaticReqX, isCompGenX)
-        }
-
-    let constraints =
-        resolvedConstraints
-        |> List.collect (fun rc ->
-            let typarStaticReq =
-                if rc.IsHeadType then
-                    TyparStaticReq.HeadType
-                else
-                    TyparStaticReq.None
-
-            let typar =
-                SynTypar (mkIdent rc.ParameterName, typarStaticReq, rc.IsCompilerGenerated)
-
-            if System.Linq.Enumerable.Contains (existingTypars, typar, typarComparer) then
-                []
-            else
-
-            rc.Constraints
-            |> List.choose (fun c ->
-                if c.IsEqualityConstraint then
-                    Some (SynTypeConstraint.WhereTyparIsEquatable (typar, zeroRange))
-                elif c.IsComparisonConstraint then
-                    Some (SynTypeConstraint.WhereTyparIsComparable (typar, zeroRange))
-                elif c.IsReferenceTypeConstraint then
-                    Some (SynTypeConstraint.WhereTyparIsReferenceType (typar, zeroRange))
-                elif c.IsSupportsNullConstraint then
-                    Some (SynTypeConstraint.WhereTyparSupportsNull (typar, zeroRange))
-                elif Option.isSome c.CoercesToTarget then
-                    let isHashConstraints =
-                        argPats
-                        |> List.choose (
-                            function
-                            | TypedPat (_, t)
-                            | ParenPat (TypedPat (_, t)) -> Some t
-                            | _ -> None
-                        )
-                        |> List.exists (
-                            function
-                            | SynType.HashConstraint (SynType.App (typeArgs = [ SynType.Var (typar = hashTyPar) ]), _) ->
-                                typarComparer.Equals (hashTyPar, typar)
-                            | _ -> false
-                        )
-
-                    if isHashConstraints then
-                        None
-                    else
-
-                    c.CoercesToTarget
-                    |> Option.map (fun coercesToTarget ->
-                        SynTypeConstraint.WhereTyparSubtypeOfType (
-                            typar,
-                            mkSynTypFromText coercesToTarget,
-                            zeroRange
-                        )
-                    )
-                elif Option.isSome c.MemberConstraint then
-                    c.MemberConstraint
-                    |> Option.map (fun memberConstraintData ->
-                        let memberName =
-                            let text =
-                                let memberName =
-                                    PrettyNaming.ConvertValLogicalNameToDisplayNameCore
-                                        memberConstraintData.MemberName
-
-                                if PrettyNaming.IsOperatorDisplayName memberName then
-                                    $"({memberName})"
-                                elif memberName = "get_Zero" then
-                                    "Zero"
-                                else
-                                    memberName
-
-                            SynIdent (
-                                Ident (memberConstraintData.MemberName, zeroRange),
-                                Some (IdentTrivia.OriginalNotation text)
-                            )
-
-                        let typ = mkSynTypFromText memberConstraintData.Type
-
-                        let trivia : SynValSigTrivia =
-                            {
-                                LeadingKeyword =
-                                    if memberConstraintData.IsStatic then
-                                        SynLeadingKeyword.StaticMember (zeroRange, zeroRange)
-                                    else
-                                        SynLeadingKeyword.Member zeroRange
-                                InlineKeyword = None
-                                WithKeyword = None
-                                EqualsRange = None
-                            }
-
-                        SynTypeConstraint.WhereTyparSupportsMember (
-                            SynType.Var (typar, zeroRange),
-                            SynMemberSig.Member (
-                                SynValSig (
-                                    [],
-                                    memberName,
-                                    SynValTyparDecls (None, true),
-                                    typ,
-                                    emptyValInfo,
-                                    false,
-                                    false,
-                                    zeroXml,
-                                    None,
-                                    None,
-                                    zeroRange,
-                                    trivia
-                                ),
-                                {
-                                    IsInstance = not memberConstraintData.IsStatic
-                                    IsDispatchSlot = false
-                                    IsOverrideOrExplicitImpl = false
-                                    IsFinal = false
-                                    GetterOrSetterIsCompilerGenerated = false
-                                    MemberKind = SynMemberKind.Member
-                                },
-                                zeroRange,
-                                SynMemberSigMemberTrivia.Zero
-                            ),
-                            zeroRange
-                        )
-                    )
-                else
-                    None
-            )
-        )
-
-    SynType.WithGlobalConstraints (fullType, constraints, zeroRange)
-
-and mkSynTypeDefnSig
-    resolver
-    (SynTypeDefn (SynComponentInfo (longId = typeInfo ; typeParams = typeParams) as componentInfo,
-                  typeRepr,
-                  members,
-                  implicitConstructor,
-                  _range,
-                  trivia))
-    : SynTypeDefnSig
-    =
-    let typarMap =
-        match typeRepr, typeParams with
-        | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _), Some tps ->
-            let origTyparNames = resolver.GetTypeTyparNames typeInfo.Head.idRange.Proxy
-
-            let augmTyparIdents =
-                tps.TyparDecls
-                |> List.map (fun (SynTyparDecl (_, SynTypar (ident, _, _))) -> ident)
-
-            if augmTyparIdents.Length <> origTyparNames.Length then
-                failwith "unexpected difference in typar count"
-            else
-                List.zip origTyparNames augmTyparIdents |> Map
-        | _ -> Map.empty
-
-    let typeSigRepr =
-        match typeRepr with
-        | SynTypeDefnRepr.Simple (synTypeDefnSimpleRepr, _range) ->
-            SynTypeDefnSigRepr.Simple (synTypeDefnSimpleRepr, zeroRange)
-        // Type extensions
-        | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _synMemberDefns, _range) ->
-            SynTypeDefnSigRepr.Simple (SynTypeDefnSimpleRepr.None zeroRange, zeroRange)
-        | SynTypeDefnRepr.ObjectModel (synTypeDefnKind, synMemberDefns, _range) ->
-            let members = List.choose (mkSynMemberSig resolver typeInfo) synMemberDefns
-            SynTypeDefnSigRepr.ObjectModel (synTypeDefnKind, members, zeroRange)
-        | _ -> failwith "todo 88635304-1D34-4AE0-96A4-348C7E47588E"
-
-    let withKeyword =
-        match typeRepr with
-        | SynTypeDefnRepr.ObjectModel (SynTypeDefnKind.Augmentation _, _, _) -> Some zeroRange
-        | _ -> trivia.WithKeyword
-
-    let members = members |> List.choose (mkSynMemberSig resolver typeInfo)
-
-    let members =
-        if typarMap.IsEmpty then
-            members
-        else
-
-        let rec mapTypar (t : SynType) =
-            match t with
-            | SynType.Var (SynTypar (origTypar, tsr, icg), _) ->
-                let augmTypar = typarMap.TryFind origTypar.idText |> Option.defaultValue origTypar
-                SynType.Var (SynTypar (augmTypar, tsr, icg), origTypar.idRange)
-            | SynType.WithGlobalConstraints (synType, constraints, range) ->
-                let isNotConstraintForOriginalTypar c =
-                    match c with
-                    | TyparInConstraint (SynTypar (ident, _, _)) -> not <| typarMap.ContainsKey ident.idText
-                    | _ -> true
-
-                let constraints = constraints |> List.filter isNotConstraintForOriginalTypar
-                SynType.WithGlobalConstraints (mapTypar synType, constraints, range)
-            | _ -> applyRecursively mapTypar t
-
-        let mapMember (m : SynMemberSig) =
-            match m with
-            | SynMemberSig.Member (SynValSig (a, i, e, synType, ar, ii, im, x, ac, s, r, t), f, rr, trivia) ->
-                SynMemberSig.Member (SynValSig (a, i, e, mapTypar synType, ar, ii, im, x, ac, s, r, t), f, rr, trivia)
-            | _ -> failwith "unexpected SynMemberSig case"
-
-        List.map mapMember members
-
-    let componentInfo =
-        match typeRepr with
-        | SynTypeDefnRepr.ObjectModel (kind = SynTypeDefnKind.Unspecified) when implicitConstructor.IsNone ->
-            // To overcome
-            // "typecheck error The representation of this type is hidden by the signature."
-            // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
-            match componentInfo with
-            | SynComponentInfo (synAttributeLists,
-                                synTyparDeclsOption,
-                                synTypeConstraints,
-                                longId,
-                                preXmlDoc,
-                                preferPostfix,
-                                synAccessOption,
-                                range) ->
-                let attributes =
-                    match longId with
-                    | [ singleIdent ] ->
-                        let typeInfo = resolver.GetTypeInfo singleIdent.idRange.Proxy
-
-                        if typeInfo.NeedsClassAttribute then
-                            ({
-                                Attributes =
-                                    [
-                                        {
-                                            TypeName = mkSynLongIdent "Class"
-                                            ArgExpr = unitExpr
-                                            Target = None
-                                            AppliesToGetterAndSetter = false
-                                            Range = zeroRange
-                                        }
-                                    ]
-                                Range = zeroRange
-                            }
-                            : SynAttributeList)
-                            :: synAttributeLists
-                        else
-                            synAttributeLists
-                    | _ -> synAttributeLists
-
-                SynComponentInfo (
-                    attributes,
-                    synTyparDeclsOption,
-                    synTypeConstraints,
-                    longId,
-                    preXmlDoc,
-                    preferPostfix,
-                    synAccessOption,
-                    range
-                )
-
-        | _ -> componentInfo
-
-    SynTypeDefnSig (
-        componentInfo,
-        typeSigRepr,
-        members,
-        zeroRange,
-        {
-            EqualsRange = trivia.EqualsRange
-            LeadingKeyword = trivia.LeadingKeyword
-            WithKeyword = withKeyword
-        }
-    )
-
-and mkSynExceptionDefn resolver (SynExceptionDefn (synExceptionDefnRepr, withKeyword, synMemberDefns, _range)) =
-    let (SynExceptionDefnRepr (longId = longId)) = synExceptionDefnRepr
-    let longId = Option.defaultValue [] longId
-
-    let members = List.choose (mkSynMemberSig resolver longId) synMemberDefns
-    SynExceptionSig (synExceptionDefnRepr, withKeyword, members, zeroRange)
-
-and mkSynModuleSigDeclNestedModule resolver synComponentInfo isRecursive synModuleDecls trivia : SynModuleSigDecl =
-    let decls = List.collect (mkSynModuleSigDecl resolver) synModuleDecls
-
-    SynModuleSigDecl.NestedModule (
-        synComponentInfo,
-        isRecursive,
-        decls,
-        zeroRange,
-        {
-            ModuleKeyword = trivia.ModuleKeyword
-            EqualsRange = trivia.EqualsRange
-        }
-    )
-
-and mkSynMemberSig resolver (typeIdent : LongIdent) (md : SynMemberDefn) : SynMemberSig option =
     match md with
-    | SynMemberDefn.ValField (fieldInfo, _range) -> Some (SynMemberSig.ValField (fieldInfo, zeroRange))
+    | MemberDefn.ValField _
+    | MemberDefn.AbstractSlot _
+    | MemberDefn.Inherit _ -> Some md
+    | MemberDefn.LetBinding _ -> None
 
-    | SynMemberDefn.Member (SynBinding (
-                                valData = SynValData (memberFlags = ForceMemberFlags "SynMemberDefn.Member" memberFlags)) as binding,
-                            _range) ->
-        let valSig = mkSynValSig resolver binding
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
-
-    | SynMemberDefn.AbstractSlot (slotSig = synValSig ; flags = synMemberFlags) ->
-        Some (SynMemberSig.Member (synValSig, synMemberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
-
-    | SynMemberDefn.Interface (interfaceType, _withKeyword, _synMemberDefnsOption, _range) ->
-        Some (SynMemberSig.Interface (interfaceType, zeroRange))
-
-    | SynMemberDefn.Inherit (baseType, _identOption, _range) -> Some (SynMemberSig.Inherit (baseType, zeroRange))
-
-    | SynMemberDefn.ImplicitCtor (vis, synAttributeLists, synSimplePats, _selfIdentifier, preXmlDoc, _range) ->
+    | MemberDefn.ImplicitInherit implicitInherit ->
         let t =
-            let { ConstructorInfo = ctor } = resolver.GetTypeInfo typeIdent.Head.idRange.Proxy
+            match implicitInherit with
+            | InheritConstructor.Unit inheritCtor -> inheritCtor.Type
+            | InheritConstructor.Paren inheritCtor -> inheritCtor.Type
+            | InheritConstructor.Other inheritCtor -> inheritCtor.Type
+            | InheritConstructor.TypeOnly inheritCtor -> inheritCtor.Type
+
+        MemberDefnInheritNode (implicitInherit.InheritKeyword, t, zeroRange)
+        |> MemberDefn.Inherit
+        |> Some
+
+    | MemberDefn.Member bindingNode ->
+        match bindingNode.FunctionName with
+        | Choice2Of2 _ -> None
+        | Choice1Of2 name ->
+            let valKw = bindingNode.LeadingKeyword
+
+            let name =
+                match name.Content with
+                // member this.Foo
+                | [ IdentifierOrDot.Ident _
+                    (IdentifierOrDot.KnownDot _ | IdentifierOrDot.UnknownDot)
+                    IdentifierOrDot.Ident name ]
+                // static member Foo
+                | [ IdentifierOrDot.Ident name ] -> name
+                | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
             let returnType =
-                SynType.LongIdent (SynLongIdent (typeIdent, [], List.replicate typeIdent.Length None))
+                mkTypeForValNode resolver name.Range typeParameterMap bindingNode.Parameters
 
-            match ctor with
-            | None -> mkSynTypeFun [ mkSynTypeLongIdent "unit" ; returnType ]
-            | Some (signatureText, resolvedGenericParameters) ->
-                let argPats : SynPat list =
-                    match synSimplePats with
-                    | SynSimplePats.SimplePats (pats = pats) ->
-                        let pats = pats |> List.map convertToSynPat
-
-                        match pats with
-                        | [] -> []
-                        | [ pat ] -> [ SynPat.Paren (pat, zeroRange) ]
-                        | pats -> [ SynPat.Paren (SynPat.Tuple (false, pats, zeroRange), zeroRange) ]
-                    | SynSimplePats.Typed _ -> []
-
-                mkSynTypForSignatureBasedOnTypedTree
-                    signatureText
-                    resolvedGenericParameters
-                    None
-                    argPats
-                    (Some ([ returnType ], returnType))
-                |> removeParensInType
-
-        let valSig =
-            // This doesn't need to be correct for Fantomas
-            SynValSig (
-                synAttributeLists,
-                mkSynIdent "new",
-                SynValTyparDecls (None, false),
-                t,
-                emptyValInfo,
-                false,
-                false,
-                preXmlDoc,
-                vis,
-                None,
-                zeroRange,
-                { SynValSigTrivia.Zero with
-                    LeadingKeyword = SynLeadingKeyword.New zeroRange
-                }
-            )
-
-        Some (
-            SynMemberSig.Member (
-                valSig,
-                {
-                    IsInstance = false
-                    IsDispatchSlot = false
-                    IsOverrideOrExplicitImpl = false
-                    IsFinal = false
-                    GetterOrSetterIsCompilerGenerated = false
-                    MemberKind = SynMemberKind.Constructor
-                },
-                zeroRange,
-                SynMemberSigMemberTrivia.Zero
-            )
-        )
-    | SynMemberDefn.ImplicitInherit (inheritType, _inheritArgs, _inheritAlias, _range) ->
-        Some (SynMemberSig.Inherit (inheritType, zeroRange))
-    | SynMemberDefn.LetBindings _
-    | SynMemberDefn.Open _
-    | SynMemberDefn.GetSetMember (None, None, _, _) -> None
-    | SynMemberDefn.AutoProperty (
-        attributes = attributes ; ident = ident ; memberFlags = memberFlags ; xmlDoc = xmlDoc ; accessibility = vis) ->
-        let t =
-            let typeString, _ = resolver.GetFullForBinding ident.idRange.Proxy
-            mkSynTypFromText typeString
-
-        let valSig =
-            SynValSig (
-                attributes,
-                SynIdent (ident, None),
-                SynValTyparDecls (None, true),
-                t,
-                emptyValInfo,
-                false,
-                false,
-                xmlDoc,
-                vis,
-                None,
-                zeroRange,
-                { SynValSigTrivia.Zero with
-                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
-                }
-            )
-
-        Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
-    | SynMemberDefn.GetSetMember (Some (SynBinding (
-                                      valData = SynValData (
-                                          memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember" memberFlags)
-                                      headPat = headPat) as binding),
-                                  None,
-                                  _range,
-                                  _trivia) ->
-        let binding =
-            // Transform getter with unit to Named
-            // `member __.DisableInMemoryProjectReferences with get () = disableInMemoryProjectReferences`
-            // becomes `member DisableInMemoryProjectReferences : bool`
-            match memberFlags.MemberKind, headPat with
-            | SynMemberKind.PropertyGet, GetMemberLongIdentPat (propertyNameIdent, vis) ->
-                let headPat =
-                    SynPat.Named (SynIdent (propertyNameIdent, None), false, vis, zeroRange)
-
-                let (SynBinding (a, k, il, is, attrs, xml, vd, _, rto, e, r, d, t)) = binding
-                SynBinding (a, k, il, is, attrs, xml, vd, headPat, rto, e, r, d, t)
-            | _ -> binding
-
-        let valSig = mkSynValSig resolver binding
-
-        Some (
-            SynMemberSig.Member (
-                valSig,
-                memberFlags,
-                zeroRange,
-                {
-                    GetSetKeywords = Some (GetSetKeywords.Get zeroRange)
-                }
-            )
-        )
-
-    | SynMemberDefn.GetSetMember (None,
-                                  Some (SynBinding (
-                                      headPat = headPat
-                                      accessibility = vis
-                                      attributes = attributes
-                                      xmlDoc = xmlDoc
-                                      valData = SynValData (
-                                          memberFlags = ForceMemberFlags "SynMemberDefn.GetSetMember" memberFlags) as synValData) as binding),
-                                  _range,
-                                  _trivia) ->
-        match headPat with
-        | SetMemberLongIdentPat nameIdent ->
-            let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
-            let t = text.Replace (" with set", "") |> mkSynTypFromText
-
-            let valSig =
-                SynValSig (
-                    attributes,
-                    SynIdent (nameIdent, None),
-                    SynValTyparDecls (None, false),
-                    t,
-                    // This isn't correct but doesn't matter for Fantomas
-                    synValData.SynValInfo,
-                    false,
-                    false,
-                    xmlDoc,
-                    vis,
+            MemberDefnSigMemberNode (
+                ValNode (
+                    bindingNode.XmlDoc,
+                    bindingNode.Attributes,
+                    Some valKw,
                     None,
-                    zeroRange,
-                    {
-                        LeadingKeyword = SynLeadingKeyword.Member zeroRange
-                        InlineKeyword = None
-                        WithKeyword = Some zeroRange
-                        EqualsRange = None
-                    }
-                )
-
-            Some (
-                SynMemberSig.Member (
-                    valSig,
-                    memberFlags,
-                    zeroRange,
-                    {
-                        GetSetKeywords = Some (GetSetKeywords.Set zeroRange)
-                    }
-                )
-            )
-        | _ ->
-            let valSig = mkSynValSig resolver binding
-            Some (SynMemberSig.Member (valSig, memberFlags, zeroRange, SynMemberSigMemberTrivia.Zero))
-
-    // member Name: type with get, set
-    | SimpleGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags) ->
-        let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
-        let t = mkSynTypFromText text
-
-        let valSig =
-            SynValSig (
-                attributes,
-                SynIdent (nameIdent, None),
-                SynValTyparDecls (None, false),
-                t,
-                valInfo,
-                false,
-                false,
-                xmlDoc,
-                vis,
-                None,
-                zeroRange,
-                {
-                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
-                    WithKeyword = Some zeroRange
-                    EqualsRange = None
-                    InlineKeyword = None
-                }
-            )
-
-        Some (
-            SynMemberSig.Member (
-                valSig,
-                memberFlags,
-                zeroRange,
-                {
-                    GetSetKeywords = Some (GetSetKeywords.GetSet (zeroRange, zeroRange))
-                }
-            )
-        )
-
-    | IndexedGetSetBinding (nameIdent, attributes, valInfo, xmlDoc, vis, memberFlags, indexArgName) ->
-        let text, _ = resolver.GetFullForBinding nameIdent.idRange.Proxy
-        let text = text.Replace (" with get", "")
-
-        let t =
-            match mkSynTypFromText text, indexArgName with
-            | SynType.Fun (argType, returnType, range, trivia), Some ident ->
-                SynType.Fun (
-                    SynType.SignatureParameter ([], false, Some ident, argType, zeroRange),
+                    false,
+                    None,
+                    name,
+                    None,
                     returnType,
-                    range,
-                    trivia
-                )
-            | t, _ -> t
-
-        let valSig =
-            SynValSig (
-                attributes,
-                SynIdent (nameIdent, None),
-                SynValTyparDecls (None, false),
-                t,
-                valInfo,
-                false,
-                false,
-                xmlDoc,
-                vis,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
                 None,
-                zeroRange,
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+            |> Some
+
+    | MemberDefn.AutoProperty autoProperty ->
+        let valKw = mtn "member"
+        let name = autoProperty.Identifier
+
+        let returnType = mkTypeForValNode resolver name.Range Map.empty []
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                autoProperty.XmlDoc,
+                autoProperty.Attributes,
+                Some valKw,
+                None,
+                false,
+                None,
+                name,
+                None,
+                returnType,
+                Some (stn "="),
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
+
+    | MemberDefn.ExplicitCtor explicitNode ->
+        let name = explicitNode.New
+
+        let returnType =
+            mkTypeForValNode resolver name.Range Map.empty [ explicitNode.Pattern ]
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                explicitNode.XmlDoc,
+                explicitNode.Attributes,
+                None,
+                None,
+                false,
+                None,
+                name,
+                None,
+                returnType,
+                Some (stn "="),
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
+
+    | MemberDefn.Interface interfaceNode ->
+        MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
+        |> MemberDefn.Interface
+        |> Some
+
+    | MemberDefn.PropertyGetSet propertyNode ->
+        let name =
+            match List.tryLast propertyNode.MemberName.Content with
+            | Some (IdentifierOrDot.Ident name) -> name
+            | _ -> failwith "Property does not have a name?"
+
+        let returnType =
+            let (|ParameterNameInParen|_|) p =
+                match p with
+                | Pattern.Paren parenNode ->
+                    match parenNode.Pattern with
+                    | Pattern.Parameter parameterNode ->
+                        match parameterNode.Pattern with
+                        | Pattern.Named parameterName -> Some parameterName.Name
+                        | _ -> None
+                    | _ -> None
+                | _ -> None
+
+            // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
+            match propertyNode.LastBinding with
+            | None ->
+                let binding = propertyNode.FirstBinding
+
+                if binding.LeadingKeyword.Text = "set" && binding.Parameters.Length = 2 then
+                    // If we are dealing with an indexed setter, the signature is rather funky.
+                    // member x.Set (idx:int) (v: string) = ()
+                    // Will become member Set: idx: int -> string with set
+                    mkTypeForValNode resolver name.Range Map.empty [ binding.Parameters.[0] ]
+                else
+                    mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
+            | Some lastBinding ->
+                match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
+                | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
+                | [ ParameterNameInParen p1 ; _ ], [ ParameterNameInParen p2 ] when p1.Text <> p2.Text ->
+                    // Example:
+                    //     member x.Item
+                    //          with get (a: int) = ""
+                    //          and set (b:int) (c:string) = ()
+
+                    // Throw in a fake parameter that represents the indexer pattern.
+                    // This is to avoid additional parentheses around the return type.
+                    mkTypeForValNode resolver name.Range Map.empty [ Pattern.Wild (stn "_") ]
+                | [ _ ], [ _ ; _ ] ->
+                    // Indexer where the index pattern has the same name, example:
+                    //     member x.Item
+                    //          with get (m: int) = ""
+                    //          and set (m:int) (y:string) = ()
+
+                    // Use the shortest parameter list
+                    mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
+                | [ _ ; _ ], [ _ ] ->
+                    // Indexer where the index pattern has the same name, example:
+                    //     member x.Item
+                    //          with set (m:int) (y:string) = ()
+                    //          and get (m: int) = ""
+                    mkTypeForValNode resolver name.Range Map.empty lastBinding.Parameters
+                | [ Pattern.Unit _ ], [ _ ]
+                | [ _ ], [ Pattern.Unit _ ] ->
+                    // The getter takes a unit argument:
+                    //     member __.DisableInMemoryProjectReferences
+                    //          with get () = disableInMemoryProjectReferences
+                    //          and set (value) = disableInMemoryProjectReferences <- value
+                    mkTypeForValNode resolver name.Range Map.empty []
+                | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
+
+        let withGetSet =
+            match propertyNode.LastBinding with
+            | None -> [ propertyNode.FirstBinding.LeadingKeyword ]
+            | Some lastBinding ->
+                [
+                    stn $"%s{propertyNode.FirstBinding.LeadingKeyword.Text},"
+                    lastBinding.LeadingKeyword
+                ]
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                propertyNode.XmlDoc,
+                propertyNode.Attributes,
+                Some (mtn "member"),
+                None,
+                false,
+                None,
+                name,
+                None,
+                returnType,
+                Some (stn "="),
+                None,
+                zeroRange
+            ),
+            Some (MultipleTextsNode ([ stn "with" ; yield! withGetSet ], zeroRange)),
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+        |> Some
+
+    | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
+
+let mkMembers
+    (resolver : TypedTreeInfoResolver)
+    (typeParameterMap : Map<string, string>)
+    (ms : MemberDefn list)
+    : MemberDefn list
+    =
+    List.choose (mkMember resolver typeParameterMap) ms
+
+/// <summary>
+/// Map a TypeDefn to its signature counterpart.
+/// A lot of information can typically be re-used when the same syntax applies.
+/// The most important things that need mapping are the implicit constructor and the type members.
+/// </summary>
+/// <param name="resolver">Resolves information from the Typed tree.</param>
+/// <param name="typeDefn">Type definition DU case from the Untyped tree.</param>
+let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDefn =
+    let tdn = TypeDefn.TypeDefnNode typeDefn
+
+    let typeName =
+        // To overcome
+        // "typecheck error The representation of this type is hidden by the signature."
+        // It must be given an attribute such as [<Sealed>], [<Class>] or [<Interface>] to indicate the characteristics of the type.
+        // We insert an additional `[<Class>]` attribute when no constructor is present for a TypeDefn.Regular.
+        let attributes =
+            let hasExistingAttribute =
+                hasAnyAttribute
+                    (set [| "Class" ; "ClassAttribute" ; "Struct" ; "StructAttribute" |])
+                    tdn.TypeName.Attributes
+
+            let allMembersAreAbstract =
+                tdn.Members
+                |> List.forall (
+                    function
+                    | MemberDefn.AbstractSlot _ -> true
+                    | _ -> false
+                )
+
+            match typeDefn with
+            | TypeDefn.Regular _ ->
+                if
+                    tdn.TypeName.ImplicitConstructor.IsSome
+                    || hasExistingAttribute
+                    || allMembersAreAbstract
+                then
+                    tdn.TypeName.Attributes
+                else
+                    let classAttribute =
+                        AttributeListNode (
+                            stn "[<",
+                            [ AttributeNode (iln "Class", None, None, zeroRange) ],
+                            stn ">]",
+                            zeroRange
+                        )
+
+                    match tdn.TypeName.Attributes with
+                    | None -> Some (MultipleAttributeListNode ([ classAttribute ], zeroRange))
+                    | Some multipleAttributeListNode ->
+                        Some (
+                            MultipleAttributeListNode (
+                                classAttribute :: multipleAttributeListNode.AttributeLists,
+                                zeroRange
+                            )
+                        )
+            | _ -> tdn.TypeName.Attributes
+
+        TypeNameNode (
+            tdn.TypeName.XmlDoc,
+            attributes,
+            tdn.TypeName.LeadingKeyword,
+            tdn.TypeName.Accessibility,
+            tdn.TypeName.Identifier,
+            tdn.TypeName.TypeParameters,
+            tdn.TypeName.Constraints,
+            None,
+            tdn.TypeName.EqualsToken,
+            tdn.TypeName.WithKeyword,
+            zeroRange
+        )
+
+    let typeNameType = Type.LongIdent tdn.TypeName.Identifier
+
+    let typarMap =
+        match tdn.TypeName.TypeParameters with
+        | Some (TyparDecls.PostfixList prefixListNode) ->
+            let untypedTreeNames =
+                prefixListNode.Decls |> List.map (fun typarDecl -> typarDecl.TypeParameter.Text)
+
+            let typedTreeNames : string list =
+                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.Proxy
+
+            if untypedTreeNames.Length <> typedTreeNames.Length then
+                failwith "unexpected difference in typar count"
+            else
+                List.zip typedTreeNames untypedTreeNames |> Map
+        | _ -> Map.empty
+
+    ignore typarMap
+
+    let mkImplicitCtor
+        (resolver : TypedTreeInfoResolver)
+        (identifier : IdentListNode)
+        (implicitCtor : ImplicitConstructorNode)
+        =
+        let bindingInfo = resolver.GetTypeInfo identifier.Range.Proxy
+
+        let returnType =
+            match bindingInfo.ConstructorInfo with
+            | None ->
+                TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], typeNameType, zeroRange)
+                |> Type.Funs
+            | Some { ReturnTypeString = typeString } -> mkTypeFromString typeString
+
+        // Convert the SimplePats to Patterns
+        let parameters =
+            match implicitCtor.Parameters with
+            | [] ->
+                // Even when there are new explicit parameters we still need to pass `()` as a unit parameter.
+                [ Pattern.Unit (UnitNode (stn "(", stn ")", zeroRange)) ]
+            | parameters ->
+                let wrapAsTupleIfMultiple (parameters : Pattern list) =
+                    if parameters.Length < 2 then
+                        parameters
+                    else
+                        // Wrap as tuple as that is the only way parameters can behave in an implicit constructor.
+                        [ Pattern.Tuple (PatTupleNode (parameters, zeroRange)) ]
+
+                parameters
+                |> List.map (fun simplePat ->
+                    PatParameterNode (
+                        simplePat.Attributes,
+                        Pattern.Named (PatNamedNode (None, simplePat.Identifier, zeroRange)),
+                        simplePat.Type,
+                        zeroRange
+                    )
+                    |> Pattern.Parameter
+                )
+                |> wrapAsTupleIfMultiple
+
+        let returnType =
+            let typedTreeInfo =
                 {
-                    LeadingKeyword = SynLeadingKeyword.Member zeroRange
-                    WithKeyword = Some zeroRange
-                    InlineKeyword = None
-                    EqualsRange = None
+                    ReturnType = returnType
+                    BindingGenericParameters = []
+                    TypeGenericParameters = []
                 }
+
+            mkTypeForValNodeBasedOnTypedTree typedTreeInfo Map.empty parameters
+
+        MemberDefnSigMemberNode (
+            ValNode (
+                implicitCtor.XmlDoc,
+                implicitCtor.Attributes,
+                None,
+                None,
+                false,
+                implicitCtor.Accessibility,
+                stn "new",
+                None,
+                returnType,
+                None,
+                None,
+                zeroRange
+            ),
+            None,
+            zeroRange
+        )
+        |> MemberDefn.SigMember
+
+    let mkMembersForType members = mkMembers resolver typarMap members
+
+    match typeDefn with
+    | TypeDefn.Record recordNode ->
+        TypeDefnRecordNode (
+            typeName,
+            recordNode.Accessibility,
+            recordNode.OpeningBrace,
+            recordNode.Fields,
+            recordNode.ClosingBrace,
+            mkMembersForType tdn.Members,
+            zeroRange
+        )
+        |> TypeDefn.Record
+
+    | TypeDefn.Explicit explicitNode ->
+        let body =
+            TypeDefnExplicitBodyNode (
+                explicitNode.Body.Kind,
+                [
+                    match tdn.TypeName.ImplicitConstructor with
+                    | None -> ()
+                    | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
+                    yield! mkMembersForType explicitNode.Body.Members
+                ],
+                explicitNode.Body.End,
+                zeroRange
             )
 
-        Some (
-            SynMemberSig.Member (
-                valSig,
-                memberFlags,
-                zeroRange,
-                {
-                    GetSetKeywords = Some (GetSetKeywords.GetSet (zeroRange, zeroRange))
-                }
-            )
+        TypeDefnExplicitNode (typeName, body, mkMembersForType tdn.Members, zeroRange)
+        |> TypeDefn.Explicit
+
+    | TypeDefn.Regular _ ->
+        TypeDefnRegularNode (
+            typeName,
+            [
+                match tdn.TypeName.ImplicitConstructor with
+                | None -> ()
+                | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
+                yield! mkMembersForType tdn.Members
+            ],
+            zeroRange
         )
-    | SynMemberDefn.GetSetMember _ -> failwith "todo EF1C9796-DA9D-4810-8BD6-B28983C6C259"
-    | SynMemberDefn.ImplicitInherit _
-    | SynMemberDefn.NestedType _ -> failwith $"todo EDB4CD44-E0D5-47F8-BF76-BBC74CC3B0C9, {md} {md.Range.Proxy}"
+        |> TypeDefn.Regular
+
+    | TypeDefn.Union unionNode ->
+        TypeDefnUnionNode (
+            typeName,
+            unionNode.Accessibility,
+            unionNode.UnionCases,
+            mkMembersForType tdn.Members,
+            zeroRange
+        )
+        |> TypeDefn.Union
+
+    | TypeDefn.Abbrev abbrevNode ->
+        TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembersForType tdn.Members, zeroRange)
+        |> TypeDefn.Abbrev
+
+    | TypeDefn.Augmentation _ ->
+        TypeDefnAugmentationNode (typeName, mkMembersForType tdn.Members, zeroRange)
+        |> TypeDefn.Augmentation
+
+    | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
+
+let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
+    match mdl with
+    | ModuleDecl.TopLevelBinding bindingNode ->
+        match bindingNode.FunctionName with
+        | Choice1Of2 name ->
+            let valKw = mtn "val"
+            let nameRange = (name :> Node).Range
+
+            let name =
+                match name.Content with
+                | [ IdentifierOrDot.Ident name ] -> name
+                | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+
+            let returnType =
+                mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters
+
+            let expr =
+                if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
+                    Some bindingNode.Expr
+                else
+                    None
+
+            ValNode (
+                bindingNode.XmlDoc,
+                bindingNode.Attributes,
+                Some valKw,
+                bindingNode.Inline,
+                false,
+                bindingNode.Accessibility,
+                name,
+                None,
+                returnType,
+                Some (stn "="),
+                expr,
+                zeroRange
+            )
+            |> ModuleDecl.Val
+            |> Some
+        | _ -> failwith "todo, C98DD050-A18C-4D8D-A025-083B352C57A5"
+
+    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn |> Some
+    | ModuleDecl.OpenList _ -> Some mdl
+    | ModuleDecl.DeclExpr _ -> None
+    | ModuleDecl.NestedModule nestedModule ->
+        NestedModuleNode (
+            nestedModule.XmlDoc,
+            nestedModule.Attributes,
+            nestedModule.Module,
+            nestedModule.Accessibility,
+            false,
+            nestedModule.Identifier,
+            nestedModule.Equals,
+            List.choose (mkModuleDecl resolver) nestedModule.Declarations,
+            zeroRange
+        )
+        |> ModuleDecl.NestedModule
+        |> Some
+    | ModuleDecl.Exception exceptionNode ->
+        ExceptionDefnNode (
+            exceptionNode.XmlDoc,
+            exceptionNode.Attributes,
+            exceptionNode.Accessibility,
+            exceptionNode.UnionCase,
+            exceptionNode.WithKeyword,
+            mkMembers resolver Map.empty exceptionNode.Members,
+            zeroRange
+        )
+        |> ModuleDecl.Exception
+        |> Some
+    | ModuleDecl.ModuleAbbrev _ -> Some mdl
+    | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
+
+let mkModuleOrNamespace
+    (resolver : TypedTreeInfoResolver)
+    (moduleNode : ModuleOrNamespaceNode)
+    : ModuleOrNamespaceNode
+    =
+    let decls = List.choose (mkModuleDecl resolver) moduleNode.Declarations
+    ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
+
+let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) =
+    let implementationOak =
+        CodeFormatter.ParseOakAsync (false, code)
+        |> Async.RunSynchronously
+        |> Array.find (fun (_, defines) -> List.isEmpty defines)
+        |> fst
+
+    let signatureOak =
+        let mdns =
+            List.map (mkModuleOrNamespace resolver) implementationOak.ModulesOrNamespaces
+
+        Oak (implementationOak.ParsedHashDirectives, mdns, zeroRange)
+
+    CodeFormatter.FormatOakAsync signatureOak |> Async.RunSynchronously
