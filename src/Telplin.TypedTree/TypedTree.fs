@@ -192,7 +192,15 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 let returnTypeText = getReturnTypeText ()
 
                 if valSymbol.IsPropertyGetterMethod then
-                    takeLastType returnTypeText
+                    let firstGroup = valSymbol.CurriedParameterGroups.[0]
+
+                    if
+                        firstGroup.Count = 1
+                        && firstGroup.[0].Type.BasicQualifiedName = "Microsoft.FSharp.Core.unit"
+                    then
+                        takeLastType returnTypeText
+                    else
+                        stripFirstType returnTypeText
                 elif valSymbol.IsInstanceMember then
                     stripFirstType returnTypeText
                 else
