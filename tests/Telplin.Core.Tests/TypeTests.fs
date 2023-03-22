@@ -476,8 +476,8 @@ open System
 type AsyncMaybeBuilder =
     new: unit -> AsyncMaybeBuilder
 
-    member Using<'T, 'a when 'T :> IDisposable and 'T: null> :
-        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option>
+    member Using:
+        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
 """
 
 [<Test>]
@@ -606,6 +606,25 @@ namespace FA
 type Hej =
     new: unit -> Hej
     member DisableInMemoryProjectReferences: bool with set
+"""
+
+[<Test>]
+let ``single indexed setter`` () =
+    assertSignature
+        """
+namespace FA
+
+type Hej() =
+    let mutable disableInMemoryProjectReferences : bool = false
+    member __.DisableInMemoryProjectReferences
+        with set (idx: int) (value) = disableInMemoryProjectReferences <- value
+"""
+        """
+namespace FA
+
+type Hej =
+    new: unit -> Hej
+    member DisableInMemoryProjectReferences: idx: int -> bool with set
 """
 
 [<Test>]

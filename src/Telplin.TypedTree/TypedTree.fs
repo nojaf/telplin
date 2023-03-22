@@ -201,6 +201,18 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                         takeLastType returnTypeText
                     else
                         stripFirstType returnTypeText
+                elif valSymbol.IsPropertySetterMethod then
+                    // In case of an indexed setter we only need to remove the leading type name
+                    if valSymbol.CurriedParameterGroups.[0].Count = 2 then
+                        let indexType = valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
+
+                        let propertyType =
+                            valSymbol.CurriedParameterGroups.[0].[1].Type.Format displayContext
+
+                        $"{indexType} -> {propertyType}"
+                    else
+                        // Take the type of the property
+                        valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
                 elif valSymbol.IsInstanceMember then
                     stripFirstType returnTypeText
                 else

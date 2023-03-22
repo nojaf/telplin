@@ -156,7 +156,20 @@ let mkMember
             // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
             match propertyNode.LastBinding with
             | None ->
-                mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters returnTypeInSource
+                let binding = propertyNode.FirstBinding
+
+                if binding.LeadingKeyword.Text = "set" && binding.Parameters.Length = 2 then
+                    // If we are dealing with an indexed setter, the signature is rather funky.
+                    // member x.Set (idx:int) (v: string) = ()
+                    // Will become member Set: idx: int -> string with set
+                    mkTypeForValNode resolver name.Range Map.empty [ binding.Parameters.[0] ] returnTypeInSource
+                else
+                    mkTypeForValNode
+                        resolver
+                        name.Range
+                        Map.empty
+                        propertyNode.FirstBinding.Parameters
+                        returnTypeInSource
             | Some lastBinding ->
                 match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
                 | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
