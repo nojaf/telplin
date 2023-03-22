@@ -74,35 +74,6 @@ let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type)
         )
         |> Type.AppPostfix
     | _ -> untypedTreeType
-// | Type.Funs _ -> wrapTypeInParentheses untypedTreeType
-// | parameterType ->
-//     match parameterType, typeTreeType with
-//     | Type.AppPrefix untypedAppPrefix, Type.AppPrefix typedAppPrefix ->
-//         // go over type parameter per type parameter and pick the best on.
-//         if untypedAppPrefix.Arguments.Length <> typedAppPrefix.Arguments.Length then
-//             typeTreeType
-//         else
-//
-//         let arguments =
-//             (untypedAppPrefix.Arguments, typedAppPrefix.Arguments)
-//             ||> List.zip
-//             |> List.map (fun (untypedArg, typedArg) ->
-//                 match untypedArg, typedArg with
-//                 // Don't use wildcard
-//                 | Type.Anon _, _ -> typedArg
-//                 | _ -> untypedArg
-//             )
-//
-//         TypeAppPrefixNode (
-//             typedAppPrefix.Identifier,
-//             typedAppPrefix.PostIdentifier,
-//             typedAppPrefix.LessThen,
-//             arguments,
-//             typedAppPrefix.GreaterThan,
-//             typedAppPrefix.Range
-//         )
-//         |> Type.AppPrefix
-//     | _ -> parameterType
 
 /// <summary>
 /// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
