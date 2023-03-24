@@ -12,9 +12,9 @@
   "devServer": {
     "port": 8900,
     "liveReload": true,
-    "useSSL": true,
-    "envPath": "/telplin/env.js"
+    "useSSL": true
   },
+  "envPath": "/telplin/env.js",
   "esbuild": {
     "target": "es2020"
   },

@@ -8,6 +8,7 @@
     "react-dom": "https://ga.jspm.io/npm:react-dom@18.2.0/index.js",
     "scheduler": "https://ga.jspm.io/npm:scheduler@0.23.0/index.js",
     "state-local": "https://ga.jspm.io/npm:state-local@1.0.7/lib/es/state-local.js",
+    "use-sync-external-store": "https://ga.jspm.io/npm:use-sync-external-store@1.2.0/index.js",
     "use-sync-external-store/shim": "https://ga.jspm.io/npm:use-sync-external-store@1.2.0//shim/index.js"
   }
 }
