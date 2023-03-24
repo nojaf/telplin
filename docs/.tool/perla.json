@@ -28,6 +28,10 @@
       "version": "1.5.0"
     },
     {
+      "name": "react",
+      "version": "18.2.0"
+    },
+    {
       "name": "react-dom",
       "version": "18.2.0"
     },
