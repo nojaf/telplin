@@ -1,19 +1,22 @@
 {
-  "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/dev/perla.schema.json",
+  "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-005/perla.schema.json",
   "index": "./index.html",
+  "mountDirectories": {
+    "/": "./"
+  },
   "fable": {
     "project": "./OnlineTool.fsproj",
     "extension": ".js"
   },
-  "mountDirectories": {
-    "/": ".",
-    "/fable_modules": "./fable_modules"
-  },
   "devServer": {
     "port": 8900,
-    "useSSL": true
+    "liveReload": true,
+    "useSSL": true,
+    "envPath": "/telplin/env.js"
   },
-  "envPath": "/telplin/env.js",
+  "esbuild": {
+    "target": "es2020"
+  },
   "dependencies": [
     {
       "name": "@monaco-editor/react",
@@ -22,10 +25,6 @@
     {
       "name": "lz-string",
       "version": "1.5.0"
-    },
-    {
-      "name": "react",
-      "version": "18.2.0"
     },
     {
       "name": "react-dom",
