@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-005/perla.schema.json",
+  "index": "./index.html",
+  "mountDirectories": {
+    "/": "./"
+  },
+  "fable": {
+    "project": "./OnlineTool.fsproj",
+    "extension": ".js"
+  },
+  "devServer": {
+    "port": 8900,
+    "liveReload": true,
+    "useSSL": true,
+    "envPath": "/telplin/env.js"
+  },
+  "esbuild": {
+    "target": "es2020"
+  },
+  "dependencies": [
+    {
+      "name": "@monaco-editor/react",
+      "version": "4.4.6"
+    },
+    {
+      "name": "lz-string",
+      "version": "1.5.0"
+    },
+    {
+      "name": "react-dom",
+      "version": "18.2.0"
+    },
+    {
+      "name": "use-sync-external-store",
+      "version": "1.2.0"
+    }
+  ],
+  "devDependencies": []
+}
