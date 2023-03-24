@@ -33,7 +33,7 @@ pipeline "Build" {
             workingDir (__SOURCE_DIRECTORY__ </> "docs" </> ".tool")
 
             run "dotnet tool restore"
-            run "dotnet perla b"
+            run "dotnet perla build"
 
             run (fun _ ->
                 let dist = __SOURCE_DIRECTORY__ </> "docs" </> ".tool" </> "dist"
