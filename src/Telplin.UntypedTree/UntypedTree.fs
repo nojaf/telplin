@@ -459,6 +459,11 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
+let getLastIdentFromList (identList : IdentListNode) =
+    match identList.Content with
+    | [ IdentifierOrDot.Ident name ] -> name
+    | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
     match mdl with
     | ModuleDecl.DeclExpr _
@@ -471,12 +476,8 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
             let valKw = mtn "val"
-            let nameRange = (name :> Node).Range
-
-            let name =
-                match name.Content with
-                | [ IdentifierOrDot.Ident name ] -> name
-                | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+            let nameRange = name.Range
+            let name = getLastIdentFromList name
 
             let returnType =
                 mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters
@@ -533,7 +534,35 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         )
         |> ModuleDecl.Exception
         |> Some
-    | ModuleDecl.ExternBinding _ -> failwith "External bindings are not supported yet"
+    | ModuleDecl.ExternBinding externBindingNode ->
+        let nameRange = externBindingNode.Identifier.Range
+        let name = getLastIdentFromList externBindingNode.Identifier
+
+        let returnType =
+            let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+
+            mkTypeFromString bindingInfo.ReturnTypeString
+            // Type may have unwanted parentheses.
+            |> function
+                | Type.Paren parenNode -> parenNode.Type
+                | t -> t
+
+        ValNode (
+            externBindingNode.XmlDoc,
+            externBindingNode.Attributes,
+            Some (mtn "val"),
+            None,
+            false,
+            externBindingNode.Accessibility,
+            name,
+            None,
+            returnType,
+            Some (stn "="),
+            None,
+            zeroRange
+        )
+        |> ModuleDecl.Val
+        |> Some
 
 let mkModuleOrNamespace
     (resolver : TypedTreeInfoResolver)

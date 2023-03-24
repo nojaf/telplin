@@ -497,7 +497,6 @@ type DU = DU of one: string * two: int
 val (|Two|): DU -> int
 """
 
-[<Ignore("https://github.com/dotnet/fsharp/issues/14736")>]
 [<Test>]
 let ``wildcard pattern`` () =
     assertSignature
@@ -514,7 +513,7 @@ do
         """
 module W
 
-val (|Fst|)<'a, 'b> : a: 'a * 'b -> 'a
+val (|Fst|): a: 'a * 'b -> 'a
 """
 
 [<Test>]
@@ -1009,4 +1008,20 @@ type internal Graph<'Node> = IReadOnlyDictionary<'Node, 'Node[]>
 val addIfMissing: nodes: 'Node seq -> graph: Graph<'Node> -> Graph<'Node> when 'Node: equality
 /// Create a reverse of the graph
 val reverse: originalGraph: Graph<'Node> -> Graph<'Node> when 'Node: equality
+"""
+
+[<Test>]
+let ``extern binding`` () =
+    assertSignature
+        """
+module Telplin
+
+[<System.Runtime.InteropServices.DllImport("")>]
+extern int f()
+"""
+        """
+module Telplin
+
+[<System.Runtime.InteropServices.DllImport("")>]
+val f: unit -> int
 """

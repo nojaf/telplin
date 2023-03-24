@@ -54,3 +54,16 @@ namespace Company
 module A =
     val a: int
 """
+
+[<Test>]
+let ``module with top level attribute`` () =
+    assertSignature
+        """
+module A
+
+[<System.Runtime.InteropServices.DllImport("")>]
+do ()
+"""
+        """
+module A
+"""
