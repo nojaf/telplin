@@ -461,6 +461,12 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
 
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
     match mdl with
+    | ModuleDecl.DeclExpr _
+    | ModuleDecl.Attributes _ -> None
+    | ModuleDecl.OpenList _
+    | ModuleDecl.Val _
+    | ModuleDecl.HashDirectiveList _
+    | ModuleDecl.ModuleAbbrev _ -> Some mdl
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
@@ -500,8 +506,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         | _ -> failwith "todo, C98DD050-A18C-4D8D-A025-083B352C57A5"
 
     | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn |> Some
-    | ModuleDecl.OpenList _ -> Some mdl
-    | ModuleDecl.DeclExpr _ -> None
+
     | ModuleDecl.NestedModule nestedModule ->
         NestedModuleNode (
             nestedModule.XmlDoc,
@@ -528,8 +533,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         )
         |> ModuleDecl.Exception
         |> Some
-    | ModuleDecl.ModuleAbbrev _ -> Some mdl
-    | _ -> failwith "todo, 56EF9CEE-A28B-437D-8A0F-EBE7E0AA850F"
+    | ModuleDecl.ExternBinding _ -> failwith "External bindings are not supported yet"
 
 let mkModuleOrNamespace
     (resolver : TypedTreeInfoResolver)

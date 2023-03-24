@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+* The console application no longer takes an MSBuild binary log file as input, but a `fsproj`instead.
+* Update to Fantomas.Core v6.0.0-alpha-006
+* Update to FSharp.Compiler.Service v43.7.300-preview.23167.4
+
 ## 0.2.0 - 17-12-22
 
 ### Fixed
