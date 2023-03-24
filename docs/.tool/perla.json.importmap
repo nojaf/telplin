@@ -2,12 +2,12 @@
   "imports": {
     "@monaco-editor/loader": "https://ga.jspm.io/npm:@monaco-editor/loader@1.3.2/lib/es/index.js",
     "@monaco-editor/react": "https://ga.jspm.io/npm:@monaco-editor/react@4.4.6/lib/es/index.js",
-    "lz-string": "https://ga.jspm.io/npm:lz-string@1.5.0/libs/lz-string.js",
+    "lz-string": "https://esm.sh/lz-string",
     "prop-types": "https://ga.jspm.io/npm:prop-types@15.8.1/index.js",
     "react": "https://ga.jspm.io/npm:react@18.2.0/index.js",
     "react-dom": "https://ga.jspm.io/npm:react-dom@18.2.0/index.js",
     "scheduler": "https://ga.jspm.io/npm:scheduler@0.23.0/index.js",
     "state-local": "https://ga.jspm.io/npm:state-local@1.0.7/lib/es/state-local.js",
-    "use-sync-external-store/shim": "https://ga.jspm.io/npm:use-sync-external-store@1.2.0/shim/index.js"
+    "use-sync-external-store/shim": "https://ga.jspm.io/npm:use-sync-external-store@1.2.0//shim/index.js"
   }
 }
