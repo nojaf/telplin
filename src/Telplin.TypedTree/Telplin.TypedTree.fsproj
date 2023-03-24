@@ -14,7 +14,7 @@
 
     <ItemGroup>
         <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />
-        <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.669" />
+        <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.790" />
     </ItemGroup>
 
     <ItemGroup>

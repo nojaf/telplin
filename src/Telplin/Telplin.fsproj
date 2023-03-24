@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />
+    <PackageReference Include="CliWrap" Version="3.6.0" />
   </ItemGroup>
 
 </Project>

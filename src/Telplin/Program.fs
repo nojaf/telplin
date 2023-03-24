@@ -1,21 +1,22 @@
 ﻿open System.IO
 open Argu
+open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin
 
 type CliArguments =
-    | [<MainCommand>] Binary_log of path : string
+    | [<MainCommand>] FsProj of path : string
     | Files of path : string list
     | Write
 
     interface IArgParserTemplate with
         member this.Usage =
             match this with
-            | Binary_log _ ->
-                "Binary log file of earlier completed rebuild. Run `dotnet build -bl --no-incremental` to obtain one."
+            | FsProj _ -> "FSharp project file (.fsproj) to process. This project will be build first by Telplin."
             | Files _ -> "Process a subset of files in the current project."
-            | Write -> "Write signature files to disk"
+            | Write ->
+                "Write signature files to disk. By default, Telplin will only print the signatures to the console."
 
 [<EntryPoint>]
 let main args =
@@ -28,8 +29,27 @@ let main args =
     else
 
     let checker = FSharpChecker.Create ()
-    let file = arguments.GetResult <@ Binary_log @>
-    let projectOptions = TypedTree.Options.mkOptions file
+    let fsProj = arguments.GetResult <@ FsProj @>
+
+    if not (File.Exists fsProj) then
+        printfn $"FSharp project \"%s{fsProj}\" does not exist."
+        exit 1
+
+    let binaryLog =
+        let folder = FileInfo(fsProj).DirectoryName
+        printfn $"Building %s{fsProj}..."
+
+        Cli
+            .Wrap("dotnet")
+            .WithArguments($"build \"{fsProj}\" -bl --no-incremental")
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteAsync()
+            .Task.Result
+        |> ignore
+
+        Path.Combine (folder, "msbuild.binlog")
+
+    let projectOptions = TypedTree.Options.mkOptions binaryLog
 
     let signatures =
         let sourceFiles =
