@@ -2,7 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-005/perla.schema.json",
   "index": "./index.html",
   "mountDirectories": {
-    "/": "./"
+    "/": ".",
+    "/fable_modules": "./fable_modules"
   },
   "fable": {
     "project": "./OnlineTool.fsproj",
@@ -31,7 +32,7 @@
       "version": "18.2.0"
     },
     {
-      "name": "use-sync-external-store",
+      "name": "use-sync-external-store/shim",
       "version": "1.2.0"
     }
   ],
