@@ -52,7 +52,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Package lambda
-        working-directory: src/Telplin.Lambda
+        working-directory: tool/server
         run: dotnet lambda package
 
       - name: Configure AWS Credentials

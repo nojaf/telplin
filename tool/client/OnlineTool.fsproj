@@ -5,7 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="./perla.jsonc" />
+    <None Include="./perla.json" />
+    <None Include="./perla.json.importmap" />
+    <None Include="./index.html" />
     <Compile Include="UrlTools.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>

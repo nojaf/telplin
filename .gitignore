@@ -477,8 +477,6 @@ $RECYCLE.BIN/
 *.lnk
 
 .idea/
-docs/.tool/*.js
-docs/.tool/dist
 docs/**/*.css
 
 # Copied from dist folder in .tool
@@ -495,3 +493,7 @@ docs/perla.json.importmap
 output/
 tmp/
 .fsdocs/
+
+# Tool
+tool/client/*.js
+tool/client/dist
