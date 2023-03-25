@@ -2,11 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-011/perla.schema.json",
   "index": "./index.html",
   "mountDirectories": {
-    "/": ".",
-    "/fable_modules": "./fable_modules"
+    "/": "./src"
   },
   "fable": {
-    "project": "./OnlineTool.fsproj",
+    "project": "./src/OnlineTool.fsproj",
     "extension": ".js"
   },
   "devServer": {

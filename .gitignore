@@ -495,5 +495,5 @@ tmp/
 .fsdocs/
 
 # Tool
-tool/client/*.js
+tool/client/src/*.js
 tool/client/dist

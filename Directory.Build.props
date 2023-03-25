@@ -27,6 +27,7 @@
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <WarningsAsErrors>FS0025</WarningsAsErrors>
+        <NoWarn>NU5104</NoWarn>
         <OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
