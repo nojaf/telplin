@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-005/perla.schema.json",
+  "$schema": "https://raw.githubusercontent.com/AngelMunoz/Perla/v1.0.0-beta-011/perla.schema.json",
   "index": "./index.html",
   "mountDirectories": {
     "/": ".",

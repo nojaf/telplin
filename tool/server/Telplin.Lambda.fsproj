@@ -46,6 +46,6 @@
     <PackageReference Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Telplin.Core\Telplin.Core.fsproj" />
+    <ProjectReference Include="..\..\src\Telplin.Core\Telplin.Core.fsproj" />
   </ItemGroup>
 </Project>

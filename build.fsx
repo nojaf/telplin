@@ -74,14 +74,14 @@ pipeline "Watch" {
     workingDir __SOURCE_DIRECTORY__
     stage "main" {
         paralle
-        run "dotnet fsi ./docs/.style/style.fsx --watch"
-        run "dotnet run --project ./src/Telplin.Lambda/Telplin.Lambda.fsproj"
+        // run "dotnet fsi ./docs/.style/style.fsx --watch"
+        run "dotnet run --project ./tool/server/Telplin.Lambda.fsproj"
         stage "perla" {
             envVars [ "PERLA_API_ROOT", "http://127.0.0.1:8906" ]
-            workingDir (__SOURCE_DIRECTORY__ </> "docs" </> ".tool")
+            workingDir (__SOURCE_DIRECTORY__ </> "tool" </> "client")
             run "dotnet perla s"
         }
-        run "dotnet fsdocs watch --port 7890 --noapidocs"
+        // run "dotnet fsdocs watch --port 7890 --noapidocs"
     }
     runIfOnlySpecified true
 }
