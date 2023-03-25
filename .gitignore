@@ -484,9 +484,12 @@ docs/**/*.css
 # Copied from dist folder in .tool
 docs/index.html
 docs/App.js
+docs/UrlTools.js
 docs/favicon.ico
 docs/logo.png
 docs/env.js
+docs/perla.json
+docs/perla.json.importmap
 
 # fsdocs output
 output/
