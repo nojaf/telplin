@@ -14,14 +14,16 @@ let projectName = "Telplin"
 let loweredProjectName = projectName.ToLower ()
 
 let sha256 filePath =
-    File.ReadAllBytes (filePath)
+    File.ReadAllBytes filePath
     |> SHA256.Create().ComputeHash
     |> System.Text.Encoding.UTF8.GetString
 
 let zipPath =
     __SOURCE_DIRECTORY__
     </> ".."
-    </> $"{projectName}.Lambda"
+    </> ".."
+    </> "tool"
+    </> "server"
     </> "bin"
     </> "Release"
     </> "net7.0"

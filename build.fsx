@@ -30,31 +30,16 @@ pipeline "Build" {
         run "dotnet restore ./telplin.sln"
         run "dotnet build --no-restore -c Release ./telplin.sln"
         stage "perla" {
-            workingDir (__SOURCE_DIRECTORY__ </> "docs" </> ".tool")
-
-            run "dotnet tool restore"
+            workingDir (__SOURCE_DIRECTORY__ </> "tool" </> "client")
             run "dotnet perla build"
-
             run (fun _ ->
-                let dist = __SOURCE_DIRECTORY__ </> "docs" </> ".tool" </> "dist"
+                let dist = __SOURCE_DIRECTORY__ </> "tool" </> "client" </> "dist"
 
                 Directory.EnumerateFiles (dist, "*.*")
                 |> Seq.iter (fun srcFile ->
                     let destFile = __SOURCE_DIRECTORY__ </> "docs" </> Path.GetFileName srcFile
-
                     File.Copy (srcFile, destFile, true)
                 )
-
-                let envJs =
-                    __SOURCE_DIRECTORY__
-                    </> "docs"
-                    </> ".tool"
-                    </> "dist"
-                    </> "telplin"
-                    </> "env.js"
-
-                if File.Exists envJs then
-                    File.Copy (envJs, __SOURCE_DIRECTORY__ </> "docs" </> "env.js", true)
             )
         }
     }
@@ -81,7 +66,7 @@ pipeline "Watch" {
             workingDir (__SOURCE_DIRECTORY__ </> "tool" </> "client")
             run "dotnet perla s"
         }
-        // run "dotnet fsdocs watch --port 7890 --noapidocs"
+    // run "dotnet fsdocs watch --port 7890 --noapidocs"
     }
     runIfOnlySpecified true
 }

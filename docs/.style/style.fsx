@@ -14,22 +14,22 @@ open FSharp.Control.Reactive
 
 let sassCompiler = new SassCompiler (new V8JsEngineFactory ())
 let (</>) a b = Path.Combine (a, b)
-let inputFileToolpage = __SOURCE_DIRECTORY__ </> "online-tool.sass"
+// let inputFileToolpage = __SOURCE_DIRECTORY__ </> "online-tool.sass"
 let inputFileTemplate = __SOURCE_DIRECTORY__ </> "template.sass"
 let inputFolder = __SOURCE_DIRECTORY__
-let outputToolPage = __SOURCE_DIRECTORY__ </> ".." </> ".tool" </> "online-tool.css"
+// let outputToolPage = __SOURCE_DIRECTORY__ </> ".." </> ".tool" </> "online-tool.css"
 let outputTemplate = __SOURCE_DIRECTORY__ </> "../assets/" </> "template.css"
 
 let compileSass () =
     try
-        let homepage =
-            sassCompiler.CompileFile (inputFileToolpage, ?outputPath = Some outputToolPage)
+        // let homepage =
+        //     sassCompiler.CompileFile (inputFileToolpage, ?outputPath = Some outputToolPage)
 
         let template =
             sassCompiler.CompileFile (inputFileTemplate, ?outputPath = Some outputTemplate)
 
-        File.WriteAllText (outputToolPage, homepage.CompiledContent)
-        printfn "Compiled %s at %A" outputToolPage DateTime.Now
+        // File.WriteAllText (outputToolPage, homepage.CompiledContent)
+        // printfn "Compiled %s at %A" outputToolPage DateTime.Now
 
         File.WriteAllText (outputTemplate, template.CompiledContent)
         printfn "Compiled %s at %A" outputTemplate DateTime.Now
