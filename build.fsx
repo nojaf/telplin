@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.3.7"
+#r "nuget: Fun.Build, 0.3.8"
 
 open System.IO
 open Fun.Build
@@ -34,10 +34,14 @@ pipeline "Build" {
             run "dotnet perla build"
             run (fun _ ->
                 let dist = __SOURCE_DIRECTORY__ </> "tool" </> "client" </> "dist"
+                let srcDir = DirectoryInfo (__SOURCE_DIRECTORY__ </> "docs" </> "src")
+                if not srcDir.Exists then
+                    srcDir.Create ()
 
-                Directory.EnumerateFiles (dist, "*.*")
+                Directory.EnumerateFiles (dist, "*.*", SearchOption.AllDirectories)
                 |> Seq.iter (fun srcFile ->
-                    let destFile = __SOURCE_DIRECTORY__ </> "docs" </> Path.GetFileName srcFile
+                    let relativeFile = srcFile.Replace(dist, "").TrimStart ('\\', '/')
+                    let destFile = __SOURCE_DIRECTORY__ </> "docs" </> relativeFile
                     File.Copy (srcFile, destFile, true)
                 )
             )

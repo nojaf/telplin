@@ -488,6 +488,7 @@ docs/logo.png
 docs/env.js
 docs/perla.json
 docs/perla.json.importmap
+docs/src/
 
 # fsdocs output
 output/
