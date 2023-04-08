@@ -25,12 +25,9 @@ let private decodeUrl (_x : string) : string =
 let updateUrlWithData json = setGetParam (encodeUrl json)
 
 let private (|DataValueFromHash|_|) hash =
-    if String.IsNullOrWhiteSpace hash then
-        None
-    elif hash.StartsWith ("#data=") then
-        Some (hash.Substring (6))
-    else
-        None
+    if String.IsNullOrWhiteSpace hash then None
+    elif hash.StartsWith "#data=" then Some (hash.Substring 6)
+    else None
 
 let restoreModelFromUrl decoder defaultValue =
     match Dom.window.location.hash with

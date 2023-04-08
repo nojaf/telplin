@@ -33,12 +33,8 @@ let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
     ofImport "default" "@monaco-editor/react" (keyValueList CaseRules.LowerFirst props) []
 
 let getUrl () =
-    JsInterop.importDynamic "/telplin/env.js"
+    JsInterop.importDynamic "./env.js"
     |> Promise.map (fun env -> env?API_ROOT)
-    |> Promise.catch (fun err ->
-        JS.console.warn ("Could not fetch environment!", err)
-        "http://localhost:8906"
-    )
     |> Promise.map (sprintf "%s/telplin/signature")
 
 [<RequireQualifiedAccess>]
@@ -125,27 +121,6 @@ type Msg =
     | FetchSignature
     | SignatureReceived of FetchSignatureResponse
 
-let init _ =
-    let urlInfo =
-        OnlineTool.UrlTools.restoreModelFromUrl
-            decodeUrlModel
-            {
-                Implementation =
-                    """module Telplin
-
-let v (a:int) b = a - b
-"""
-            }
-
-    {
-        Implementation = urlInfo.Implementation
-        Signature = ""
-        IsLoading = false
-        Error = ""
-        Diagnostics = Array.empty
-    },
-    Cmd.none
-
 let fetchSignature implementation dispatch =
     let options =
         Fetch.requestProps [
@@ -170,6 +145,36 @@ let fetchSignature implementation dispatch =
 
         dispatch (SignatureReceived response)
     )
+
+let fallbackImplementation =
+    """module Telplin
+
+let v (a:int) b = a - b
+"""
+
+let init _ =
+    let urlInfo =
+        OnlineTool.UrlTools.restoreModelFromUrl
+            decodeUrlModel
+            {
+                Implementation = fallbackImplementation
+            }
+
+    let cmd =
+        if urlInfo.Implementation = fallbackImplementation then
+            Cmd.none
+        else
+
+        Cmd.ofEffect (fetchSignature urlInfo.Implementation)
+
+    {
+        Implementation = urlInfo.Implementation
+        Signature = ""
+        IsLoading = false
+        Error = ""
+        Diagnostics = Array.empty
+    },
+    cmd
 
 let update msg (model : Model) =
     match msg with
