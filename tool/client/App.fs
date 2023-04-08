@@ -12,11 +12,14 @@ open Feliz.UseElmish
 open Fetch.Types
 open Zanaptak.TypedCssClasses
 
+#if DEBUG
+importSideEffects "./WebSocket.js"
+#endif
+
 [<Literal>]
 let StyleSheet = "./online-tool.css"
 
-importSideEffects StyleSheet
-type Bootstrap = CssClasses<StyleSheet, Naming.PascalCase>
+type Style = CssClasses<StyleSheet, Naming.PascalCase>
 
 [<RequireQualifiedAccess>]
 type MonacoEditorProp =
@@ -234,36 +237,24 @@ let App () =
                 if String.IsNullOrWhiteSpace model.Error then
                     None
                 else
-                    div [ Class $"{Bootstrap.TextDanger} {Bootstrap.Py2} {Bootstrap.Px3}" ] [ str model.Error ]
-                    |> Some
+                    div [ Id "error" ] [ str model.Error ] |> Some
 
             let diagnostics =
                 model.Diagnostics
                 |> Array.mapi (fun idx diag ->
-                    let severityClass =
-                        if diag.Severity = "error" then
-                            Bootstrap.TextBgDanger
-                        else
-                            Bootstrap.TextBgWarning
 
                     div [ Key !!idx ] [
-                        strong [ ClassName Bootstrap.Me1 ] [
+                        strong [] [
                             str
                                 $"({diag.Range.StartLine}, {diag.Range.StartColumn}) ({diag.Range.EndLine},{diag.Range.EndColumn})"
                         ]
-                        span [ ClassName $"{Bootstrap.Badge} {severityClass} {Bootstrap.Mx1}" ] [ str diag.Severity ]
-                        span [ ClassName $"{Bootstrap.Badge} {Bootstrap.TextBgDark} {Bootstrap.Mx1}" ] [
-                            str diag.ErrorNumber
-                        ]
+                        span [ ClassName $"{Style.Badge} {diag.Severity}" ] [ str diag.Severity ]
+                        span [ ClassName $"{Style.Badge}" ] [ str diag.ErrorNumber ]
                         p [] [ str diag.Message ]
                     ]
                 )
 
-            div [ Id "error-panel" ; ClassName $"{Bootstrap.BgLight} {Bootstrap.Px2}" ] [
-                ofOption error
-                ofArray diagnostics
-            ]
-            |> Some
+            div [ Id "error-panel" ] [ ofOption error ; ofArray diagnostics ] |> Some
 
     let reportIssueButton =
         if String.IsNullOrWhiteSpace model.Signature || Array.isEmpty model.Diagnostics then
@@ -300,11 +291,7 @@ Issue created from [telplin-online]({location.href})
                     "<Insert meaningful title>"
                     issueTemplate
 
-            a [ Href uri ; Target "_blank" ] [
-                button [ ClassName $"{Bootstrap.Btn} {Bootstrap.BtnOutlineDanger} {Bootstrap.Me2}" ] [
-                    str "Report issue"
-                ]
-            ]
+            a [ Href uri ; Target "_blank" ] [ button [ Id "report" ] [ str "Report issue" ] ]
             |> Some
 
     fragment [] [
@@ -314,7 +301,19 @@ Issue created from [telplin-online]({location.href})
                 MonacoEditorProp.DefaultValue model.Implementation
                 MonacoEditorProp.OnChange (UpdateImplementation >> dispatch)
             ]
-            div [ Id "info" ; ClassName $"{Bootstrap.BgLight} {Bootstrap.P3}" ] [
+        ]
+        if not model.IsLoading then
+            div [ Id "result" ] [
+                MonacoEditor [
+                    MonacoEditorProp.DefaultLanguage "fsharp"
+                    MonacoEditorProp.DefaultValue model.Signature
+                    MonacoEditorProp.Options {| readOnly = true |}
+                ]
+            ]
+        else
+            div [ Id "loading" ] [ div [] [] ]
+        footer [] [
+            div [ Id "info" ] [
                 str
                     "Welcome to the Telplin online tool. The goal of this tool is to report issues for scenarios where a signature file cannot be generated."
                 br []
@@ -333,29 +332,17 @@ Issue created from [telplin-online]({location.href})
                 br []
                 str "The initial request might take some time."
             ]
-        ]
-        if not model.IsLoading then
-            div [ Id "result" ] [
-                MonacoEditor [
-                    MonacoEditorProp.DefaultLanguage "fsharp"
-                    MonacoEditorProp.DefaultValue model.Signature
-                    MonacoEditorProp.Height "auto"
-                    MonacoEditorProp.Options {| readOnly = true |}
-                ]
+            div [ Id "commands" ] [
                 ofOption errorPanel
-                div [ Id "commands" ] [
-                    button [
-                        ClassName $"{Bootstrap.Btn} {Bootstrap.BtnPrimary}"
-                        OnClick (fun ev ->
-                            ev.preventDefault ()
-                            dispatch FetchSignature
-                        )
-                    ] [ str "Get signature" ]
-                    ofOption reportIssueButton
-                ]
+                button [
+                    OnClick (fun ev ->
+                        ev.preventDefault ()
+                        dispatch FetchSignature
+                    )
+                ] [ str "Get signature" ]
+                ofOption reportIssueButton
             ]
-        else
-            div [ Id "loading" ] [ div [ ClassName $"{Bootstrap.SpinnerGrow} {Bootstrap.TextPrimary}" ] [] ]
+        ]
     ]
 
 let mainElement = Browser.Dom.document.querySelector "main"
