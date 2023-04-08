@@ -42,6 +42,7 @@ let dist = "dist"
 let envJs =
     Environment.GetEnvironmentVariable "API_ROOT"
     |> Option.ofObj
+    |> Option.bind (fun v -> if String.IsNullOrWhiteSpace v then None else Some v)
     |> Option.defaultValue "http://localhost:8906"
     |> sprintf "export const API_ROOT = \"%s\";"
 
@@ -64,7 +65,7 @@ let build () =
 
 let serveFiles =
     [
-        GET >=> path "/" >=> file "index.html"
+        GET >=> path "/" >=> file (__SOURCE_DIRECTORY__ </> "index.html")
         GET >=> browseHome
         NOT_FOUND "Page not found."
     ]
