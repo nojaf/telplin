@@ -1,10 +1,17 @@
 :root {
     --primary: #ffdd59;
+    --primary-hover: #ffd840;
+    --primary-border: #ffcd0d;
     --secondary: #6d7276;
+    --secondary-hover: #616569;
+    --secondary-border: #484c4e;
     --danger: #dc3545;
     --warning: #ffc107;
     --white: white;
     --dark: #212529;
+    --github: #171515;
+    --github-hover: #0a0909;
+    --github-border: #000000;
     --gray-100: #f8f9fa;
     --gray-300: #dee2e6;
     --light: #f8f9fa;
@@ -83,17 +90,22 @@ nav #links a#sponsor i {
     color: var(--danger);
 }
 
-nav #links a:hover {
-    filter: brightness(85%);
+nav #links a#github:hover {
+    background-color: var(--github-hover);
 }
 
 nav #links a#github {
-    background-color: #171515;
-    border: 1px solid var(--dark);
+    background-color: var(--github);
+    border: 1px solid var(--github-border);
+}
+
+nav #links a#docs:hover {
+    background-color: var(--secondary-hover);
 }
 
 nav #links a#docs {
     background-color: var(--secondary);
+    border: 1px solid var(--secondary-border);
 }
 
 nav #mobile-github {
@@ -206,14 +218,14 @@ footer #commands #error-panel div p {
 }
 
 footer #commands button:hover {
-    filter: brightness(95%);
+    background-color: var(--primary-hover);
 }
 
 footer #commands button {
     margin: auto var(--unit);
     background-color: var(--primary);
     padding: calc(var(--unit) * 0.5);
-    border: 1px solid #ffdd59;
+    border: 1px solid var(--primary-border);
     font-size: var(--unit);
     cursor: pointer;
     font-family: var(--font);
