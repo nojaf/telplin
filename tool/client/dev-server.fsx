@@ -170,19 +170,16 @@ match args with
         |> Async.Ignore
         |> Async.RunSynchronously
 
-    // CSS watcher
     let cssWatcher =
         AdaptiveFile
             .GetLastWriteTime(Path.Combine (__SOURCE_DIRECTORY__, "online-tool.css"))
             .AddCallback (fun _ -> broadCastReload "online-tool.css")
 
-    // index.html watcher
     let indexHtmlWatcher =
         AdaptiveFile
             .GetLastWriteTime(Path.Combine (__SOURCE_DIRECTORY__, "index.html"))
             .AddCallback (fun _ -> broadCastReload "full")
 
-    // js watcher
     let jsWatcher =
         AdaptiveDirectory.GetFiles (__SOURCE_DIRECTORY__, pattern = ".*\\.js", recursive = true)
         |> ASet.map (fun file -> AdaptiveFile.GetLastWriteTime file.FullName)
