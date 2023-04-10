@@ -77,6 +77,10 @@ let args =
     |> Array.toList
 
 match args with
+| [ "help" ]
+| [ "--help" ] ->
+    printfn "Available commands: build, preview, watch"
+    exit 0
 | [ "build" ] -> build ()
 | [ "preview" ] ->
     build ()
