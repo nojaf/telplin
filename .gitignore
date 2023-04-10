@@ -483,12 +483,13 @@ docs/**/*.css
 docs/index.html
 docs/App.js
 docs/UrlTools.js
+docs/WebSocket.js
 docs/favicon.ico
 docs/logo.png
 docs/env.js
 docs/perla.json
 docs/perla.json.importmap
-docs/src/
+docs/fable_modules
 
 # fsdocs output
 output/

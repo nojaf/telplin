@@ -36,8 +36,7 @@ Console.CancelKeyPress.Add (fun _ ->
     exitTask.SetResult ()
 )
 
-[<Literal>]
-let dist = "dist"
+let dist = __SOURCE_DIRECTORY__ </> "dist"
 
 let envJs =
     Environment.GetEnvironmentVariable "API_ROOT"
@@ -56,9 +55,12 @@ let build () =
         .ExecuteAsync()
         .Task.Wait ()
 
-    !! "**/*.js" |> Shell.copyFilesWithSubFolder dist
+    !!(__SOURCE_DIRECTORY__ </> "**/*.js")
+    |> GlobbingPattern.setBaseDir __SOURCE_DIRECTORY__
+    |> Shell.copyFilesWithSubFolder dist
 
     [ "index.html" ; "online-tool.css" ; "logo.png" ; "favicon.ico" ]
+    |> List.map (fun file -> __SOURCE_DIRECTORY__ </> file)
     |> Shell.copy dist
 
     File.WriteAllText (dist </> "env.js", envJs)

@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "fantomas": {
-      "version": "6.0.0-alpha-006",
+      "version": "6.0.0-beta-001",
       "commands": [
         "fantomas"
       ]
@@ -14,20 +14,14 @@
         "dotnet-lambda"
       ]
     },
-    "perla": {
-      "version": "1.0.0-beta-012",
-      "commands": [
-        "perla"
-      ]
-    },
     "fable": {
-      "version": "4.0.1",
+      "version": "4.0.5",
       "commands": [
         "fable"
       ]
     },
     "fsdocs-tool": {
-      "version": "17.4.0",
+      "version": "18.0.0",
       "commands": [
         "fsdocs"
       ]
