@@ -351,12 +351,4 @@ Issue created from [telplin-online]({location.href})
     ]
 
 let mainElement = Browser.Dom.document.querySelector "main"
-
-let shouldRender : bool =
-    emitJsExpr () "window.matchMedia('(min-width: 500px)').matches"
-
-if shouldRender then
-    ReactDom.render (App (), mainElement)
-else
-    let mobileMessage = Browser.Dom.document.querySelector "#mobile-message"
-    mobileMessage.classList.remove "hide"
+ReactDom.render (App (), mainElement)
