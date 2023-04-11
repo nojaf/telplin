@@ -32,11 +32,11 @@ pipeline "Build" {
     }
     stage "test" { run "dotnet test --no-restore --no-build -c Release" }
     stage "pack" {
-        run "dotnet pack .\src\Telplin\Telplin.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.Common\Telplin.Common.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.UntypedTree\Telplin.UntypedTree.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.TypedTree\Telplin.TypedTree.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.Core\Telplin.Core.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.Common/Telplin.Common.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.UntypedTree/Telplin.UntypedTree.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.TypedTree/Telplin.TypedTree.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.Core/Telplin.Core.fsproj -c Release -o bin"
     }
     stage "docs" {
         run "dotnet fsi ./docs/.style/style.fsx"
