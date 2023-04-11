@@ -6,48 +6,49 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Telplin</title>
-    <link rel="icon" href="./src/favicon.ico?v">
+    <link rel="icon" href="./favicon.ico?t">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
-    <script async src="https://ga.jspm.io/npm:es-module-shims@1.6.0/dist/es-module-shims.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="./online-tool.css">
 </head>
 <body>
-<nav class="navbar navbar-expand-sm border py-1 bg-primary">
-    <div class="container-fluid flex-nowrap">
-        <a class="navbar-brand" href="./">
-            <img alt="Telplin logo" src="./src/logo.png" class="rounded-circle me-3"/>
-            <span class="text-white">Telplin</span></a>
-        <a class="navbar-nav d-flex align-items-center d-md-none text-dark" href="https://github.com/nojaf/telplin"
-           target="_blank">
-            <i class="bi bi-github h1 my-auto" aria-hidden="true"></i>
+<nav>
+    <a id="brand" href="./">
+        <img alt="Telplin logo" src="./logo.png" class="rounded-circle me-3"/>
+        <span>Telplin</span>
+    </a>
+    <a id="mobile-github" href="https://github.com/nojaf/telplin"
+       target="_blank">
+        <i class="bi bi-github h1 my-auto" aria-hidden="true"></i>
+    </a>
+    <div id="links">
+        <a href="https://github.com/sponsors/nojaf" target="_blank" id="sponsor">
+            <i class="bi bi-balloon-heart-fill text-danger"></i><span class="text-dark">Sponsor</span>
         </a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav w-100 justify-content-end">
-                <li class="nav-item mx-2">
-                    <a href="https://github.com/sponsors/nojaf" target="_blank"
-                       class="btn btn-outline-light">
-                        <i class="bi bi-balloon-heart-fill me-2 text-danger"></i><span class="text-dark">Sponsor</span>
-                    </a>
-                </li>
-                <li class="nav-item mx-2">
-                    <a href="https://github.com/nojaf/telplin" target="_blank"
-                       class="text-white ml-2 btn btn-dark">
-                        <i class="bi bi-github me-2" aria-hidden="true"></i>GitHub</a>
-                </li>
-                <li class="nav-item mx-2">
-                    <a href="./docs/index.html" target="_blank"
-                       class="text-white ml-2 btn btn-secondary">
-                        <i class="bi bi-journals me-2"></i>Docs
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <a href="https://github.com/nojaf/telplin" target="_blank" id="github">
+            <i class="bi bi-github"></i><span class="text-dark">GitHub</span>
+        </a>
+        <a href="./docs/index.html" target="_blank" id="docs">
+            <i class="bi bi-journals"></i>Docs
+        </a>
     </div>
 </nav>
 <main>
 </main>
-<script data-entry-point type="module" src="./src/App.js"></script>
+<script type="importmap">
+    {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom": "https://esm.sh/react-dom@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "@monaco-editor/react": "https://esm.sh/@monaco-editor/react@4.4.6",
+          "lz-string": "https://esm.sh/lz-string@1.5.0",
+          "use-sync-external-store/shim": "https://esm.sh/use-sync-external-store@1.2.0/shim"
+        }
+    }
+</script>
+<script type="module" src="./App.js"></script>
 </body>
 </html>

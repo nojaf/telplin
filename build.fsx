@@ -1,9 +1,10 @@
 #r "nuget: Fun.Build, 0.3.8"
+#r "nuget: Fake.IO.FileSystem, 6.0.0"
 
 open System.IO
+open Fake.IO
+open Fake.IO.FileSystemOperators
 open Fun.Build
-
-let (</>) a b = Path.Combine (a, b)
 
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
@@ -26,36 +27,23 @@ pipeline "Build" {
         run "dotnet fantomas . --check"
     }
     stage "build" {
-        run "dotnet fsi ./docs/.style/style.fsx"
         run "dotnet restore ./telplin.sln"
         run "dotnet build --no-restore -c Release ./telplin.sln"
-        stage "perla" {
-            workingDir (__SOURCE_DIRECTORY__ </> "tool" </> "client")
-            run "dotnet perla build"
-            run (fun _ ->
-                let dist = __SOURCE_DIRECTORY__ </> "tool" </> "client" </> "dist"
-                let srcDir = DirectoryInfo (__SOURCE_DIRECTORY__ </> "docs" </> "src")
-                if not srcDir.Exists then
-                    srcDir.Create ()
-
-                Directory.EnumerateFiles (dist, "*.*", SearchOption.AllDirectories)
-                |> Seq.iter (fun srcFile ->
-                    let relativeFile = srcFile.Replace(dist, "").TrimStart ('\\', '/')
-                    let destFile = __SOURCE_DIRECTORY__ </> "docs" </> relativeFile
-                    File.Copy (srcFile, destFile, true)
-                )
-            )
-        }
     }
     stage "test" { run "dotnet test --no-restore --no-build -c Release" }
     stage "pack" {
-        run "dotnet pack .\src\Telplin\Telplin.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.Common\Telplin.Common.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.UntypedTree\Telplin.UntypedTree.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.TypedTree\Telplin.TypedTree.fsproj -c Release -o bin"
-        run "dotnet pack .\src\Telplin.Core\Telplin.Core.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.Common/Telplin.Common.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.UntypedTree/Telplin.UntypedTree.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.TypedTree/Telplin.TypedTree.fsproj -c Release -o bin"
+        run "dotnet pack ./src/Telplin.Core/Telplin.Core.fsproj -c Release -o bin"
     }
-    stage "docs" { run "dotnet fsdocs build --nodefaultcontent --noapidocs" }
+    stage "docs" {
+        run "dotnet fsi ./docs/.style/style.fsx"
+        run "dotnet fsi ./tool/client/dev-server.fsx build"
+        run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
+        run "dotnet fsdocs build --nodefaultcontent --noapidocs"
+    }
     runIfOnlySpecified false
 }
 
@@ -63,14 +51,8 @@ pipeline "Watch" {
     workingDir __SOURCE_DIRECTORY__
     stage "main" {
         paralle
-        // run "dotnet fsi ./docs/.style/style.fsx --watch"
-        run "dotnet run --project ./tool/server/Telplin.Lambda.fsproj"
-        stage "perla" {
-            envVars [ "PERLA_API_ROOT", "http://127.0.0.1:8906" ]
-            workingDir (__SOURCE_DIRECTORY__ </> "tool" </> "client")
-            run "dotnet perla s"
-        }
-    // run "dotnet fsdocs watch --port 7890 --noapidocs"
+        run "dotnet fsi ./tool/client/dev-server.fsx"
+        run "dotnet fsdocs watch --port 7890 --noapidocs"
     }
     runIfOnlySpecified true
 }

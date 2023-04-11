@@ -1,8 +1,8 @@
-﻿#r "nuget: JavaScriptEngineSwitcher.V8.Native.win-x64"
-#r "nuget: JavaScriptEngineSwitcher.V8.Native.linux-x64"
-#r "nuget: JavaScriptEngineSwitcher.V8.Native.osx-x64"
-#r "nuget: JavaScriptEngineSwitcher.V8, 3.20.2"
-#r "nuget: DartSassHost, 1.0.0-preview8"
+﻿#r "nuget: JavaScriptEngineSwitcher.V8.Native.win-x64, 3.21.0"
+#r "nuget: JavaScriptEngineSwitcher.V8.Native.linux-x64, 3.21.0"
+#r "nuget: JavaScriptEngineSwitcher.V8.Native.osx-x64, 3.21.0"
+#r "nuget: JavaScriptEngineSwitcher.V8, 3.21.0"
+#r "nuget: DartSassHost, 1.0.2"
 #r "nuget: FSharp.Control.Reactive, 5.*"
 
 open System
@@ -12,41 +12,29 @@ open DartSassHost.Helpers
 open JavaScriptEngineSwitcher.V8
 open FSharp.Control.Reactive
 
-let sassCompiler = new SassCompiler (new V8JsEngineFactory ())
+let sassCompiler = new SassCompiler (V8JsEngineFactory ())
 let (</>) a b = Path.Combine (a, b)
-// let inputFileToolpage = __SOURCE_DIRECTORY__ </> "online-tool.sass"
 let inputFileTemplate = __SOURCE_DIRECTORY__ </> "template.sass"
 let inputFolder = __SOURCE_DIRECTORY__
-// let outputToolPage = __SOURCE_DIRECTORY__ </> ".." </> ".tool" </> "online-tool.css"
 let outputTemplate = __SOURCE_DIRECTORY__ </> "../assets/" </> "template.css"
 
 let compileSass () =
     try
-        // let homepage =
-        //     sassCompiler.CompileFile (inputFileToolpage, ?outputPath = Some outputToolPage)
-
         let template =
             sassCompiler.CompileFile (inputFileTemplate, ?outputPath = Some outputTemplate)
 
-        // File.WriteAllText (outputToolPage, homepage.CompiledContent)
-        // printfn "Compiled %s at %A" outputToolPage DateTime.Now
-
         File.WriteAllText (outputTemplate, template.CompiledContent)
-        printfn "Compiled %s at %A" outputTemplate DateTime.Now
-
+        printfn $"Compiled %s{outputTemplate} at %A{DateTime.Now}"
     with
     | :? SassCompilerLoadException as sclex ->
         printfn
-            "During loading of Sass compiler an error occurred. See details:\n%s"
-            (SassErrorHelpers.GenerateErrorDetails sclex)
+            $"During loading of Sass compiler an error occurred. See details:\n%s{SassErrorHelpers.GenerateErrorDetails sclex}"
     | :? SassCompilationException as sce ->
         printfn
-            "During compilation of SCSS code an error occurred. See details:\n%s"
-            (SassErrorHelpers.GenerateErrorDetails sce)
+            $"During compilation of SCSS code an error occurred. See details:\n%s{SassErrorHelpers.GenerateErrorDetails sce}"
     | :? SassException as e ->
         printfn
-            "During working of Sass compiler an unknown error occurred. See details:\n%s"
-            (SassErrorHelpers.GenerateErrorDetails e)
+            $"During working of Sass compiler an unknown error occurred. See details:\n%s{SassErrorHelpers.GenerateErrorDetails e}"
     | ex -> printfn "Unexpected exception during Sass compilation: %A" ex
 
 let isWatch =
