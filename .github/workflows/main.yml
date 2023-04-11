@@ -23,7 +23,7 @@ jobs:
       - name: Build
         run: dotnet fsi ./build.fsx
         env:
-          PERLA_API_ROOT: ${{ secrets.PERLA_API_ROOT }}
+          API_ROOT: ${{ secrets.API_ROOT }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
