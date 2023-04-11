@@ -112,8 +112,17 @@ nav #links a#docs {
     border: 1px solid var(--secondary-border);
 }
 
+nav #mobile-github:hover {
+    color: var(--github-hover);
+}
+
+nav #mobile-github:visited {
+    color: var(--github);
+}
+
 nav #mobile-github {
     font-size: 30px;
+    color: var(--github);
 }
 
 @media screen and (min-width: 768px) {
@@ -234,6 +243,8 @@ footer #info {
     padding: calc(var(--unit) * 1.5);
     font-size: var(--unit);
     line-height: calc(var(--unit) * 1.5);
+    max-height: 150px;
+    overflow-y: auto;
 }
 
 footer #commands {
