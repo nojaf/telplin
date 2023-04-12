@@ -27,7 +27,7 @@ let zipPath =
     </> "bin"
     </> "Release"
     </> "net7.0"
-    </> $"{projectName}.Lambda.zip"
+    </> "server.zip"
 
 let infra () =
     let bucket = BucketV2 $"{loweredProjectName}-bucket"

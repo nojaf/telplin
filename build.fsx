@@ -44,6 +44,10 @@ pipeline "Build" {
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
         run "dotnet fsdocs build --nodefaultcontent --noapidocs"
     }
+    stage "lambda" {
+        workingDir "tool/server"
+        run "dotnet lambda package"
+    }
     runIfOnlySpecified false
 }
 
