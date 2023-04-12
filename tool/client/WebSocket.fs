@@ -6,7 +6,7 @@ open Browser.WebSocket
 open Browser.Dom
 open Browser.Url
 
-let private ws = WebSocket.Create "ws://localhost:8900/ws"
+let private ws = WebSocket.Create $"ws://{window.location.host}/ws"
 
 ws.onmessage <-
     fun (ev : MessageEvent) ->
