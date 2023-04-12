@@ -41,15 +41,18 @@ let main args =
 
         Cli
             .Wrap("dotnet")
-            .WithArguments($"build \"{fsProj}\" -bl --no-incremental")
+            .WithArguments($"build \"{fsProj}\" -bl:telplin.binlog --no-incremental")
             .WithValidation(CommandResultValidation.None)
             .ExecuteAsync()
             .Task.Result
         |> ignore
 
-        Path.Combine (folder, "msbuild.binlog")
+        Path.Combine (folder, "telplin.binlog")
 
     let projectOptions = TypedTree.Options.mkOptions binaryLog
+
+    if File.Exists binaryLog then
+        File.Delete binaryLog
 
     let signatures =
         let sourceFiles =
