@@ -45,12 +45,14 @@ let envJs =
     |> Option.defaultValue "http://localhost:8906"
     |> sprintf "export const API_ROOT = \"%s\";"
 
+let fableArgs = "-e .js --fableLib fable-library --noReflection"
+
 let build () =
     Shell.rm_rf dist
 
     Cli
         .Wrap("dotnet")
-        .WithArguments("fable -e .js")
+        .WithArguments($"fable {fableArgs}")
         .WithWorkingDirectory(__SOURCE_DIRECTORY__)
         .ExecuteAsync()
         .Task.Wait ()
@@ -114,7 +116,7 @@ match args with
     let processes =
         Observable.merge //
             (dotnet serverDir "server" "watch run")
-            (dotnet __SOURCE_DIRECTORY__ "fable" "fable watch -e .js --define DEBUG")
+            (dotnet __SOURCE_DIRECTORY__ "fable" $"fable watch {fableArgs} --define DEBUG")
         |> Observable.subscribe (fun (identifier, ev) ->
             let identifier = identifier.PadRight 6 |> sprintf "[%s]"
 
