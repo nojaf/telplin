@@ -6,6 +6,8 @@
     --secondary-hover: #616569;
     --secondary-border: #484c4e;
     --danger: #dc3545;
+    --danger-hover: #d32535;
+    --danger-border: #a71d2a;
     --warning: #ffc107;
     --white: white;
     --dark: #212529;
@@ -299,4 +301,19 @@ footer #commands button {
     font-size: var(--unit);
     cursor: pointer;
     font-family: var(--font);
+}
+
+footer #commands #report:hover {
+    background-color: var(--danger-hover);
+}
+
+footer #commands #report {
+    background-color: var(--danger);
+    border: 1px solid var(--danger-border);
+    color: var(--white);
+}
+
+footer #commands a {
+    display: block;
+    margin: auto;
 }
