@@ -767,3 +767,23 @@ type System.String with
 
     member inline XDoc: string
 """
+
+[<Test>]
+let ``val member with get,set , 33`` () =
+    assertSignature
+        """
+module Telplin
+
+type Debounce<'a>(timeout, fn) =
+
+  /// Timeout in ms
+  member val Timeout = timeout with get, set
+"""
+        """
+module Telplin
+
+type Debounce<'a> =
+    new: timeout: obj * fn: obj -> Debounce<'a>
+    /// Timeout in ms
+    member Timeout: obj with get, set
+"""

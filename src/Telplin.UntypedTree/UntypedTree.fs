@@ -91,7 +91,7 @@ let mkMember
                 None,
                 zeroRange
             ),
-            None,
+            autoProperty.WithGetSet,
             zeroRange
         )
         |> MemberDefn.SigMember

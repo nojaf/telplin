@@ -892,7 +892,7 @@ type Debounce<'a> =
     /// Calls the function, after debouncing has been applied.
     member Bounce: arg: 'a -> unit
     /// Timeout in ms
-    member Timeout: int
+    member Timeout: int with get, set
 """
 
 [<Test>]
