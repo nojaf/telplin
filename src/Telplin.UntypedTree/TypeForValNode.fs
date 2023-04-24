@@ -26,12 +26,20 @@ type TypedTreeInfo =
         TypeGenericParameters : GenericParameter list
     }
 
+let (|WildCardArray|_|) (t : Type) =
+    match t with
+    | Type.Array arrayNode ->
+        match arrayNode.Type with
+        | Type.Anon _ -> Some arrayNode
+        | _ -> None
+    | _ -> None
+
 let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type) : Type =
     // Sometimes the type in the untyped tree is more accurate than what the typed tree returned.
     // For example `System.Text.RegularExpressions.Regex` by untyped tree versus `Regex` by typed.
     match untypedTreeType, typedTreeType with
     // Don't take a wildcard
-    | Type.Anon _, typedTreeType
+    | (WildCardArray _ | Type.Anon _), typedTreeType -> typedTreeType
     // The typed tree will have any constraints at the end as part of a Type.WithGlobalConstraints
     | Type.WithSubTypeConstraint _, typedTreeType
     | TParen (Type.WithSubTypeConstraint _), typedTreeType -> typedTreeType
