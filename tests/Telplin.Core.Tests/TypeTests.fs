@@ -733,3 +733,19 @@ type Foo =
     [<Extension>]
     static member PlusOne: a: int -> int
 """
+
+[<Test>]
+let ``type without representation`` () =
+    assertSignature
+        """
+namespace Telplin
+
+[<Measure>]
+type LocalPath
+"""
+        """
+namespace Telplin
+
+[<Measure>]
+type LocalPath
+"""

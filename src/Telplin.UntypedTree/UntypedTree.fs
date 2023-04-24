@@ -457,6 +457,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         TypeDefnAugmentationNode (typeName, mkMembersForType tdn.Members, zeroRange)
         |> TypeDefn.Augmentation
 
+    | TypeDefn.None _ -> tdn.TypeName |> TypeDefn.None
     | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
 
 let getLastIdentFromList (identList : IdentListNode) =
