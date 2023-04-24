@@ -4,6 +4,7 @@
 
 ### Fixed
 * Wildcard array should not be used from untyped tree. [#30](https://github.com/nojaf/telplin/issues/30)
+* Inline keyword in type extension is not preserved. [#31](https://github.com/nojaf/telplin/issues/31)
 
 ## 0.3.0 - 12-04-22
 
