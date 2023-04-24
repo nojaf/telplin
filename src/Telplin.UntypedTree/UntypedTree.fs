@@ -54,7 +54,7 @@ let mkMember
                     bindingNode.XmlDoc,
                     bindingNode.Attributes,
                     Some valKw,
-                    None,
+                    bindingNode.Inline,
                     false,
                     None,
                     name,

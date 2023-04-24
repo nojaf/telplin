@@ -749,3 +749,21 @@ namespace Telplin
 [<Measure>]
 type LocalPath
 """
+
+[<Test>]
+let ``inline extension member, 31`` () =
+    assertSignature
+        """
+module Telplin
+
+type System.String with
+
+  member inline x.XDoc = ""
+"""
+        """
+module Telplin
+
+type System.String with
+
+    member inline XDoc: string
+"""
