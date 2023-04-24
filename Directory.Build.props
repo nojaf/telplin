@@ -28,7 +28,7 @@
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <WarningsAsErrors>FS0025</WarningsAsErrors>
         <NoWarn>NU5104</NoWarn>
-        <OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>
+        <OtherFlags>--test:GraphBasedChecking</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" Version="7.0.300-beta.23167.4" />
