@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.3.1 - 25-04-22
 
 ### Fixed
 * Wildcard array should not be used from untyped tree. [#30](https://github.com/nojaf/telplin/issues/30)
