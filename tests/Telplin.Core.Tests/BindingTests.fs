@@ -1094,3 +1094,17 @@ val inline isSubArray: subArray: 'T[] -> wholeArray: 'T[] -> index: int -> bool 
 /// Returns true if one array has another as its subset from index 0.
 val startsWith: prefix: 'a array -> whole: 'a array -> bool when 'a: equality
 """
+
+[<Test>]
+let ``generic argument in binding should be preserved, 32`` () =
+    assertSignature
+        """
+module Telplin
+
+  let isAttribute<'T> (attribute: obj) = true
+"""
+        """
+module Telplin
+
+val isAttribute<'T> : attribute: obj -> bool
+"""

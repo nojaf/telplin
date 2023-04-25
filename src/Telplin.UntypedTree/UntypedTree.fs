@@ -489,6 +489,25 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 else
                     None
 
+            let typeParameters =
+                let rec hasGenericType t =
+                    match t with
+                    | Type.Var _ -> true
+                    | Type.Paren p -> hasGenericType p.Type
+                    | Type.WithGlobalConstraints gc -> hasGenericType gc.Type
+                    | Type.AppPostfix appPostFix -> hasGenericType appPostFix.First || hasGenericType appPostFix.Last
+                    | Type.SignatureParameter sp -> hasGenericType sp.Type
+                    | Type.Funs funsNode ->
+                        funsNode.Parameters |> List.exists (fun (t, _arrow) -> hasGenericType t)
+                        || hasGenericType funsNode.ReturnType
+                    | _ -> false
+
+                // Only re-use the type parameters if the return type is not generic.
+                if hasGenericType returnType then
+                    None
+                else
+                    bindingNode.GenericTypeParameters
+
             ValNode (
                 bindingNode.XmlDoc,
                 bindingNode.Attributes,
@@ -497,7 +516,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 false,
                 bindingNode.Accessibility,
                 name,
-                None,
+                typeParameters,
                 returnType,
                 Some (stn "="),
                 expr,

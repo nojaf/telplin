@@ -6,6 +6,7 @@
 * Wildcard array should not be used from untyped tree. [#30](https://github.com/nojaf/telplin/issues/30)
 * Inline keyword in type extension is not preserved. [#31](https://github.com/nojaf/telplin/issues/31)
 * with get,set is lost. [#33](https://github.com/nojaf/telplin/issues/33)
+* Generic type argument should be preserved. [#32](https://github.com/nojaf/telplin/issues/32)
 
 ## 0.3.0 - 12-04-22
 
