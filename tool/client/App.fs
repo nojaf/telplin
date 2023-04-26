@@ -333,20 +333,16 @@ Issue created from [telplin-online]({location.href})
                 strong [] [ str "generated" ]
                 str " and lastly "
                 strong [] [ str "validated" ]
-                str " against the implementation code."
-                br []
-                str "The initial request might take some time."
+                str " against the implementation code. The initial request might take some time."
             ]
-            div [ Id "commands" ] [
-                ofOption errorPanel
-                button [
-                    OnClick (fun ev ->
-                        ev.preventDefault ()
-                        dispatch FetchSignature
-                    )
-                ] [ str "Get signature" ]
-                ofOption reportIssueButton
-            ]
+            ofOption errorPanel
+            ofOption reportIssueButton
+            button [
+                OnClick (fun ev ->
+                    ev.preventDefault ()
+                    dispatch FetchSignature
+                )
+            ] [ str "Get signature" ]
         ]
     ]
 
