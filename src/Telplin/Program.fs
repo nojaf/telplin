@@ -20,7 +20,9 @@ type CliArguments =
 
 [<EntryPoint>]
 let main args =
-    let parser = ArgumentParser.Create<CliArguments> (programName = "Telplin")
+    let parser =
+        ArgumentParser.Create<CliArguments> (programName = "Telplin", errorHandler = ProcessExiter ())
+
     let arguments = parser.Parse (args, raiseOnUsage = false)
 
     if arguments.IsUsageRequested then
