@@ -787,3 +787,33 @@ type Debounce<'a> =
     /// Timeout in ms
     member Timeout: obj with get, set
 """
+
+[<Test>]
+let ``override val, 38`` () =
+    assertSignature
+        """
+module Telplin
+
+[<AbstractClass>]
+type NodeBase() =
+    abstract member Children: int array
+
+type StringNode(content: string) =
+    inherit NodeBase()
+    member val Content = content
+    override val Children = Array.empty
+"""
+        """
+module Telplin
+
+[<AbstractClass>]
+type NodeBase =
+    new: unit -> NodeBase
+    abstract member Children: int array
+
+type StringNode =
+    new: content: string -> StringNode
+    inherit NodeBase
+    member Content: string
+    override Children: int array
+"""

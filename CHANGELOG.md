@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+* Override val not respected. [#38](https://github.com/nojaf/telplin/issues/38)
+
 ## 0.3.1 - 25-04-22
 
 ### Fixed
