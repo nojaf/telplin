@@ -16,7 +16,8 @@ let mkMember
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
     | MemberDefn.Inherit _ -> Some md
-    | MemberDefn.LetBinding _ -> None
+    | MemberDefn.LetBinding _
+    | MemberDefn.DoExpr _ -> None
 
     | MemberDefn.ImplicitInherit implicitInherit ->
         let t =
@@ -227,7 +228,7 @@ let mkMember
         |> MemberDefn.SigMember
         |> Some
 
-    | _ -> failwith "todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66"
+    | md -> failwith $"todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66, {(MemberDefn.Node md).Range} {md}"
 
 let mkMembers
     (resolver : TypedTreeInfoResolver)
