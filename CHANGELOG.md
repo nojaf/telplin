@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 ### Fixed
-* Add support for enums
+* Add support for enums.
+* Add support for type delegates.
 
 ## 0.3.2 - 28-04-22
 

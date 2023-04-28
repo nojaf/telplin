@@ -841,3 +841,19 @@ type ErrorCodes =
     | ProjectParsingFailed = 101
     | GenericProjectError = 102
 """
+
+[<Test>]
+let ``basic delegates`` () =
+    assertSignature
+        """
+module Telplin
+
+type Delegate1 = delegate of (int * int) -> int
+type Delegate2 = delegate of int * int -> int
+"""
+        """
+module Telplin
+
+type Delegate1 = delegate of (int * int) -> int
+type Delegate2 = delegate of int * int -> int
+"""
