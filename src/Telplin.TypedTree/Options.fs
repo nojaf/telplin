@@ -43,14 +43,12 @@ let readCompilerArgsFromBinLog file =
     )
 
     match args with
-    | None -> failwith $"Could not parse binlog at {file}"
+    | None -> failwith $"Could not parse binlog at {file}, does it contain CoreCompile?"
     | Some args ->
         let idx = args.IndexOf "-o:"
         args.Substring(idx).Split [| '\n' |]
 
-let mkOptions binLogPath =
-    let compilerArgs = readCompilerArgsFromBinLog binLogPath
-
+let mkOptions (compilerArgs : string array) =
     let sourceFiles =
         compilerArgs
         |> Array.filter (fun (line : string) -> isFSharpFile line && File.Exists line)
@@ -71,3 +69,11 @@ let mkOptions binLogPath =
         OriginalLoadReferences = []
         Stamp = None
     }
+
+let mkOptionsFromBinaryLog binLogPath =
+    let compilerArgs = readCompilerArgsFromBinLog binLogPath
+    mkOptions compilerArgs
+
+let mkOptionsFromResponseFile responseFilePath =
+    let compilerArgs = File.ReadAllLines responseFilePath
+    mkOptions compilerArgs
