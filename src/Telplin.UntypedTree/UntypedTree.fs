@@ -71,9 +71,12 @@ let mkMember
             |> Some
 
     | MemberDefn.AutoProperty autoProperty ->
-        let valKw = mtn "member"
-        let name = autoProperty.Identifier
+        let valKw =
+            autoProperty.LeadingKeyword.Content
+            |> List.filter (fun stn -> stn.Text <> "val")
+            |> fun keywords -> MultipleTextsNode (keywords, autoProperty.LeadingKeyword.Range)
 
+        let name = autoProperty.Identifier
         let returnType = mkTypeForValNode resolver name.Range Map.empty []
 
         MemberDefnSigMemberNode (
