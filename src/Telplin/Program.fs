@@ -8,7 +8,7 @@ open Telplin
 type CliArguments =
     | [<MainCommand>] Input of path : string
     | Files of path : string list
-    | Write
+    | Dry_Run
     | Record
     | Only_Record
 
@@ -18,8 +18,7 @@ type CliArguments =
             | Input _ ->
                 "FSharp project file (.fsproj) or response file (*.rsp) to process. An fsproj will be build first by Telplin."
             | Files _ -> "Process a subset of files in the current project."
-            | Write ->
-                "Write signature files to disk. By default, Telplin will only print the signatures to the console."
+            | Dry_Run -> "Don't write signature files to disk. Only print the signatures to the console."
             | Record ->
                 "Create a response file containing compiler arguments that can be used as an alternative input to the *.fsproj file, thus avoiding the need for a full project rebuild. The response file will be saved as a *.rsp file."
             | Only_Record ->
@@ -106,15 +105,15 @@ let main args =
 
         Array.iter
             (fun (fileName, signature) ->
-                if arguments.Contains <@ Write @> then
-                    let signaturePath = Path.ChangeExtension (fileName, ".fsi")
-                    File.WriteAllText (signaturePath, signature)
-                else
+                if arguments.Contains <@ Dry_Run @> then
                     let length = fileName.Length + 4
                     printfn "%s" (String.init length (fun _ -> "-"))
                     printfn $"| %s{fileName} |"
                     printfn "%s" (String.init length (fun _ -> "-"))
                     printfn "%s" signature
+                else
+                    let signaturePath = Path.ChangeExtension (fileName, ".fsi")
+                    File.WriteAllText (signaturePath, signature)
             )
             signatures
 

@@ -12,6 +12,7 @@
 
 ### Changed
 * The main input also accepts a `.rsp` file next to an `.fsproj`.
+* Replace `--write` with `--dry-run`. The behaviour is now inverted. By default files will be written.
 
 ## 0.3.2 - 28-04-22
 
