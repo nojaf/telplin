@@ -6,6 +6,13 @@
 * Add support for enums.
 * Add support for type delegates.
 
+### Added
+* Also generate an `.rsp` file from the input `.fsproj` file using `--record`
+* Only record an `.rsp` file using `--record-only`.
+
+### Changed
+* The main input also accepts a `.rsp` file next to an `.fsproj`.
+
 ## 0.3.2 - 28-04-22
 
 ### Fixed

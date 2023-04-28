@@ -60,5 +60,5 @@ type internal TelplinInternalApi =
 
 type TelplinApi =
     static member MkSignature (implementation : string, binlog : string) : string =
-        let options = Telplin.TypedTree.Options.mkOptions binlog
+        let options = Telplin.TypedTree.Options.mkOptionsFromBinaryLog binlog
         TelplinInternalApi.MkSignature (implementation, options)
