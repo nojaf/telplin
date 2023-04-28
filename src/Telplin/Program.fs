@@ -104,7 +104,7 @@ let main args =
             )
 
         Array.iter
-            (fun (fileName, signature) ->
+            (fun (fileName : string, signature) ->
                 if arguments.Contains <@ Dry_Run @> then
                     let length = fileName.Length + 4
                     printfn "%s" (String.init length (fun _ -> "-"))
