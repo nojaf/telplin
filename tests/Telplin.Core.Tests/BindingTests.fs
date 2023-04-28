@@ -1133,3 +1133,27 @@ type Node =
 
 val noa<'n when 'n :> Node> : n: 'n option -> Node array
 """
+
+[<Test>]
+let ``hash constraint in funs type`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+open System.Threading.Tasks
+
+let mapWithAdditionalDependenies
+    (mapping: 'a -> 'b * #seq<#IDisposable>) 
+    (value: Task<'a>) : Task<'b> =
+    failwith "meh"
+"""
+        """
+module Telplin
+
+open System
+open System.Threading.Tasks
+
+val mapWithAdditionalDependenies:
+    mapping: ('a -> 'b * #seq<#IDisposable>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
+"""

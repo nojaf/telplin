@@ -160,9 +160,10 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                     let withoutConstraints = valSymbol.FullType.Format displayContext
                     let withConstraints = valSymbol.FullType.FormatWithConstraints displayContext
 
-                    if withConstraints.Contains " when " then
-                        let constraintText =
-                            withConstraints.Substring(withoutConstraints.Length + 2).Trim ()
+                    let whenIndex = withConstraints.IndexOf "when"
+
+                    if whenIndex > -1 then
+                        let constraintText = withConstraints.Substring(whenIndex).Trim ()
 
                         $"{withoutConstraints} {constraintText}"
                     else
