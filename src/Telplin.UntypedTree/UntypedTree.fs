@@ -505,9 +505,23 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                         || hasGenericType funsNode.ReturnType
                     | _ -> false
 
+                let returnTypeHasConstraint =
+                    match returnType with
+                    | Type.WithGlobalConstraints _ -> true
+                    | _ -> false
+
                 // Only re-use the type parameters if the return type is not generic.
                 if hasGenericType returnType then
-                    None
+                    if returnTypeHasConstraint then
+                        None
+                    else
+                    // This scenario the untyped tree may have constraints while the typed tree didn't have them.
+                    match bindingNode.GenericTypeParameters with
+                    | Some (TyparDecls.PostfixList postfixList) when not postfixList.Constraints.IsEmpty ->
+                        // This of course is a bit questionable whether we should just included the untyped generic type parameters
+                        // or try to transform the return type to include any constraints.
+                        bindingNode.GenericTypeParameters
+                    | _ -> None
                 else
                     bindingNode.GenericTypeParameters
 
