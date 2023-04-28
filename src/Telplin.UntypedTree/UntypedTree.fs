@@ -461,7 +461,8 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
         |> TypeDefn.Augmentation
 
     | TypeDefn.None _ -> tdn.TypeName |> TypeDefn.None
-    | _ -> failwith "todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC"
+    | TypeDefn.Enum _ -> typeDefn
+    | td -> failwith $"todo, 17AA2504-F9C2-4418-8614-93E9CF6699BC, {(TypeDefn.Node td).Range} {td}"
 
 let getLastIdentFromList (identList : IdentListNode) =
     match identList.Content with

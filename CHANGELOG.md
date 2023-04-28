@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+* Add support for enums
+
 ## 0.3.2 - 28-04-22
 
 ### Fixed

@@ -817,3 +817,27 @@ type StringNode =
     member Content: string
     override Children: int array
 """
+
+[<Test>]
+let ``basic enum`` () =
+    assertSignature
+        """
+module Telplin
+
+[<RequireQualifiedAccess>]
+type ErrorCodes =
+    | GenericError = 1
+    | ProjectNotRestored = 100
+    | ProjectParsingFailed = 101
+    | GenericProjectError = 102
+"""
+        """
+module Telplin
+
+[<RequireQualifiedAccess>]
+type ErrorCodes =
+    | GenericError = 1
+    | ProjectNotRestored = 100
+    | ProjectParsingFailed = 101
+    | GenericProjectError = 102
+"""
