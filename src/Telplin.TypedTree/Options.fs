@@ -43,7 +43,7 @@ let readCompilerArgsFromBinLog file =
     )
 
     match args with
-    | None -> failwith $"Could not parse binlog at {file}"
+    | None -> failwith $"Could not parse binlog at {file}, does it contain CoreCompile?"
     | Some args ->
         let idx = args.IndexOf "-o:"
         args.Substring(idx).Split [| '\n' |]

@@ -16,7 +16,7 @@ type CliArguments =
         member this.Usage =
             match this with
             | Input _ ->
-                "FSharp project file (.fsproj) or response file (*.rsp) to process. An fsproj will be build first by Telplin."
+                "FSharp project file (.fsproj), binary log (.binlog) or response file (.rsp) to process. An fsproj will be build first by Telplin."
             | Files _ -> "Process a subset of files in the current project."
             | Dry_Run -> "Don't write signature files to disk. Only print the signatures to the console."
             | Record ->
@@ -46,7 +46,7 @@ let main args =
         exit 1
 
     let projectOptions =
-        if input.EndsWith (".fsproj") then
+        if input.EndsWith ".fsproj" then
             let binaryLog =
                 let folder = FileInfo(input).DirectoryName
                 printfn $"Building %s{input}..."
@@ -67,6 +67,8 @@ let main args =
                 File.Delete binaryLog
 
             options
+        elif input.EndsWith ".binlog" then
+            TypedTree.Options.mkOptionsFromBinaryLog input
         else
             TypedTree.Options.mkOptionsFromResponseFile input
 
