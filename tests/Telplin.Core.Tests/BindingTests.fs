@@ -1108,3 +1108,28 @@ module Telplin
 
 val isAttribute<'T> : attribute: obj -> bool
 """
+
+[<Test>]
+let ``generic argument with constraint in binding should be preserved, 39`` () =
+    assertSignature
+        """
+module Telplin
+
+[<Interface>]
+type Node =
+    abstract Children: int array
+
+let noa<'n when 'n :> Node> (n: 'n option) =
+    match n with
+    | None -> Array.empty
+    | Some n -> [| n :> Node |]
+"""
+        """
+module Telplin
+
+[<Interface>]
+type Node =
+    abstract Children: int array
+
+val noa<'n when 'n :> Node> : n: 'n option -> Node array
+"""
