@@ -49,10 +49,14 @@ type X =
 """
 
     let oak =
-        CodeFormatter.ParseOakAsync (true, pseudoSignature)
-        |> Async.RunSynchronously
-        |> Array.head
-        |> fst
+        try
+            CodeFormatter.ParseOakAsync (true, pseudoSignature)
+            |> Async.RunSynchronously
+            |> Array.head
+            |> fst
+        with ex ->
+            printfn $"Could not parse:\n%s{pseudoSignature}"
+            raise ex
 
     match oak.ModulesOrNamespaces.[0].Declarations with
     | [ ModuleDecl.TypeDefn typeDefn ] ->
