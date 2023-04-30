@@ -4,6 +4,7 @@ open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin
+open Telplin.TypedTree.FSharpProjectExtensions
 
 type CliArguments =
     | [<MainCommand>] Input of path : string
@@ -101,7 +102,9 @@ let main args =
                 let resolver =
                     TypedTree.Resolver.mkResolverFor checker sourceFile sourceText projectOptions
 
-                let signature = UntypedTree.Writer.mkSignatureFile resolver code
+                let signature =
+                    UntypedTree.Writer.mkSignatureFile resolver projectOptions.Defines code
+
                 sourceFile, signature
             )
 

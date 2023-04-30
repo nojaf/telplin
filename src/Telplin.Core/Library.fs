@@ -1,9 +1,8 @@
 ﻿namespace Telplin.Core
 
-open System
-open System.IO
-open Telplin.Common
 open FSharp.Compiler.CodeAnalysis
+open Telplin.Common
+open Telplin.TypedTree.FSharpProjectExtensions
 
 [<RequireQualifiedAccess>]
 type SignatureVerificationResult =
@@ -16,7 +15,7 @@ type SignatureVerificationResult =
 type internal TelplinInternalApi =
     static member MkSignature (implementation : string, options : FSharpProjectOptions) =
         let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
-        Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation
+        Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
 
     static member VerifySignatureWithImplementation
         (
@@ -40,7 +39,8 @@ type internal TelplinInternalApi =
 
         let signature =
             try
-                Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation |> Result.Ok
+                Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
+                |> Result.Ok
             with ex ->
                 Result.Error ex.Message
 
