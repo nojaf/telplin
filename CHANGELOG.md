@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+* Flexible parameter generation issue. [#47](https://github.com/nojaf/telplin/issues/47)
+
 ## 0.4.0 - 28-04-23
 
 ### Fixed

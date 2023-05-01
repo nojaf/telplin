@@ -857,3 +857,43 @@ module Telplin
 type Delegate1 = delegate of (int * int) -> int
 type Delegate2 = delegate of int * int -> int
 """
+
+[<Test>]
+let ``wildcard in hash constraint, 47`` () =
+    assertSignature
+        """
+namespace FsToolkit.ErrorHandling
+
+[<AutoOpen>]
+module ResultCE =
+    type ResultBuilder() =
+        member inline _.Return(value: 'ok) : Result<'ok, 'error> = Ok value
+
+[<AutoOpen>]
+module ResultCEExtensions =
+
+    type ResultBuilder with
+
+        /// <summary>
+        /// Needed to allow `for..in` and `for..do` functionality
+        /// </summary>
+        member inline _.Source(s: #seq<_>) : #seq<_> = s
+"""
+        """
+namespace FsToolkit.ErrorHandling
+
+[<AutoOpen>]
+module ResultCE =
+    type ResultBuilder =
+        new: unit -> ResultBuilder
+        member inline Return: value: 'ok -> Result<'ok, 'error>
+
+[<AutoOpen>]
+module ResultCEExtensions =
+    type ResultBuilder with
+
+        /// <summary>
+        /// Needed to allow `for..in` and `for..do` functionality
+        /// </summary>
+        member inline Source: s: 'a -> 'a when 'a :> seq<'b>
+"""
