@@ -17,7 +17,10 @@ type CliArguments =
         member this.Usage =
             match this with
             | Input _ ->
-                "FSharp project file (.fsproj), binary log (.binlog) or response file (.rsp) to process. An fsproj will be build first by Telplin."
+                """FSharp project file (.fsproj), binary log (.binlog) or response file (.rsp) to process. An fsproj will be build first by Telplin.
+Additional build arguments for the .fsproj can be passed after the --.
+Example: telplin MyProject.fsproj -- -c Release
+"""
             | Files _ -> "Process a subset of files in the current project."
             | Dry_Run -> "Don't write signature files to disk. Only print the signatures to the console."
             | Record ->
@@ -27,10 +30,17 @@ type CliArguments =
 
 [<EntryPoint>]
 let main args =
+    let arguArgs, additionalArgs =
+        let dashDashIdx = Array.tryFindIndex (fun arg -> arg = "--") args
+
+        match dashDashIdx with
+        | None -> args, Array.empty
+        | Some idx -> args.[0 .. (idx - 1)], args.[(idx + 1) ..]
+
     let parser =
         ArgumentParser.Create<CliArguments> (programName = "Telplin", errorHandler = ProcessExiter ())
 
-    let arguments = parser.Parse (args, raiseOnUsage = false)
+    let arguments = parser.Parse (arguArgs, raiseOnUsage = false)
 
     if arguments.IsUsageRequested then
         parser.PrintUsage (programName = "Telplin") |> printfn "%s"
@@ -50,11 +60,12 @@ let main args =
         if input.EndsWith ".fsproj" then
             let binaryLog =
                 let folder = FileInfo(input).DirectoryName
+                let additionalArgs = String.concat " " additionalArgs
                 printfn $"Building %s{input}..."
 
                 Cli
                     .Wrap("dotnet")
-                    .WithArguments($"build \"{input}\" -bl:telplin.binlog --no-incremental")
+                    .WithArguments($"build \"{input}\" -bl:telplin.binlog --no-incremental {additionalArgs}")
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync()
                     .Task.Result
