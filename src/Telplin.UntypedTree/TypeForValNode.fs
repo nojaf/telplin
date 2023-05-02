@@ -81,6 +81,20 @@ let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type)
             untypedAppPostFix.Range
         )
         |> Type.AppPostfix
+    // A rather specific fix for https://github.com/nojaf/telplin/issues/47
+    | Type.HashConstraint untypedHashConstraint, _ ->
+        match untypedHashConstraint.Type with
+        | Type.AppPrefix untypedAppPrefix ->
+            let hasWildcard =
+                untypedAppPrefix.Arguments
+                |> List.exists (
+                    function
+                    | Type.Anon _ -> true
+                    | _ -> false
+                )
+
+            if hasWildcard then typedTreeType else untypedTreeType
+        | _ -> untypedTreeType
     | _ -> untypedTreeType
 
 /// <summary>

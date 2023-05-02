@@ -4,6 +4,7 @@
 
 ### Fixed
 * Take compiler defines into account when parsing the syntax tree.
+* Flexible parameter generation issue. [#47](https://github.com/nojaf/telplin/issues/47)
 
 ## 0.4.0 - 28-04-23
 
