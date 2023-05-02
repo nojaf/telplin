@@ -613,12 +613,10 @@ let mkModuleOrNamespace
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
 
 let mkSignatureFile (resolver : TypedTreeInfoResolver) (defines : string list) (code : string) =
-    let defines = List.sort defines
+    let ast, _diagnostics =
+        Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) defines
 
-    let ast = Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) defines
-    // TODO: with https://github.com/fsprojects/fantomas/pull/2868, we could get the Oak exactly matching the ParsedInput.
-    let implementationOak : Oak =
-        failwith "wait for https://github.com/fsprojects/fantomas/pull/2868"
+    let implementationOak = CodeFormatter.TransformAST (ast, code)
 
     let signatureOak =
         let mdns =

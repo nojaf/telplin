@@ -83,7 +83,7 @@ let main args =
             }
 
         File.WriteAllLines (responseFile, args)
-        printfn $"Wrote compiler argument to %s{responseFile}"
+        printfn $"Wrote compiler arguments to %s{responseFile}"
 
     if not onlyRecord then
         let signatures =

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+* Take compiler defines into account when parsing the syntax tree.
+
 ## 0.4.0 - 28-04-23
 
 ### Fixed
