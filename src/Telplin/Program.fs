@@ -94,8 +94,14 @@ let main args =
 
             sourceFiles
             |> Array.filter (fun file -> file.EndsWith ".fs")
-            |> Array.map (fun sourceFile ->
+            |> Array.choose (fun sourceFile ->
                 printfn "process: %s" sourceFile
+
+                if not (File.Exists sourceFile) then
+                    printfn $"File \"%s{sourceFile}\" was skipped because it doesn't exist on disk."
+                    None
+                else
+
                 let code = File.ReadAllText sourceFile
                 let sourceText = SourceText.ofString code
 
@@ -105,21 +111,18 @@ let main args =
                 let signature =
                     UntypedTree.Writer.mkSignatureFile resolver projectOptions.Defines code
 
-                sourceFile, signature
+                Some (sourceFile, signature)
             )
 
-        Array.iter
-            (fun (fileName : string, signature) ->
-                if arguments.Contains <@ Dry_Run @> then
-                    let length = fileName.Length + 4
-                    printfn "%s" (String.init length (fun _ -> "-"))
-                    printfn $"| %s{fileName} |"
-                    printfn "%s" (String.init length (fun _ -> "-"))
-                    printfn "%s" signature
-                else
-                    let signaturePath = Path.ChangeExtension (fileName, ".fsi")
-                    File.WriteAllText (signaturePath, signature)
-            )
-            signatures
+        for fileName, signature in signatures do
+            if arguments.Contains <@ Dry_Run @> then
+                let length = fileName.Length + 4
+                printfn "%s" (String.init length (fun _ -> "-"))
+                printfn $"| %s{fileName} |"
+                printfn "%s" (String.init length (fun _ -> "-"))
+                printfn "%s" signature
+            else
+                let signaturePath = Path.ChangeExtension (fileName, ".fsi")
+                File.WriteAllText (signaturePath, signature)
 
     0
