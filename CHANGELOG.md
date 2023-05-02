@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 - 02-05-2023
+## 0.5.0 - 02-05-23
 
 ### Added
 * Accept additional arguments for building .fsproj file. (Example: `telplin MyProject.fsproj -- -c Release`)
