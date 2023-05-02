@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## 0.5.0 - 02-05-2023
+
+### Added
+* Accept additional arguments for building .fsproj file. (Example: `telplin MyProject.fsproj -- -c Release`)
 
 ### Fixed
 * Take compiler defines into account when parsing the syntax tree.

@@ -1,10 +1,13 @@
 #r "nuget: Fun.Build, 0.3.8"
 #r "nuget: Fake.IO.FileSystem, 6.0.0"
 
+open System
 open System.IO
 open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fun.Build
+
+let apiKey = Environment.GetEnvironmentVariable "TELPLIN_NUGET_KEY"
 
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
@@ -31,13 +34,7 @@ pipeline "Build" {
         run "dotnet build --no-restore -c Release ./telplin.sln"
     }
     stage "test" { run "dotnet test --no-restore --no-build -c Release" }
-    stage "pack" {
-        run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin"
-        run "dotnet pack ./src/Telplin.Common/Telplin.Common.fsproj -c Release -o bin"
-        run "dotnet pack ./src/Telplin.UntypedTree/Telplin.UntypedTree.fsproj -c Release -o bin"
-        run "dotnet pack ./src/Telplin.TypedTree/Telplin.TypedTree.fsproj -c Release -o bin"
-        run "dotnet pack ./src/Telplin.Core/Telplin.Core.fsproj -c Release -o bin"
-    }
+    stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin" }
     stage "docs" {
         run "dotnet fsi ./docs/.style/style.fsx"
         run "dotnet fsi ./tool/client/dev-server.fsx build"
@@ -47,6 +44,12 @@ pipeline "Build" {
     stage "lambda" {
         workingDir "tool/server"
         run "dotnet lambda package"
+    }
+    stage "push" {
+        whenCmdArg "--push"
+        workingDir (__SOURCE_DIRECTORY__ </> "bin")
+        run
+            $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key {apiKey} --skip-duplicate"
     }
     runIfOnlySpecified false
 }
@@ -60,3 +63,5 @@ pipeline "Watch" {
     }
     runIfOnlySpecified true
 }
+
+tryPrintPipelineCommandHelp ()

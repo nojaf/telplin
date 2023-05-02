@@ -20,8 +20,8 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
 
-      - name: Build
-        run: dotnet fsi ./build.fsx
+      - name: Build / Release
+        run: dotnet fsi ./build.fsx --push
         env:
           API_ROOT: ${{ secrets.API_ROOT }}
 
