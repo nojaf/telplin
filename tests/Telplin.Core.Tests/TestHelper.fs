@@ -66,11 +66,15 @@ let options : FSharpProjectOptions =
         Stamp = None
     }
 
-let assertSignature implementation expectedSignature =
+let assertSignatureWith
+    (optionsBuilder : FSharpProjectOptions -> FSharpProjectOptions)
+    implementation
+    expectedSignature
+    =
     let verificationResult =
         TelplinInternalApi.VerifySignatureWithImplementation (
             implementation,
-            options,
+            optionsBuilder options,
             assertSignature = shouldEqualWithPrepend expectedSignature
         )
 
@@ -86,3 +90,6 @@ let assertSignature implementation expectedSignature =
     | SignatureVerificationResult.InvalidSignatureFile (_, diagnosticInfos) ->
         Array.iter (fun d -> printfn "%A" d) diagnosticInfos
         failwith "Could not compile source implementation file with signature file"
+
+let assertSignature implementation expectedSignature =
+    assertSignatureWith id implementation expectedSignature

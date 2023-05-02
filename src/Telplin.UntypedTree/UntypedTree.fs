@@ -1,5 +1,6 @@
 ﻿module rec Telplin.UntypedTree.Writer
 
+open FSharp.Compiler.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 open Telplin.Common
@@ -611,12 +612,11 @@ let mkModuleOrNamespace
     let decls = List.choose (mkModuleDecl resolver) moduleNode.Declarations
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
 
-let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) =
-    let implementationOak =
-        CodeFormatter.ParseOakAsync (false, code)
-        |> Async.RunSynchronously
-        |> Array.find (fun (_, defines) -> List.isEmpty defines)
-        |> fst
+let mkSignatureFile (resolver : TypedTreeInfoResolver) (defines : string list) (code : string) =
+    let ast, _diagnostics =
+        Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) defines
+
+    let implementationOak = CodeFormatter.TransformAST (ast, code)
 
     let signatureOak =
         let mdns =
