@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+* static getter/setter should remain static. [#51](https://github.com/nojaf/telplin/issues/51)
+
 ## 0.5.0 - 02-05-23
 
 ### Added
