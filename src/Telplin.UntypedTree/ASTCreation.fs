@@ -20,14 +20,8 @@ let iln v =
     IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
 
 /// Create a `MultipleTextsNode` with a single value.
-let mtns v =
-    MultipleTextsNode ([ stn v ], zeroRange)
-
-/// Create a `MultipleTextsNode`.
 let mtn v =
-    v
-    |> List.map (fun w -> stn w)
-    |> fun nodes -> MultipleTextsNode (nodes, zeroRange)
+    MultipleTextsNode ([ stn v ], zeroRange)
 
 /// Check if `MultipleAttributeListNode` contains an attribute that contains any of the given `name`.
 let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleAttributeListNode option) =

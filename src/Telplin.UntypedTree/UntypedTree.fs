@@ -140,14 +140,14 @@ let mkMember
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
-        let isStatic =
+        let leadingKeyword =
             if
                 propertyNode.LeadingKeyword.Children
-                |> Seq.exists (fun stn -> (stn :?> SingleTextNode).Text = "static")
+                |> Seq.exists (fun stn -> (stn :?> SingleTextNode).Text = "default")
             then
-                [ "static" ]
+                mtn "override"
             else
-                []
+                propertyNode.LeadingKeyword
 
         let returnType =
             let (|ParameterNameInParen|_|) p =
@@ -221,7 +221,7 @@ let mkMember
             ValNode (
                 propertyNode.XmlDoc,
                 propertyNode.Attributes,
-                Some (mtn [ yield! isStatic ; "member" ]),
+                Some leadingKeyword,
                 None,
                 false,
                 None,
@@ -491,7 +491,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
-            let valKw = mtns "val"
+            let valKw = mtn "val"
             let nameRange = name.Range
             let name = getLastIdentFromList name
 
@@ -599,7 +599,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         ValNode (
             externBindingNode.XmlDoc,
             externBindingNode.Attributes,
-            Some (mtns "val"),
+            Some (mtn "val"),
             None,
             false,
             externBindingNode.Accessibility,

@@ -259,6 +259,31 @@ type internal SR =
 """
 
 [<Test>]
+let ``member with abstract decl and default impl should use override in signature, 53`` () =
+    assertSignature
+        """
+namespace Sample
+
+module M =
+    type MyClass() =
+
+        let mutable value = 23
+
+        abstract Property1 : int with get, set
+        default _.Property1 with get() = value and set(v : int) = value <- v
+"""
+        """
+namespace Sample
+
+module M =
+    type MyClass =
+        new: unit -> MyClass
+
+        abstract Property1: int with get, set
+        override Property1: int with get, set
+"""
+
+[<Test>]
 let ``empty class with constructor`` () =
     assertSignature
         """
