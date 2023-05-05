@@ -234,6 +234,56 @@ type State =
 """
 
 [<Test>]
+let ``static getter/setter should remain static, 51`` () =
+    assertSignature
+        """
+// This is a generated file; the original input is 'FSInteractiveSettings.txt'
+namespace FSInteractiveSettings
+
+type internal SR private() =
+
+    static let mutable swallowResourceText = false
+
+    /// If set to true, then all error messages will just return the filled 'holes' delimited by ',,,'s - this is for language-neutral testing (e.g. localization-invariant baselines).
+    static member SwallowResourceText with get () = swallowResourceText
+                                        and set (b) = swallowResourceText <- b
+    // END BOILERPLATE
+"""
+        """
+namespace FSInteractiveSettings
+
+type internal SR =
+    private new: unit -> SR
+    /// If set to true, then all error messages will just return the filled 'holes' delimited by ',,,'s - this is for language-neutral testing (e.g. localization-invariant baselines).
+    static member SwallowResourceText: bool with get, set
+"""
+
+[<Test>]
+let ``member with abstract decl and default impl should use override in signature, 53`` () =
+    assertSignature
+        """
+namespace Sample
+
+module M =
+    type MyClass() =
+
+        let mutable value = 23
+
+        abstract Property1 : int with get, set
+        default _.Property1 with get() = value and set(v : int) = value <- v
+"""
+        """
+namespace Sample
+
+module M =
+    type MyClass =
+        new: unit -> MyClass
+
+        abstract Property1: int with get, set
+        override Property1: int with get, set
+"""
+
+[<Test>]
 let ``empty class with constructor`` () =
     assertSignature
         """

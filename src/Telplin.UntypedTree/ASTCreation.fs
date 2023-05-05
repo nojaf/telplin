@@ -19,7 +19,7 @@ let stn v = SingleTextNode (v, zeroRange)
 let iln v =
     IdentListNode ([ IdentifierOrDot.Ident (stn v) ], zeroRange)
 
-/// Create an `MultipleTextsNode` with a single value.
+/// Create a `MultipleTextsNode` with a single value.
 let mtn v =
     MultipleTextsNode ([ stn v ], zeroRange)
 

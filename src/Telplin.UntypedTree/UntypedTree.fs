@@ -140,6 +140,15 @@ let mkMember
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
+        let leadingKeyword =
+            if
+                propertyNode.LeadingKeyword.Children
+                |> Seq.exists (fun stn -> (stn :?> SingleTextNode).Text = "default")
+            then
+                mtn "override"
+            else
+                propertyNode.LeadingKeyword
+
         let returnType =
             let (|ParameterNameInParen|_|) p =
                 match p with
@@ -212,7 +221,7 @@ let mkMember
             ValNode (
                 propertyNode.XmlDoc,
                 propertyNode.Attributes,
-                Some (mtn "member"),
+                Some leadingKeyword,
                 None,
                 false,
                 None,
