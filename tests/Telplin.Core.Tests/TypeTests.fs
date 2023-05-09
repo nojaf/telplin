@@ -947,3 +947,25 @@ module ResultCEExtensions =
         /// </summary>
         member inline Source: s: 'a -> 'a when 'a :> seq<'b>
 """
+
+[<Test>]
+let ``interface attribute is required, 55`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+
+type IFSharpItemsContainer =
+    inherit IDisposable
+    abstract member TryGetSortKey: string -> int option
+"""
+        """
+module Telplin
+
+open System
+
+type IFSharpItemsContainer =
+    inherit IDisposable
+    abstract member TryGetSortKey: string -> int option
+"""
