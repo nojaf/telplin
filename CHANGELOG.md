@@ -5,6 +5,7 @@
 ### Fixed
 * static getter/setter should remain static. [#51](https://github.com/nojaf/telplin/issues/51)
 * Member with abstract decl and default impl uses "member" instead of "override" for impl signature entry [#53](https://github.com/nojaf/telplin/issues/53)
+* Don't add [<Class>] attribute for interface. [#55](https://github.com/nojaf/telplin/issues/55)
 
 ## 0.5.0 - 02-05-23
 

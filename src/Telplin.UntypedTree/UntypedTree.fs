@@ -269,11 +269,12 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                     (set [| "Class" ; "ClassAttribute" ; "Struct" ; "StructAttribute" |])
                     tdn.TypeName.Attributes
 
-            let allMembersAreAbstract =
+            let allMembersAreAbstractOrInherit =
                 tdn.Members
                 |> List.forall (
                     function
-                    | MemberDefn.AbstractSlot _ -> true
+                    | MemberDefn.AbstractSlot _
+                    | MemberDefn.Inherit _ -> true
                     | _ -> false
                 )
 
@@ -282,7 +283,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                 if
                     tdn.TypeName.ImplicitConstructor.IsSome
                     || hasExistingAttribute
-                    || allMembersAreAbstract
+                    || allMembersAreAbstractOrInherit
                 then
                     tdn.TypeName.Attributes
                 else
