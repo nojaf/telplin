@@ -1178,3 +1178,23 @@ open System
 type FSharpItemsContainer =
     member private AddItem: item: obj -> unit
 """
+
+[<Test>]
+let ``don't reuse parameter constraints from source, 57`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+
+/// Reference equality.
+let inline (==) (a: 'A when 'A: not struct) (b: 'B when 'B: not struct) =
+    obj.ReferenceEquals(a, b)
+"""
+        """
+module Telplin
+
+open System
+/// Reference equality.
+val inline (==): a: 'A -> b: 'B -> bool when 'A: not struct and 'B: not struct
+"""

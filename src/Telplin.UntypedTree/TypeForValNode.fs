@@ -95,6 +95,8 @@ let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type)
 
             if hasWildcard then typedTreeType else untypedTreeType
         | _ -> untypedTreeType
+    // We don't want to duplicate any global constraints, see #57
+    | Type.WithGlobalConstraints _, Type.Var _ -> typedTreeType
     | _ -> untypedTreeType
 
 /// <summary>
