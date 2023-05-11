@@ -1157,3 +1157,24 @@ open System.Threading.Tasks
 val mapWithAdditionalDependenies:
     mapping: ('a -> 'b * #seq<#IDisposable>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
 """
+
+[<Test>]
+let ``access modifier on member, 56`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+
+type FSharpItemsContainer =
+    member private x.AddItem(item: obj) = ()
+"""
+        """
+module Telplin
+
+open System
+
+[<Class>]
+type FSharpItemsContainer =
+    member private AddItem: item: obj -> unit
+"""
