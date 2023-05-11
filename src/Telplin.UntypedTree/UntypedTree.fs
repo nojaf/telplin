@@ -58,7 +58,7 @@ let mkMember
                     Some valKw,
                     bindingNode.Inline,
                     false,
-                    None,
+                    bindingNode.Accessibility,
                     name,
                     None,
                     returnType,
