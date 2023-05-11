@@ -6,19 +6,20 @@ open Fantomas.Core.SyntaxOak
 open Telplin.Common
 open ASTCreation
 open TypeForValNode
+open SourceParser
 
 let mkMember
     (resolver : TypedTreeInfoResolver)
     (typeParameterMap : Map<string, string>)
     (md : MemberDefn)
-    : MemberDefn option
+    : MemberDefn list
     =
     match md with
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
-    | MemberDefn.Inherit _ -> Some md
+    | MemberDefn.Inherit _ -> List.singleton md
     | MemberDefn.LetBinding _
-    | MemberDefn.DoExpr _ -> None
+    | MemberDefn.DoExpr _ -> List.empty
 
     | MemberDefn.ImplicitInherit implicitInherit ->
         let t =
@@ -30,11 +31,11 @@ let mkMember
 
         MemberDefnInheritNode (implicitInherit.InheritKeyword, t, zeroRange)
         |> MemberDefn.Inherit
-        |> Some
+        |> List.singleton
 
     | MemberDefn.Member bindingNode ->
         match bindingNode.FunctionName with
-        | Choice2Of2 _ -> None
+        | Choice2Of2 _ -> List.empty
         | Choice1Of2 name ->
             let valKw = bindingNode.LeadingKeyword
 
@@ -70,7 +71,7 @@ let mkMember
                 zeroRange
             )
             |> MemberDefn.SigMember
-            |> Some
+            |> List.singleton
 
     | MemberDefn.AutoProperty autoProperty ->
         let valKw =
@@ -100,7 +101,7 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
@@ -127,12 +128,86 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | MemberDefn.Interface interfaceNode ->
         MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
         |> MemberDefn.Interface
-        |> Some
+        |> List.singleton
+
+    // We need to create two val in this case, see #52
+    | PropertyGetSetWithExtraParameter (propertyNode, getBinding, setBinding) ->
+        let name =
+            match List.tryLast propertyNode.MemberName.Content with
+            | Some (IdentifierOrDot.Ident name) -> name
+            | _ -> failwith "Property does not have a name?"
+
+        // TODO: refactor into helper function?
+        let leadingKeyword =
+            if
+                propertyNode.LeadingKeyword.Children
+                |> Seq.exists (fun stn -> (stn :?> SingleTextNode).Text = "default")
+            then
+                mtn "override"
+            else
+                propertyNode.LeadingKeyword
+
+        let typedTreeInfo = resolver.GetPropertyWithIndex name.Range.Proxy
+        
+        printfn "%A" typedTreeInfo
+        
+        let getSigMember =
+            let returnType =
+                mkTypeForValNode resolver name.Range Map.empty getBinding.Parameters
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    propertyNode.XmlDoc,
+                    propertyNode.Attributes,
+                    Some leadingKeyword,
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    returnType,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                Some (MultipleTextsNode ([ stn "with" ; stn "get" ], zeroRange)),
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+
+        let setSigMember =
+            let returnType =
+                // If we are dealing with an indexed setter, the signature is rather funky.
+                // member x.Set (idx:int) (v: string) = ()
+                // Will become member Set: idx: int -> string with set
+                mkTypeForValNode resolver name.Range Map.empty [ setBinding.Parameters.[0] ]
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    propertyNode.XmlDoc,
+                    propertyNode.Attributes,
+                    Some leadingKeyword,
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    returnType,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                Some (MultipleTextsNode ([ stn "with" ; stn "set" ], zeroRange)),
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+
+        [ getSigMember ; setSigMember ]
 
     | MemberDefn.PropertyGetSet propertyNode ->
         let name =
@@ -236,7 +311,7 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | md -> failwith $"todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66, {(MemberDefn.Node md).Range} {md}"
 
@@ -246,7 +321,7 @@ let mkMembers
     (ms : MemberDefn list)
     : MemberDefn list
     =
-    List.choose (mkMember resolver typeParameterMap) ms
+    List.collect (mkMember resolver typeParameterMap) ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.

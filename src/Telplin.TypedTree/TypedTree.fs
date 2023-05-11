@@ -203,6 +203,8 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                     else
                         stripFirstType returnTypeText
                 elif valSymbol.IsPropertySetterMethod then
+                    // TODO: clean up
+                    
                     // In case of an indexed setter we only need to remove the leading type name
                     if valSymbol.CurriedParameterGroups.[0].Count = 2 then
                         let indexType = valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
@@ -277,6 +279,26 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                         $"{prefix}{typar.FullName}"
 
                     typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList
+                with ex ->
+                    printException ex range
+                    raise ex
+                    
+            member resolver.GetPropertyWithIndex range  =
+                try
+                    let valSymbol, displayContext = findSymbol range
+                    
+                    if not valSymbol.IsPropertySetterMethod then
+                        failwithf $"%A{range} did return a symbol, but it was not IsPropertySetterMethod"
+                    
+                     // In case of an indexed setter we only need to remove the leading type name
+                    if valSymbol.CurriedParameterGroups.[0].Count <> 2 then
+                        failwithf $"%A{range} did not have exactly 2 parameters"
+                        
+                    {
+                        IndexType = valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
+                        SetType = valSymbol.CurriedParameterGroups.[0].[1].Type.Format displayContext
+                        ReturnType = valSymbol.ReturnParameter.Type.Format displayContext
+                    }
                 with ex ->
                     printException ex range
                     raise ex
