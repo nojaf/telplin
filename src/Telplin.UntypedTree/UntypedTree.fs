@@ -6,19 +6,30 @@ open Fantomas.Core.SyntaxOak
 open Telplin.Common
 open ASTCreation
 open TypeForValNode
+open SourceParser
+
+let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
+    let hasDefault =
+        propertyNode.LeadingKeyword.Content
+        |> List.exists (fun stn -> stn.Text = "default")
+
+    if hasDefault then
+        mtn "override"
+    else
+        propertyNode.LeadingKeyword
 
 let mkMember
     (resolver : TypedTreeInfoResolver)
     (typeParameterMap : Map<string, string>)
     (md : MemberDefn)
-    : MemberDefn option
+    : MemberDefn list
     =
     match md with
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
-    | MemberDefn.Inherit _ -> Some md
+    | MemberDefn.Inherit _ -> List.singleton md
     | MemberDefn.LetBinding _
-    | MemberDefn.DoExpr _ -> None
+    | MemberDefn.DoExpr _ -> List.empty
 
     | MemberDefn.ImplicitInherit implicitInherit ->
         let t =
@@ -30,11 +41,11 @@ let mkMember
 
         MemberDefnInheritNode (implicitInherit.InheritKeyword, t, zeroRange)
         |> MemberDefn.Inherit
-        |> Some
+        |> List.singleton
 
     | MemberDefn.Member bindingNode ->
         match bindingNode.FunctionName with
-        | Choice2Of2 _ -> None
+        | Choice2Of2 _ -> List.empty
         | Choice1Of2 name ->
             let valKw = bindingNode.LeadingKeyword
 
@@ -70,7 +81,7 @@ let mkMember
                 zeroRange
             )
             |> MemberDefn.SigMember
-            |> Some
+            |> List.singleton
 
     | MemberDefn.AutoProperty autoProperty ->
         let valKw =
@@ -100,7 +111,7 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
@@ -127,12 +138,76 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | MemberDefn.Interface interfaceNode ->
         MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
         |> MemberDefn.Interface
-        |> Some
+        |> List.singleton
+
+    // We need to create two val in this case, see #52
+    | PropertyGetSetWithExtraParameter (propertyNode, getBinding, setBinding) ->
+        let name =
+            match List.tryLast propertyNode.MemberName.Content with
+            | Some (IdentifierOrDot.Ident name) -> name
+            | _ -> failwith "Property does not have a name?"
+
+        let leadingKeyword = mkLeadingKeywordForProperty propertyNode
+
+        let getSigMember =
+            let returnType =
+                mkTypeForGetSetMemberValNode resolver $"get_%s{name.Text}" name.Range Map.empty getBinding.Parameters
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    propertyNode.XmlDoc,
+                    propertyNode.Attributes,
+                    Some leadingKeyword,
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    returnType,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                Some (MultipleTextsNode ([ stn "with" ; stn "get" ], zeroRange)),
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+
+        let setSigMember =
+            let returnType =
+                mkTypeForGetSetMemberValNode
+                    resolver
+                    $"set_%s{name.Text}"
+                    name.Range
+                    Map.empty
+                    [ setBinding.Parameters.[0] ]
+
+            MemberDefnSigMemberNode (
+                ValNode (
+                    propertyNode.XmlDoc,
+                    propertyNode.Attributes,
+                    Some leadingKeyword,
+                    None,
+                    false,
+                    None,
+                    name,
+                    None,
+                    returnType,
+                    Some (stn "="),
+                    None,
+                    zeroRange
+                ),
+                Some (MultipleTextsNode ([ stn "with" ; stn "set" ], zeroRange)),
+                zeroRange
+            )
+            |> MemberDefn.SigMember
+
+        [ getSigMember ; setSigMember ]
 
     | MemberDefn.PropertyGetSet propertyNode ->
         let name =
@@ -140,28 +215,9 @@ let mkMember
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
-        let leadingKeyword =
-            if
-                propertyNode.LeadingKeyword.Children
-                |> Seq.exists (fun stn -> (stn :?> SingleTextNode).Text = "default")
-            then
-                mtn "override"
-            else
-                propertyNode.LeadingKeyword
+        let leadingKeyword = mkLeadingKeywordForProperty propertyNode
 
         let returnType =
-            let (|ParameterNameInParen|_|) p =
-                match p with
-                | Pattern.Paren parenNode ->
-                    match parenNode.Pattern with
-                    | Pattern.Parameter parameterNode ->
-                        match parameterNode.Pattern with
-                        | Pattern.Named parameterName -> Some parameterName.Name
-                        | _ -> None
-                    | _ -> None
-                | _ -> None
-
-            // When we have an indexed get/set where the parameter name is different for both case, we cannot use the parameter names
             match propertyNode.LastBinding with
             | None ->
                 let binding = propertyNode.FirstBinding
@@ -170,35 +226,16 @@ let mkMember
                     // If we are dealing with an indexed setter, the signature is rather funky.
                     // member x.Set (idx:int) (v: string) = ()
                     // Will become member Set: idx: int -> string with set
-                    mkTypeForValNode resolver name.Range Map.empty [ binding.Parameters.[0] ]
+                    mkTypeForGetSetMemberValNode
+                        resolver
+                        $"set_%s{name.Text}"
+                        name.Range
+                        Map.empty
+                        [ binding.Parameters.[0] ]
                 else
                     mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
             | Some lastBinding ->
                 match propertyNode.FirstBinding.Parameters, lastBinding.Parameters with
-                | [ ParameterNameInParen p1 ], [ ParameterNameInParen p2 ; _ ]
-                | [ ParameterNameInParen p1 ; _ ], [ ParameterNameInParen p2 ] when p1.Text <> p2.Text ->
-                    // Example:
-                    //     member x.Item
-                    //          with get (a: int) = ""
-                    //          and set (b:int) (c:string) = ()
-
-                    // Throw in a fake parameter that represents the indexer pattern.
-                    // This is to avoid additional parentheses around the return type.
-                    mkTypeForValNode resolver name.Range Map.empty [ Pattern.Wild (stn "_") ]
-                | [ _ ], [ _ ; _ ] ->
-                    // Indexer where the index pattern has the same name, example:
-                    //     member x.Item
-                    //          with get (m: int) = ""
-                    //          and set (m:int) (y:string) = ()
-
-                    // Use the shortest parameter list
-                    mkTypeForValNode resolver name.Range Map.empty propertyNode.FirstBinding.Parameters
-                | [ _ ; _ ], [ _ ] ->
-                    // Indexer where the index pattern has the same name, example:
-                    //     member x.Item
-                    //          with set (m:int) (y:string) = ()
-                    //          and get (m: int) = ""
-                    mkTypeForValNode resolver name.Range Map.empty lastBinding.Parameters
                 | [ Pattern.Unit _ ], [ _ ]
                 | [ _ ], [ Pattern.Unit _ ] ->
                     // The getter takes a unit argument:
@@ -206,7 +243,7 @@ let mkMember
                     //          with get () = disableInMemoryProjectReferences
                     //          and set (value) = disableInMemoryProjectReferences <- value
                     mkTypeForValNode resolver name.Range Map.empty []
-                | _ -> failwith "todo, D0AEBD3F-AAB3-4621-9702-A2DEA1AD63DB"
+                | parameters -> failwith $"Unexpected get/set property %A{parameters}"
 
         let withGetSet =
             match propertyNode.LastBinding with
@@ -236,7 +273,7 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> Some
+        |> List.singleton
 
     | md -> failwith $"todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66, {(MemberDefn.Node md).Range} {md}"
 
@@ -246,7 +283,7 @@ let mkMembers
     (ms : MemberDefn list)
     : MemberDefn list
     =
-    List.choose (mkMember resolver typeParameterMap) ms
+    List.collect (mkMember resolver typeParameterMap) ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.

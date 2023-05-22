@@ -438,7 +438,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with get, set
+    member Item: m: int -> string with get
+    member Item: m: int -> string with set
 """
 
 [<Test>]
@@ -457,7 +458,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with set, get
+    member Item: m: int -> string with get
+    member Item: m: int -> string with set
 """
 
 [<Test>]
@@ -476,7 +478,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: int -> string with get, set
+    member Item: a: int -> string with get
+    member Item: b: int -> string with set
 """
 
 [<Test>]
@@ -968,4 +971,68 @@ open System
 type IFSharpItemsContainer =
     inherit IDisposable
     abstract member TryGetSortKey: string -> int option
+"""
+
+[<Test>]
+let ``getter, setter member with extra parameter is split, 52`` () =
+    assertSignature
+        """
+namespace Sample
+
+module Inner =
+    type Facts(name1: string, name2: string) =
+
+        let mutable name = ""
+            
+        member _.Name
+            with set (s: string) (i: float) = name <- s
+            and get(j: float) = name
+"""
+        """
+namespace Sample
+
+module Inner =
+    type Facts =
+        new: name1: string * name2: string -> Facts
+        member Name: j: float -> string with get
+        member Name: s: string -> float with set
+"""
+
+[<Test>]
+let ``setter with different input than return type, 61`` () =
+    assertSignature
+        """
+namespace Telplin
+
+type Foo =
+    member _.X
+            with get (y: int) : string = ""
+            and set (a: int) (b: float) = ()
+"""
+        """
+namespace Telplin
+
+[<Class>]
+type Foo =
+    member X: y: int -> string with get
+    member X: a: int -> float with set
+"""
+
+[<Test>]
+let ``property with unit get`` () =
+    assertSignature
+        """
+namespace Telplin
+
+type X =
+    member x.Y
+        with get () : string = ""
+        and set (z : string) : unit = ()
+"""
+        """
+namespace Telplin
+
+[<Class>]
+type X =
+    member Y: string with get, set
 """
