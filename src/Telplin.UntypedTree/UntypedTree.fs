@@ -618,24 +618,25 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                     match decls with
                     | [] -> continuation []
                     | currentDecl :: nextDecls ->
-                        let isType, sigDecl =
-                            match currentDecl with
-                            | ModuleDecl.TypeDefn typeDefnNode ->
-                                let sigDecl =
-                                    mkTypeDefn resolver lastItemIsType typeDefnNode |> ModuleDecl.TypeDefn |> Some
 
-                                true, sigDecl
-                            | decl -> false, mkModuleDecl resolver decl
+                    let isType, sigDecl =
+                        match currentDecl with
+                        | ModuleDecl.TypeDefn typeDefnNode ->
+                            let sigDecl =
+                                mkTypeDefn resolver lastItemIsType typeDefnNode |> ModuleDecl.TypeDefn |> Some
 
-                        visit
-                            isType
-                            nextDecls
-                            (fun sigDecls ->
-                                match sigDecl with
-                                | None -> sigDecls
-                                | Some sigDecl -> sigDecl :: sigDecls
-                                |> continuation
-                            )
+                            true, sigDecl
+                        | decl -> false, mkModuleDecl resolver decl
+
+                    visit
+                        isType
+                        nextDecls
+                        (fun sigDecls ->
+                            match sigDecl with
+                            | None -> sigDecls
+                            | Some sigDecl -> sigDecl :: sigDecls
+                            |> continuation
+                        )
 
                 visit false nestedModule.Declarations id
 
