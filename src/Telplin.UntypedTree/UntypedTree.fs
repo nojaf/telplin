@@ -291,8 +291,9 @@ let mkMembers
 /// The most important things that need mapping are the implicit constructor and the type members.
 /// </summary>
 /// <param name="resolver">Resolves information from the Typed tree.</param>
+/// <param name="forceAndKeyword">In case of a recursive nested module, subsequent types need the `and` keyword.</param>>
 /// <param name="typeDefn">Type definition DU case from the Untyped tree.</param>
-let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDefn =
+let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (typeDefn : TypeDefn) : TypeDefn =
     let tdn = TypeDefn.TypeDefnNode typeDefn
 
     let typeName =
@@ -343,10 +344,16 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (typeDefn : TypeDefn) : TypeDe
                         )
             | _ -> tdn.TypeName.Attributes
 
+        let leadingKeyword =
+            if forceAndKeyword then
+                stn "and"
+            else
+                tdn.TypeName.LeadingKeyword
+
         TypeNameNode (
             tdn.TypeName.XmlDoc,
             attributes,
-            tdn.TypeName.LeadingKeyword,
+            leadingKeyword,
             tdn.TypeName.Accessibility,
             tdn.TypeName.Identifier,
             tdn.TypeName.TypeParameters,
@@ -593,9 +600,46 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             |> Some
         | _ -> failwith "todo, C98DD050-A18C-4D8D-A025-083B352C57A5"
 
-    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver typeDefn |> ModuleDecl.TypeDefn |> Some
+    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver false typeDefn |> ModuleDecl.TypeDefn |> Some
 
     | ModuleDecl.NestedModule nestedModule ->
+        let decls =
+            if not nestedModule.IsRecursive then
+                List.choose (mkModuleDecl resolver) nestedModule.Declarations
+            else
+                // A nested module cannot be recursive in a signature file.
+                // Any subsequent types (SynModuleDecl.Types) should be transformed to use the `and` keyword.
+                let rec visit
+                    (lastItemIsType : bool)
+                    (decls : ModuleDecl list)
+                    (continuation : ModuleDecl list -> ModuleDecl list)
+                    : ModuleDecl list
+                    =
+                    match decls with
+                    | [] -> continuation []
+                    | currentDecl :: nextDecls ->
+
+                    let isType, sigDecl =
+                        match currentDecl with
+                        | ModuleDecl.TypeDefn typeDefnNode ->
+                            let sigDecl =
+                                mkTypeDefn resolver lastItemIsType typeDefnNode |> ModuleDecl.TypeDefn |> Some
+
+                            true, sigDecl
+                        | decl -> false, mkModuleDecl resolver decl
+
+                    visit
+                        isType
+                        nextDecls
+                        (fun sigDecls ->
+                            match sigDecl with
+                            | None -> sigDecls
+                            | Some sigDecl -> sigDecl :: sigDecls
+                            |> continuation
+                        )
+
+                visit false nestedModule.Declarations id
+
         NestedModuleNode (
             nestedModule.XmlDoc,
             nestedModule.Attributes,
@@ -604,7 +648,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             false,
             nestedModule.Identifier,
             nestedModule.Equals,
-            List.choose (mkModuleDecl resolver) nestedModule.Declarations,
+            decls,
             zeroRange
         )
         |> ModuleDecl.NestedModule
