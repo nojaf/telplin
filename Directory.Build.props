@@ -20,7 +20,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
         <!-- Also bump FSharp.Core down below -->
-        <FCSVersion>43.7.300-preview.23167.4</FCSVersion>
+        <FCSVersion>43.7.400-preview.23271.1</FCSVersion>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -31,7 +31,7 @@
         <OtherFlags>--test:GraphBasedChecking</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="FSharp.Core" Version="7.0.300-beta.23167.4" />
+        <PackageReference Include="FSharp.Core" Version="7.0.400-beta.23271.1" />
     </ItemGroup>
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
