@@ -18,9 +18,11 @@ let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
 let fileCache = ConcurrentDictionary<string, ISourceText> ()
 
 let documentSource fileName =
-    match fileCache.TryGetValue fileName with
-    | true, sourceText -> Some sourceText
-    | false, _ -> None
+    async {
+        match fileCache.TryGetValue fileName with
+        | true, sourceText -> return Some sourceText
+        | false, _ -> return None
+    }
 
 let inMemoryChecker =
     FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
@@ -40,14 +42,28 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
         let printException ex proxyRange =
             printfn $"Exception for {proxyRange} in {sourceFileName}\n{ex}"
 
-        let tryFindSymbol proxyRange =
+        let tryFindSymbolAux predicate proxyRange =
             allSymbols
-            |> Array.tryFind (fun symbol -> equalProxyRange proxyRange symbol.Range)
-            |> Option.map (fun symbol ->
-                match symbol.Symbol with
-                | :? FSharpMemberOrFunctionOrValue as valSymbol -> valSymbol, symbol.DisplayContext
-                | _ -> failwith $"Unexpected type of {symbol} for {proxyRange}"
+            |> Array.tryPick (fun symbol ->
+                if not (equalProxyRange proxyRange symbol.Range) then
+                    None
+                else
+                    match symbol.Symbol with
+                    | :? FSharpMemberOrFunctionOrValue as valSymbol ->
+                        if not (predicate valSymbol) then
+                            None
+                        else
+                            Some (valSymbol, symbol.DisplayContext)
+                    | _ -> None
             )
+
+        let tryFindSymbol proxyRange =
+            tryFindSymbolAux (fun _ -> true) proxyRange
+
+        let findSymbolForName proxyRange name =
+            match tryFindSymbolAux (fun valSymbol -> valSymbol.CompiledName = name) proxyRange with
+            | None -> failwith $"Failed to resolve symbol for {proxyRange} and CompiledName {name}"
+            | Some symbol -> symbol
 
         let findSymbol proxyRange =
             match tryFindSymbol proxyRange with
@@ -204,7 +220,7 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                         stripFirstType returnTypeText
                 elif valSymbol.IsPropertySetterMethod then
                     // TODO: clean up
-                    
+
                     // In case of an indexed setter we only need to remove the leading type name
                     if valSymbol.CurriedParameterGroups.[0].Count = 2 then
                         let indexType = valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
@@ -282,23 +298,11 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 with ex ->
                     printException ex range
                     raise ex
-                    
-            member resolver.GetPropertyWithIndex range  =
+
+            member resolver.GetPropertyWithIndex name range =
                 try
-                    let valSymbol, displayContext = findSymbol range
-                    
-                    if not valSymbol.IsPropertySetterMethod then
-                        failwithf $"%A{range} did return a symbol, but it was not IsPropertySetterMethod"
-                    
-                     // In case of an indexed setter we only need to remove the leading type name
-                    if valSymbol.CurriedParameterGroups.[0].Count <> 2 then
-                        failwithf $"%A{range} did not have exactly 2 parameters"
-                        
-                    {
-                        IndexType = valSymbol.CurriedParameterGroups.[0].[0].Type.Format displayContext
-                        SetType = valSymbol.CurriedParameterGroups.[0].[1].Type.Format displayContext
-                        ReturnType = valSymbol.ReturnParameter.Type.Format displayContext
-                    }
+                    let valSymbol, displayContext = findSymbolForName range name
+                    mkBindingInfo displayContext valSymbol
                 with ex ->
                     printException ex range
                     raise ex

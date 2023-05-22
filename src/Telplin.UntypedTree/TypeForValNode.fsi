@@ -28,3 +28,20 @@ val mkTypeForValNode :
     typeParameterMap : Map<string, string> ->
     parameters : Pattern list ->
         Type
+
+/// <summary>
+/// Specialized version of `mkTypeForValNode` taking the CompiledName of a getter or setting into account.
+/// If the property is both a getter and setter two symbols will be generated and we need to select the correct one.
+/// </summary>
+/// <param name="resolver"></param>
+/// <param name="name">Compiled name, e.g. get_Name or set_Name</param>
+/// <param name="nameRange"></param>
+/// <param name="typeParameterMap"></param>
+/// <param name="parameters"></param>
+val mkTypeForGetSetMemberValNode :
+    resolver : TypedTreeInfoResolver ->
+    name : string ->
+    nameRange : range ->
+    typeParameterMap : Map<string, string> ->
+    parameters : Pattern list ->
+        Type

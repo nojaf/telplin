@@ -283,15 +283,12 @@ let stripParens (t : Type) =
 
     mapTypeWithGlobalConstraintsNode strip t
 
-let mkTypeForValNode
-    (resolver : TypedTreeInfoResolver)
-    (nameRange : range)
+let mkTypeForValAux
+    (bindingInfo : BindingInfo)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
     : Type
     =
-    let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
-
     let t =
         mkTypeFromString bindingInfo.ReturnTypeString
         // Type may have unwanted parentheses.
@@ -320,3 +317,24 @@ let mkTypeForValNode
         | _ -> returnType
 
     returnType
+
+let mkTypeForValNode
+    (resolver : TypedTreeInfoResolver)
+    (nameRange : range)
+    (typeParameterMap : Map<string, string>)
+    (parameters : Pattern list)
+    : Type
+    =
+    let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+    mkTypeForValAux bindingInfo typeParameterMap parameters
+
+let mkTypeForGetSetMemberValNode
+    (resolver : TypedTreeInfoResolver)
+    (name : string)
+    (nameRange : range)
+    (typeParameterMap : Map<string, string>)
+    (parameters : Pattern list)
+    : Type
+    =
+    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.Proxy
+    mkTypeForValAux bindingInfo typeParameterMap parameters

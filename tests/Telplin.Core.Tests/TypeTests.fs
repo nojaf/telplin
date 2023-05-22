@@ -438,7 +438,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with get, set
+    member Item: m: int -> string with get
+    member Item: m: int -> string with set
 """
 
 [<Test>]
@@ -457,7 +458,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with set, get
+    member Item: m: int -> string with get
+    member Item: m: int -> string with set
 """
 
 [<Test>]
@@ -476,7 +478,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: int -> string with get, set
+    member Item: a: int -> string with get
+    member Item: b: int -> string with set
 """
 
 [<Test>]
@@ -1012,5 +1015,24 @@ namespace Telplin
 [<Class>]
 type Foo =
     member X: y: int -> string with get
-    member X: a:int -> float with set
+    member X: a: int -> float with set
+"""
+
+[<Test>]
+let ``property with unit get`` () =
+    assertSignature
+        """
+namespace Telplin
+
+type X =
+    member x.Y
+        with get () : string = ""
+        and set (z : string) : unit = ()
+"""
+        """
+namespace Telplin
+
+[<Class>]
+type X =
+    member Y: string with get, set
 """

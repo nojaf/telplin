@@ -51,18 +51,11 @@ type TypeInfoResponse =
         ConstructorInfo : BindingInfo option
     }
 
-type PropertyWithIndexResponse =
-    {
-        IndexType : string
-        SetType : string
-        ReturnType : string
-    }
-
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
     abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo
     abstract member GetTypeTyparNames : range : RangeProxy -> string list
-    abstract member GetPropertyWithIndex : range : RangeProxy -> PropertyWithIndexResponse
+    abstract member GetPropertyWithIndex : identifier : string -> range : RangeProxy -> BindingInfo
 
 type FSharpDiagnosticInfoSeverity =
     | Warning = 0

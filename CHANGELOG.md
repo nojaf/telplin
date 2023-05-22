@@ -5,6 +5,10 @@
 ### Changed
 * Update FCS to 43.7.400-preview.23271.1
 
+### Fixed
+* Wrong signature for member getter, setter with extra parameters. [#52](https://github.com/nojaf/telplin/issues/52)
+* Setter with different input than return type. [#61](https://github.com/nojaf/telplin/issues/61)
+
 ## 0.5.1 - 11-05-23
 
 ### Fixed
