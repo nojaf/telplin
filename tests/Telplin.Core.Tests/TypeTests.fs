@@ -1036,3 +1036,53 @@ namespace Telplin
 type X =
     member Y: string with get, set
 """
+
+[<Test>]
+let ``types in recursive module, 62`` () =
+    assertSignature
+        """
+namespace Foo
+
+module rec Bar =
+    type A = { B: B }
+    type B = int
+    let e (f: int) = f + 1
+    let c (d:int) = e d
+"""
+        """
+namespace Foo
+
+module Bar =
+    type A = { B: B }
+    and B = int
+    val e: f: int -> int
+    val c: d: int -> int
+"""
+
+[<Test>]
+let ``types and values mixed in recursive module`` () =
+    assertSignature
+        """
+namespace Foo
+
+module rec Bar =
+    type A = { B: B }
+    type B = int
+    let e (f: int) = f + 1
+    let c (d:int) = e d
+    type X = int
+    and Y = string
+    let z (a:int) : int = 0
+"""
+        """
+namespace Foo
+
+module Bar =
+    type A = { B: B }
+    and B = int
+    val e: f: int -> int
+    val c: d: int -> int
+    type X = int
+    and Y = string
+    val z: a: int -> int
+"""
