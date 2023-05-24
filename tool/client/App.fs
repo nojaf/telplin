@@ -262,7 +262,11 @@ let App () =
             div [ Id "error-panel" ] [ ofOption error ; ofArray diagnostics ] |> Some
 
     let reportIssueButton =
-        if String.IsNullOrWhiteSpace model.Signature || Array.isEmpty model.Diagnostics then
+        if
+            String.IsNullOrWhiteSpace model.Signature
+            && Array.isEmpty model.Diagnostics
+            && String.IsNullOrWhiteSpace model.Error
+        then
             None
         else
             let location = Browser.Dom.window.location
