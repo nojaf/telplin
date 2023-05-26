@@ -181,7 +181,9 @@ let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderVal
     )
 
 let PostSignature (request : APIGatewayProxyRequest) (_context : ILambdaContext) =
-    let isFcs = request.QueryStringParameters.ContainsKey "fcs"
+    let isFcs =
+        not (isNull request.QueryStringParameters)
+        && request.QueryStringParameters.ContainsKey "fcs"
 
     mkProcessRequest
         (fun signature -> mkAPIGatewayProxyResponse (HttpStatusCode.OK, HeaderValues.ApplicationText, signature))
