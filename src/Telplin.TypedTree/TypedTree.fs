@@ -381,3 +381,20 @@ let typeCheckForPair projectOptions implementation signature =
     fileCache.TryRemove implementationName |> ignore
 
     mapDiagnostics result.Diagnostics
+
+let FCSSignature options implementation =
+    let projectOptions : FSharpProjectOptions =
+        { options with
+            SourceFiles = [| "A.fs" |]
+        }
+
+    let _, result =
+        inMemoryChecker.ParseAndCheckFileInProject ("A.fs", 1, SourceText.ofString implementation, projectOptions)
+        |> Async.RunSynchronously
+
+    match result with
+    | FSharpCheckFileAnswer.Aborted -> Choice1Of2 ()
+    | FSharpCheckFileAnswer.Succeeded checkFileResults ->
+        match checkFileResults.GenerateSignature (pageWidth = 120) with
+        | None -> Choice1Of2 ()
+        | Some signature -> Choice2Of2 (string signature)

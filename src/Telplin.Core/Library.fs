@@ -12,6 +12,17 @@ type SignatureVerificationResult =
     | InvalidImplementationFile of diagnostics : FSharpDiagnosticInfo array
     | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnosticInfo array
 
+[<RequireQualifiedAccess>]
+module SignatureCreation =
+    let telplin (options : FSharpProjectOptions) (implementation : string) : string =
+        let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
+        Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
+
+    let fcs (options : FSharpProjectOptions) (implementation : string) : string =
+        match Telplin.TypedTree.Resolver.FCSSignature options implementation with
+        | Choice1Of2 _ -> failwith "Could not generate a signature via FCS"
+        | Choice2Of2 signature -> signature
+
 type internal TelplinInternalApi =
     static member MkSignature (implementation : string, options : FSharpProjectOptions) =
         let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
@@ -21,6 +32,7 @@ type internal TelplinInternalApi =
         (
             implementation : string,
             options : FSharpProjectOptions,
+            mkSignature : FSharpProjectOptions -> string -> string,
             ?assertSignature : string -> unit
         )
         =
@@ -35,12 +47,9 @@ type internal TelplinInternalApi =
             SignatureVerificationResult.InvalidImplementationFile implCheckDiagnostics
         else
 
-        let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
-
         let signature =
             try
-                Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
-                |> Result.Ok
+                mkSignature options implementation |> Result.Ok
             with ex ->
                 Result.Error ex.Message
 

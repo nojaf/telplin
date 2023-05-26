@@ -32,10 +32,19 @@ type MonacoEditorProp =
 let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
     ofImport "default" "@monaco-editor/react" (keyValueList CaseRules.LowerFirst props) []
 
-let getUrl () =
+[<RequireQualifiedAccess>]
+type Mode =
+    | Telplin
+    | FCS
+
+let getUrl (mode : Mode) =
     JsInterop.importDynamic "./env.js"
     |> Promise.map (fun env -> env?API_ROOT)
-    |> Promise.map (sprintf "%s/telplin/signature")
+    |> Promise.map (fun url ->
+        match mode with
+        | Mode.Telplin -> $"%s{url}/telplin/signature"
+        | Mode.FCS -> $"%s{url}/telplin/signature?fcs"
+    )
 
 [<RequireQualifiedAccess>]
 type FetchSignatureResponse =
@@ -114,14 +123,16 @@ type Model =
         IsLoading : bool
         Error : string
         Diagnostics : Diagnostic array
+        Mode : Mode
     }
 
 type Msg =
     | UpdateImplementation of string
     | FetchSignature
     | SignatureReceived of FetchSignatureResponse
+    | ChangeMode of mode : Mode
 
-let fetchSignature implementation dispatch =
+let fetchSignature (mode : Mode) (implementation : string) dispatch =
     let options =
         Fetch.requestProps [
             Fetch.requestHeaders [ ContentType "text/plain" ]
@@ -129,7 +140,7 @@ let fetchSignature implementation dispatch =
             Body !^implementation
         ]
 
-    getUrl ()
+    getUrl mode
     |> Promise.bind (fun url -> GlobalFetch.fetch (RequestInfo.Url url, options))
     |> Promise.bind (fun response -> response.text () |> Promise.map (fun content -> response.Status, content))
     |> Promise.iter (fun (status, content) ->
@@ -165,7 +176,7 @@ let init _ =
             Cmd.none
         else
 
-        Cmd.ofEffect (fetchSignature urlInfo.Implementation)
+        Cmd.ofEffect (fetchSignature Mode.Telplin urlInfo.Implementation)
 
     {
         Implementation = urlInfo.Implementation
@@ -173,11 +184,20 @@ let init _ =
         IsLoading = false
         Error = ""
         Diagnostics = Array.empty
+        Mode = Mode.Telplin
     },
     cmd
 
 let update msg (model : Model) =
     match msg with
+    | ChangeMode mode ->
+        let cmd =
+            if mode = model.Mode then
+                Cmd.none
+            else
+                Cmd.ofMsg FetchSignature
+
+        { model with Mode = mode }, cmd
     | UpdateImplementation implementation ->
         { model with
             Implementation = implementation
@@ -191,7 +211,7 @@ let update msg (model : Model) =
             Diagnostics = Array.empty
         },
         Cmd.batch [
-            Cmd.ofEffect (fetchSignature model.Implementation)
+            Cmd.ofEffect (fetchSignature model.Mode model.Implementation)
             Cmd.ofEffect (fun _ ->
                 {
                     Implementation = model.Implementation
@@ -229,6 +249,67 @@ let update msg (model : Model) =
                 }
 
         nextModel, Cmd.none
+
+let telplinIssueLink model =
+    let location = Browser.Dom.window.location
+
+    let codeTemplate header code =
+        $"#### {header}\n\n```fsharp\n{code}\n```"
+
+    let hasDiagnostics = if Array.isEmpty model.Diagnostics then " " else "X"
+
+    let issueTemplate =
+        $"""
+Issue created from [telplin-online]({location.href})
+
+{codeTemplate "Implementation" model.Implementation}
+{codeTemplate "Signature" model.Signature}
+
+#### Problem description
+
+**Please explain what is going wrong**
+
+#### Extra information
+
+- [{hasDiagnostics}] The proposed signature has problems.
+- [ ] I or my company would be willing to help fix this.
+"""
+        |> Uri.EscapeDataString
+
+    sprintf "https://github.com/nojaf/telplin/issues/new?title=%s&body=%s" "<Insert meaningful title>" issueTemplate
+
+let fcsIssueLink (model : Model) =
+    let issueTemplate =
+        $"""
+When generating a signature file the result is somewhat unexpected.
+
+**Repro steps**
+
+```fsharp
+%s{model.Implementation}
+```
+
+leads to
+
+```fsharp
+%s{model.Signature}
+```
+
+**Expected behaviour**
+
+
+
+**Actual behaviour**
+
+
+
+**Related information**
+
+FCS: FSharpCheckFileResults.GenerateSignature
+"""
+        |> Uri.EscapeDataString
+
+    sprintf "https://github.com/dotnet/fsharp/issues/new?title=%s&body=%s" "<Insert meaningful title>" issueTemplate
 
 [<ReactComponent>]
 let App () =
@@ -269,36 +350,10 @@ let App () =
         then
             None
         else
-            let location = Browser.Dom.window.location
-
-            let codeTemplate header code =
-                $"#### {header}\n\n```fsharp\n{code}\n```"
-
-            let hasDiagnostics = if Array.isEmpty model.Diagnostics then " " else "X"
-
-            let issueTemplate =
-                $"""
-Issue created from [telplin-online]({location.href})
-
-{codeTemplate "Implementation" model.Implementation}
-{codeTemplate "Signature" model.Signature}
-
-#### Problem description
-
-**Please explain what is going wrong**
-
-#### Extra information
-
-- [{hasDiagnostics}] The proposed signature has problems.
-- [ ] I or my company would be willing to help fix this.
-"""
-                |> Uri.EscapeDataString
-
             let uri =
-                sprintf
-                    "https://github.com/nojaf/telplin/issues/new?title=%s&body=%s"
-                    "<Insert meaningful title>"
-                    issueTemplate
+                match model.Mode with
+                | Mode.Telplin -> telplinIssueLink model
+                | Mode.FCS -> fcsIssueLink model
 
             a [ Href uri ; Target "_blank" ] [ button [ Id "report" ] [ str "Report issue" ] ]
             |> Some
@@ -313,6 +368,18 @@ Issue created from [telplin-online]({location.href})
         ]
         if not model.IsLoading then
             div [ Id "result" ] [
+                ul [] [
+                    li [
+                        ClassName (if model.Mode = Mode.Telplin then "active" else "")
+                        OnClick (fun _ -> dispatch (ChangeMode Mode.Telplin))
+                    ] [ str "Telplin" ]
+                    li [
+                        ClassName (if model.Mode = Mode.FCS then "active" else "")
+                        OnClick (fun _ -> dispatch (ChangeMode Mode.FCS))
+
+                    ] [ str "FCS" ]
+                ]
+
                 MonacoEditor [
                     MonacoEditorProp.DefaultLanguage "fsharp"
                     MonacoEditorProp.DefaultValue model.Signature

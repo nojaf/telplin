@@ -18,3 +18,5 @@ val typeCheckForPair :
 
 val typeCheckForImplementation :
     projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnosticInfo array>
+
+val FCSSignature : options : FSharpProjectOptions -> implementation : string -> Choice<unit, string>

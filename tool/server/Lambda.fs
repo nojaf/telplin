@@ -4,7 +4,6 @@ open System
 open System.IO
 open System.Collections.Generic
 open System.Net
-open System.Reflection
 open FSharp.Compiler.CodeAnalysis
 open Microsoft.Net.Http.Headers
 open Thoth.Json.Net
@@ -134,12 +133,19 @@ let mkProcessRequest<'t>
     (onInvalidImplementationFile : string -> 't)
     (onInvalidSignatureFile : string -> 't)
     (onInternalError : string -> 't)
+    (useFcs : bool)
     (implementation : string)
     : 't
     =
     try
+        let mkSignature =
+            if useFcs then
+                SignatureCreation.fcs
+            else
+                SignatureCreation.telplin
+
         let verification =
-            TelplinInternalApi.VerifySignatureWithImplementation (implementation, projectOptions)
+            TelplinInternalApi.VerifySignatureWithImplementation (implementation, projectOptions, mkSignature)
 
         match verification with
         | SignatureVerificationResult.ValidSignature signatureContent -> onValidSignature signatureContent
@@ -171,9 +177,12 @@ let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderVal
     )
 
 let PostSignature (request : APIGatewayProxyRequest) (_context : ILambdaContext) =
+    let isFcs = request.QueryStringParameters.ContainsKey "fcs"
+
     mkProcessRequest
         (fun signature -> mkAPIGatewayProxyResponse (HttpStatusCode.OK, HeaderValues.ApplicationText, signature))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun json -> mkAPIGatewayProxyResponse (HttpStatusCode.BadRequest, HeaderValues.ApplicationJson, json))
         (fun error -> mkAPIGatewayProxyResponse (HttpStatusCode.InternalServerError, HeaderValues.TextPlain, error))
+        isFcs
         request.Body

@@ -1,6 +1,5 @@
 module Telplin.Lambda.Implementation
 
-open FSharp.Compiler.CodeAnalysis
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
 
@@ -20,6 +19,7 @@ val mkProcessRequest<'t> :
     onInvalidImplementationFile : (string -> 't) ->
     onInvalidSignatureFile : (string -> 't) ->
     onInternalError : (string -> 't) ->
+    useFcs : bool ->
     implementation : string ->
         't
 

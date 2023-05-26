@@ -178,6 +178,39 @@ main {
     grid-row-end: span 1;
 }
 
+#result {
+    flex-direction: column;
+}
+
+#result ul {
+    margin: 0;
+    padding: 0;
+    border-bottom: 5px solid var(--primary);
+}
+
+#result ul li {
+    display: inline-block;
+    padding: var(--unit);
+    cursor: pointer;
+    background-color: rgba(20,20,20, 0.10);
+    color: var(--dark);
+}
+
+#result ul li:hover {
+    background-color: var(--primary-hover);
+    color: var(--white);
+}
+
+#result ul li.active {
+    background-color: var(--primary);
+    color: var(--white);
+    cursor: default;
+}
+
+#result ul li:last-child {
+    border-right: 1px solid var(--primary);
+}
+
 @media screen and (min-width: 768px) {
     #result, #loading {
         grid-column-start: 2;

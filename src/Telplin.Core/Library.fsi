@@ -11,10 +11,18 @@ type SignatureVerificationResult =
     | InvalidImplementationFile of diagnostics : FSharpDiagnosticInfo array
     | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnosticInfo array
 
+[<RequireQualifiedAccess>]
+module SignatureCreation =
+    val telplin : options : FSharpProjectOptions -> implementation : string -> string
+    val fcs : options : FSharpProjectOptions -> implementation : string -> string
+
 [<Class>]
 type internal TelplinInternalApi =
     static member VerifySignatureWithImplementation :
-        implementation : string * options : FSharpProjectOptions * ?assertSignature : (string -> unit) ->
+        implementation : string *
+        options : FSharpProjectOptions *
+        mkSignature : (FSharpProjectOptions -> string -> string) *
+        ?assertSignature : (string -> unit) ->
             SignatureVerificationResult
 
 [<Class>]

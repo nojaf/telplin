@@ -32,6 +32,7 @@ let main argv =
             >=> (fun (ctx : HttpContext) ->
                 async {
                     let implementation = ctx.request.rawForm |> System.Text.Encoding.UTF8.GetString
+                    let isFcs = ctx.request.query |> List.exists (fun (k, _) -> k = "fcs")
 
                     return!
                         mkProcessRequest
@@ -39,6 +40,7 @@ let main argv =
                             (fun json -> bad_request (mkBytes json) ctx)
                             (fun json -> bad_request (mkBytes json) ctx)
                             (fun error -> internal_error (mkBytes error) ctx)
+                            isFcs
                             implementation
                 }
             )
