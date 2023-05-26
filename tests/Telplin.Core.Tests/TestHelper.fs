@@ -75,6 +75,7 @@ let assertSignatureWith
         TelplinInternalApi.VerifySignatureWithImplementation (
             implementation,
             optionsBuilder options,
+            SignatureCreation.telplin,
             assertSignature = shouldEqualWithPrepend expectedSignature
         )
 
