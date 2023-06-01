@@ -9,9 +9,11 @@ val mkResolverFor :
     sourceFileName : string ->
     sourceText : ISourceText ->
     projectOptions : FSharpProjectOptions ->
+    includePrivateBindings : bool ->
         TypedTreeInfoResolver
 
-val mkResolverForCode : projectOptions : FSharpProjectOptions -> code : string -> TypedTreeInfoResolver
+val mkResolverForCode :
+    projectOptions : FSharpProjectOptions -> includePrivateBindings : bool -> code : string -> TypedTreeInfoResolver
 
 val typeCheckForPair :
     projectOptions : FSharpProjectOptions -> implementation : string -> signature : string -> FSharpDiagnosticInfo array

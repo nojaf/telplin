@@ -8,6 +8,7 @@ open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
 open Telplin.Common
+open Telplin.TypedTree.FSharpProjectExtensions
 
 let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
     proxyRange.StartLine = m.StartLine
@@ -27,7 +28,7 @@ let documentSource fileName =
 let inMemoryChecker =
     FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
 
-let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions =
+let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions includePrivateBindings =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
         |> Async.RunSynchronously
@@ -306,10 +307,14 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 with ex ->
                     printException ex range
                     raise ex
+
+            member resolver.Defines = projectOptions.Defines
+            member resolver.IncludePrivateBindings = includePrivateBindings
+
         }
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
-let mkResolverForCode projectOptions (code : string) : TypedTreeInfoResolver =
+let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =
     let sourceFileName = "A.fs"
 
     let projectOptions : FSharpProjectOptions =
@@ -319,7 +324,7 @@ let mkResolverForCode projectOptions (code : string) : TypedTreeInfoResolver =
 
     let sourceText = SourceText.ofString code
 
-    mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions
+    mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions includePrivateBindings
 
 let mapDiagnostics diagnostics =
     diagnostics

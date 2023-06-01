@@ -8,9 +8,9 @@
     <ItemGroup>
         <Compile Include="Options.fsi" />
         <Compile Include="Options.fs" />
+        <Compile Include="FSharpProjectExtensions.fs" />
         <Compile Include="TypedTree.fsi" />
         <Compile Include="TypedTree.fs" />
-        <Compile Include="FSharpProjectExtensions.fs" />
     </ItemGroup>
 
     <ItemGroup>

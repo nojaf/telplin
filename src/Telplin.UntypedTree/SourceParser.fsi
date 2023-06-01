@@ -10,3 +10,5 @@ val (|TParen|_|) : Type -> Type option
 
 val (|PropertyGetSetWithExtraParameter|_|) :
     md : MemberDefn -> (MemberDefnPropertyGetSetNode * PropertyGetSetBindingNode * PropertyGetSetBindingNode) option
+
+val (|PrivateTopLevelBinding|_|) : ModuleDecl -> unit option

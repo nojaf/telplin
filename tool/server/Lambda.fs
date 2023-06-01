@@ -146,7 +146,7 @@ let mkProcessRequest<'t>
             if useFcs then
                 SignatureCreation.fcs
             else
-                SignatureCreation.telplin
+                SignatureCreation.telplin true
 
         let verification =
             TelplinInternalApi.VerifySignatureWithImplementation (implementation, projectOptions, mkSignature)

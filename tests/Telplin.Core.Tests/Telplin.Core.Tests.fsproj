@@ -13,6 +13,7 @@
     <Compile Include="ModuleOrNamespaceTests.fs" />
     <Compile Include="ExceptionTests.fs" />
     <Compile Include="DefineTests.fs" />
+    <Compile Include="IncludePrivateBindingsTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
