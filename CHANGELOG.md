@@ -3,7 +3,7 @@
 ## 0.6.0 - 01-06-23
 
 ### Changed
-* Private let bindings are no longer included by default. Use `--include-private-bindings` to include them.
+* Private let bindings are no longer included by default. Use `--include-private-bindings` to include them. [#70](https://github.com/nojaf/telplin/issues/70)
 
 ## 0.5.2 - 22-05-23
 
