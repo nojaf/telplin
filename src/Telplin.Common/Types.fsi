@@ -56,6 +56,8 @@ type TypedTreeInfoResolver =
     abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo
     abstract member GetTypeTyparNames : range : RangeProxy -> string list
     abstract member GetPropertyWithIndex : identifier : string -> range : RangeProxy -> BindingInfo
+    abstract member Defines : string list
+    abstract member IncludePrivateBindings : bool
 
 type FSharpDiagnosticInfoSeverity =
     | Warning = 0

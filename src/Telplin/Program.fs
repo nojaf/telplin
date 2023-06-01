@@ -4,7 +4,8 @@ open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin
-open Telplin.TypedTree.FSharpProjectExtensions
+
+let private meh = 5
 
 type CliArguments =
     | [<MainCommand>] Input of path : string
@@ -12,6 +13,7 @@ type CliArguments =
     | Dry_Run
     | Record
     | Only_Record
+    | Include_Private_Bindings
 
     interface IArgParserTemplate with
         member this.Usage =
@@ -27,6 +29,7 @@ Example: telplin MyProject.fsproj -- -c Release
                 "Create a response file containing compiler arguments that can be used as an alternative input to the *.fsproj file, thus avoiding the need for a full project rebuild. The response file will be saved as a *.rsp file."
             | Only_Record ->
                 "Alternative option for --record. Only create an *.rsp file without processing any of the files."
+            | Include_Private_Bindings _ -> "Include private bindings in the signature file."
 
 [<EntryPoint>]
 let main args =
@@ -115,13 +118,17 @@ let main args =
 
                 let code = File.ReadAllText sourceFile
                 let sourceText = SourceText.ofString code
+                let includePrivateBindings = arguments.Contains <@ Include_Private_Bindings @>
 
                 let resolver =
-                    TypedTree.Resolver.mkResolverFor checker sourceFile sourceText projectOptions
+                    TypedTree.Resolver.mkResolverFor
+                        checker
+                        sourceFile
+                        sourceText
+                        projectOptions
+                        includePrivateBindings
 
-                let signature =
-                    UntypedTree.Writer.mkSignatureFile resolver projectOptions.Defines code
-
+                let signature = UntypedTree.Writer.mkSignatureFile resolver code
                 Some (sourceFile, signature)
             )
 

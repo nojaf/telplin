@@ -12,6 +12,7 @@ let ``DEBUG define should be used for parsing`` () =
                 OtherOptions = [| yield! opt.OtherOptions ; "--define:DEBUG" |]
             }
         )
+        true
         """
 module Telplin
 

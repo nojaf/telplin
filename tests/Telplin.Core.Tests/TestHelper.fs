@@ -68,6 +68,7 @@ let options : FSharpProjectOptions =
 
 let assertSignatureWith
     (optionsBuilder : FSharpProjectOptions -> FSharpProjectOptions)
+    (includePrivateBindings : bool)
     implementation
     expectedSignature
     =
@@ -75,7 +76,7 @@ let assertSignatureWith
         TelplinInternalApi.VerifySignatureWithImplementation (
             implementation,
             optionsBuilder options,
-            SignatureCreation.telplin,
+            SignatureCreation.telplin includePrivateBindings,
             assertSignature = shouldEqualWithPrepend expectedSignature
         )
 
@@ -93,4 +94,4 @@ let assertSignatureWith
         failwith "Could not compile source implementation file with signature file"
 
 let assertSignature implementation expectedSignature =
-    assertSignatureWith id implementation expectedSignature
+    assertSignatureWith id true implementation expectedSignature

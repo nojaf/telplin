@@ -35,3 +35,11 @@ let (|PropertyGetSetWithExtraParameter|_|) (md : MemberDefn) =
             Some (node, getBinding, setBinding)
         )
     | _ -> None
+
+let (|PrivateTopLevelBinding|_|) (mdl : ModuleDecl) =
+    match mdl with
+    | ModuleDecl.TopLevelBinding binding ->
+        match binding.Accessibility with
+        | Some ao -> if ao.Text = "private" then Some () else None
+        | _ -> None
+    | _ -> None

@@ -2,7 +2,6 @@
 
 open FSharp.Compiler.CodeAnalysis
 open Telplin.Common
-open Telplin.TypedTree.FSharpProjectExtensions
 
 [<RequireQualifiedAccess>]
 type SignatureVerificationResult =
@@ -14,9 +13,11 @@ type SignatureVerificationResult =
 
 [<RequireQualifiedAccess>]
 module SignatureCreation =
-    let telplin (options : FSharpProjectOptions) (implementation : string) : string =
-        let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
-        Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
+    let telplin includePrivateBindings (options : FSharpProjectOptions) (implementation : string) : string =
+        let resolver =
+            Telplin.TypedTree.Resolver.mkResolverForCode options includePrivateBindings implementation
+
+        Telplin.UntypedTree.Writer.mkSignatureFile resolver implementation
 
     let fcs (options : FSharpProjectOptions) (implementation : string) : string =
         match Telplin.TypedTree.Resolver.FCSSignature options implementation with
@@ -24,10 +25,6 @@ module SignatureCreation =
         | Choice2Of2 signature -> signature
 
 type internal TelplinInternalApi =
-    static member MkSignature (implementation : string, options : FSharpProjectOptions) =
-        let resolver = Telplin.TypedTree.Resolver.mkResolverForCode options implementation
-        Telplin.UntypedTree.Writer.mkSignatureFile resolver options.Defines implementation
-
     static member VerifySignatureWithImplementation
         (
             implementation : string,
@@ -66,8 +63,3 @@ type internal TelplinInternalApi =
             SignatureVerificationResult.InvalidSignatureFile (signature, pairCheckDiagnostics)
         else
             SignatureVerificationResult.ValidSignature signature
-
-type TelplinApi =
-    static member MkSignature (implementation : string, binlog : string) : string =
-        let options = Telplin.TypedTree.Options.mkOptionsFromBinaryLog binlog
-        TelplinInternalApi.MkSignature (implementation, options)

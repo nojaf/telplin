@@ -13,7 +13,7 @@ type SignatureVerificationResult =
 
 [<RequireQualifiedAccess>]
 module SignatureCreation =
-    val telplin : options : FSharpProjectOptions -> implementation : string -> string
+    val telplin : includePrivateBindings : bool -> options : FSharpProjectOptions -> implementation : string -> string
     val fcs : options : FSharpProjectOptions -> implementation : string -> string
 
 [<Class>]
@@ -24,7 +24,3 @@ type internal TelplinInternalApi =
         mkSignature : (FSharpProjectOptions -> string -> string) *
         ?assertSignature : (string -> unit) ->
             SignatureVerificationResult
-
-[<Class>]
-type TelplinApi =
-    static member MkSignature : implementation : string * binlog : string -> string

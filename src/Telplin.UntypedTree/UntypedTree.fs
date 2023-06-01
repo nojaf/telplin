@@ -533,6 +533,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
     | ModuleDecl.Val _
     | ModuleDecl.HashDirectiveList _
     | ModuleDecl.ModuleAbbrev _ -> Some mdl
+    | PrivateTopLevelBinding when not resolver.IncludePrivateBindings -> None
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
@@ -703,9 +704,9 @@ let mkModuleOrNamespace
     let decls = List.choose (mkModuleDecl resolver) moduleNode.Declarations
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
 
-let mkSignatureFile (resolver : TypedTreeInfoResolver) (defines : string list) (code : string) =
+let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) =
     let ast, _diagnostics =
-        Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) defines
+        Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) resolver.Defines
 
     let implementationOak = CodeFormatter.TransformAST (ast, code)
 
