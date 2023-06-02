@@ -1,6 +1,6 @@
 module Telplin.UntypedTree.ASTCreation
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 open Telplin.Common

@@ -1,6 +1,6 @@
 ﻿module rec Telplin.UntypedTree.Writer
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 open Telplin.Common
@@ -399,17 +399,35 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
 
         // Convert the SimplePats to Patterns
         let parameters =
-            match implicitCtor.Parameters with
+            let ctorPatterns =
+                implicitCtor.Items
+                |> List.choose (
+                    function
+                    | Choice1Of2 sp -> Some sp
+                    | Choice2Of2 _ -> None
+                )
+
+            match ctorPatterns with
             | [] ->
                 // Even when there are new explicit parameters we still need to pass `()` as a unit parameter.
                 [ Pattern.Unit (UnitNode (stn "(", stn ")", zeroRange)) ]
             | parameters ->
                 let wrapAsTupleIfMultiple (parameters : Pattern list) =
-                    if parameters.Length < 2 then
-                        parameters
-                    else
+                    match parameters with
+                    | []
+                    | [ _ ] -> parameters
+                    | h :: tail ->
+
                         // Wrap as tuple as that is the only way parameters can behave in an implicit constructor.
-                        [ Pattern.Tuple (PatTupleNode (parameters, zeroRange)) ]
+                        let tupleParameters =
+                            [
+                                yield Choice1Of2 h
+                                for p in tail do
+                                    yield Choice2Of2 (stn ",")
+                                    yield Choice1Of2 p
+                            ]
+
+                        [ Pattern.Tuple (PatTupleNode (tupleParameters, zeroRange)) ]
 
                 parameters
                 |> List.map (fun simplePat ->

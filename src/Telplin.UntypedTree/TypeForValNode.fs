@@ -1,6 +1,6 @@
 module Telplin.UntypedTree.TypeForValNode
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core.CompilerServices
 open Telplin.Common
@@ -195,11 +195,17 @@ let mkTypeForValNodeBasedOnTypedTree
                     )
                 | _ -> typeTreeType
             | Pattern.Tuple patTupleNode ->
+                let tuplePatterns =
+                    patTupleNode.Items
+                    |> List.choose (
+                        function
+                        | Choice1Of2 p -> Some p
+                        | Choice2Of2 _ -> None
+                    )
+
                 match typeTreeType with
-                | Type.Tuple typeTupleNode when
-                    (isTopLevel && patTupleNode.Patterns.Length = typeTupleNode.Types.Length)
-                    ->
-                    (patTupleNode.Patterns, typeTupleNode.Types)
+                | Type.Tuple typeTupleNode when (isTopLevel && tuplePatterns.Length = typeTupleNode.Types.Length) ->
+                    (tuplePatterns, typeTupleNode.Types)
                     ||> List.zip
                     |> List.map (fun (pat, t) -> updateParameter false pat t)
                     |> fun ts ->

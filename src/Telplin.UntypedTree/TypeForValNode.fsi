@@ -1,6 +1,6 @@
 module Telplin.UntypedTree.TypeForValNode
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 open Telplin.Common
 
