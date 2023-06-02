@@ -57,7 +57,7 @@ and Diagnostic =
     {
         Severity : string
         Message : string
-        ErrorNumber : string
+        ErrorNumber : int
         Range : Range
     }
 
@@ -84,7 +84,7 @@ let decodeDiagnostic =
         {
             Severity = get.Required.Field "severity" Decode.string
             Message = get.Required.Field "message" Decode.string
-            ErrorNumber = get.Required.Field "errorNumber" Decode.string
+            ErrorNumber = get.Required.Field "errorNumber" Decode.int
             Range = get.Required.Field "range" decodeRange
         }
     )
@@ -335,7 +335,7 @@ let App () =
                                 $"({diag.Range.StartLine}, {diag.Range.StartColumn}) ({diag.Range.EndLine},{diag.Range.EndColumn})"
                         ]
                         span [ ClassName $"{Style.Badge} {diag.Severity}" ] [ str diag.Severity ]
-                        span [ ClassName $"{Style.Badge}" ] [ str diag.ErrorNumber ]
+                        span [ ClassName $"{Style.Badge}" ] [ ofInt diag.ErrorNumber ]
                         p [] [ str diag.Message ]
                     ]
                 )
