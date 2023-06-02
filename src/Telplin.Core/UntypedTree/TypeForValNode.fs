@@ -1,11 +1,11 @@
-module Telplin.UntypedTree.TypeForValNode
+module Telplin.Core.UntypedTree.TypeForValNode
 
 open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core.CompilerServices
-open Telplin.Common
-open SourceParser
-open ASTCreation
+open Telplin.Core
+open Telplin.Core.UntypedTree.SourceParser
+open Telplin.Core.UntypedTree.ASTCreation
 
 let mapTypeWithGlobalConstraintsNode (map : Type -> Type) (t : Type) =
     match t with

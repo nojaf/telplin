@@ -1,9 +1,9 @@
-module Telplin.UntypedTree.ASTCreation
+module Telplin.Core.UntypedTree.ASTCreation
 
 open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
-open Telplin.Common
+open Telplin.Core
 
 let zeroRange = Range.Zero
 

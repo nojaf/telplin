@@ -9,7 +9,6 @@ open Microsoft.Net.Http.Headers
 open Thoth.Json.Net
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
-open Telplin.Common
 open Telplin.Core
 
 [<RequireQualifiedAccess>]

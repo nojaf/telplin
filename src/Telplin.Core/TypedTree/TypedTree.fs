@@ -1,4 +1,4 @@
-﻿module Telplin.TypedTree.Resolver
+﻿module Telplin.Core.TypedTree.Resolver
 
 #nowarn "57"
 
@@ -7,8 +7,8 @@ open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
-open Telplin.Common
-open Telplin.TypedTree.FSharpProjectExtensions
+open Telplin.Core
+open Telplin.Core.TypedTree.FSharpProjectExtensions
 
 let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
     proxyRange.StartLine = m.StartLine

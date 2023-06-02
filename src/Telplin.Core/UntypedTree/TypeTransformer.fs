@@ -1,4 +1,4 @@
-namespace Telplin.UntypedTree
+namespace Telplin.Core.UntypedTree
 
 open Fantomas.Core.SyntaxOak
 

@@ -1,8 +1,8 @@
-module Telplin.TypedTree.Resolver
+module Telplin.Core.TypedTree.Resolver
 
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
-open Telplin.Common
+open Telplin.Core
 
 val mkResolverFor :
     checker : FSharpChecker ->

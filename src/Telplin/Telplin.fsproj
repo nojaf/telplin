@@ -18,13 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Telplin.TypedTree\Telplin.TypedTree.fsproj" />
-    <ProjectReference Include="..\Telplin.UntypedTree\Telplin.UntypedTree.fsproj" />
+    <PackageReference Include="Argu" Version="6.1.1" />
+    <PackageReference Include="CliWrap" Version="3.6.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Argu" Version="6.1.1" />
-    <PackageReference Include="CliWrap" Version="3.6.0" />
+    <ProjectReference Include="..\Telplin.Core\Telplin.Core.fsproj" />
   </ItemGroup>
 
 </Project>

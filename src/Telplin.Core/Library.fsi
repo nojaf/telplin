@@ -1,7 +1,7 @@
 namespace Telplin.Core
 
 open FSharp.Compiler.CodeAnalysis
-open Telplin.Common
+open Telplin.Core
 
 [<RequireQualifiedAccess>]
 type SignatureVerificationResult =

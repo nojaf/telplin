@@ -1,4 +1,4 @@
-﻿module Telplin.TypedTree.Options
+﻿module Telplin.Core.TypedTree.Options
 
 open System
 open System.IO

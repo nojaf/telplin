@@ -1,12 +1,12 @@
-﻿module rec Telplin.UntypedTree.Writer
+﻿module rec Telplin.Core.UntypedTree.Writer
 
 open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
-open Telplin.Common
-open ASTCreation
-open TypeForValNode
-open SourceParser
+open Telplin.Core
+open Telplin.Core.UntypedTree.ASTCreation
+open Telplin.Core.UntypedTree.TypeForValNode
+open Telplin.Core.UntypedTree.SourceParser
 
 let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
     let hasDefault =

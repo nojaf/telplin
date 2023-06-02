@@ -1,4 +1,4 @@
-﻿namespace Telplin.Common
+﻿namespace Telplin.Core
 
 type RangeProxy =
     struct

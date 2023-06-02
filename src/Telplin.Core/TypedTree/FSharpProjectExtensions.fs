@@ -1,4 +1,4 @@
-﻿module Telplin.TypedTree.FSharpProjectExtensions
+﻿module Telplin.Core.TypedTree.FSharpProjectExtensions
 
 open FSharp.Compiler.CodeAnalysis
 

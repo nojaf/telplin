@@ -3,7 +3,7 @@ open Argu
 open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
-open Telplin
+open Telplin.Core
 
 let private meh = 5
 
