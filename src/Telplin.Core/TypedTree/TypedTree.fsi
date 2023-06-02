@@ -2,6 +2,7 @@ module Telplin.Core.TypedTree.Resolver
 
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open Telplin.Core
 
 val mkResolverFor :
@@ -16,9 +17,9 @@ val mkResolverForCode :
     projectOptions : FSharpProjectOptions -> includePrivateBindings : bool -> code : string -> TypedTreeInfoResolver
 
 val typeCheckForPair :
-    projectOptions : FSharpProjectOptions -> implementation : string -> signature : string -> FSharpDiagnosticInfo array
+    projectOptions : FSharpProjectOptions -> implementation : string -> signature : string -> FSharpDiagnostic array
 
 val typeCheckForImplementation :
-    projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnosticInfo array>
+    projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnostic array>
 
 val FCSSignature : options : FSharpProjectOptions -> implementation : string -> Choice<unit, string>

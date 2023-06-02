@@ -1,15 +1,5 @@
 namespace Telplin.Core
 
-type RangeProxy =
-    struct
-        val StartLine : int
-        val StartColumn : int
-        val EndLine : int
-        val EndColumn : int
-        new : startLine : int * startColumn : int * endLine : int * endColumn : int -> RangeProxy
-        override ToString : unit -> string
-    end
-
 type GenericParameter =
     {
         ParameterName : string
@@ -52,21 +42,9 @@ type TypeInfoResponse =
     }
 
 type TypedTreeInfoResolver =
-    abstract member GetTypeInfo : range : RangeProxy -> TypeInfoResponse
-    abstract member GetFullForBinding : bindingNameRange : RangeProxy -> BindingInfo
-    abstract member GetTypeTyparNames : range : RangeProxy -> string list
-    abstract member GetPropertyWithIndex : identifier : string -> range : RangeProxy -> BindingInfo
+    abstract member GetTypeInfo : range : FSharp.Compiler.Text.range -> TypeInfoResponse
+    abstract member GetFullForBinding : bindingNameRange : FSharp.Compiler.Text.range -> BindingInfo
+    abstract member GetTypeTyparNames : range : FSharp.Compiler.Text.range -> string list
+    abstract member GetPropertyWithIndex : identifier : string -> range : FSharp.Compiler.Text.range -> BindingInfo
     abstract member Defines : string list
     abstract member IncludePrivateBindings : bool
-
-type FSharpDiagnosticInfoSeverity =
-    | Warning = 0
-    | Error = 1
-
-type FSharpDiagnosticInfo =
-    {
-        Severity : FSharpDiagnosticInfoSeverity
-        Message : string
-        ErrorNumber : string
-        Range : RangeProxy
-    }

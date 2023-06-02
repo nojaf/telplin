@@ -373,7 +373,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
                 prefixListNode.Decls |> List.map (fun typarDecl -> typarDecl.TypeParameter.Text)
 
             let typedTreeNames : string list =
-                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.Proxy
+                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.FCSRange
 
             if untypedTreeNames.Length <> typedTreeNames.Length then
                 failwith "unexpected difference in typar count"
@@ -388,7 +388,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
         (identifier : IdentListNode)
         (implicitCtor : ImplicitConstructorNode)
         =
-        let bindingInfo = resolver.GetTypeInfo identifier.Range.Proxy
+        let bindingInfo = resolver.GetTypeInfo identifier.Range.FCSRange
 
         let returnType =
             match bindingInfo.ConstructorInfo with
@@ -689,7 +689,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         let name = getLastIdentFromList externBindingNode.Identifier
 
         let returnType =
-            let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+            let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
 
             mkTypeFromString bindingInfo.ReturnTypeString
             // Type may have unwanted parentheses.

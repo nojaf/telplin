@@ -1,15 +1,15 @@
 namespace Telplin.Core
 
 open FSharp.Compiler.CodeAnalysis
-open Telplin.Core
+open FSharp.Compiler.Diagnostics
 
 [<RequireQualifiedAccess>]
 type SignatureVerificationResult =
     | ValidSignature of signature : string
     | ImplementationFileAborted
     | FailedToCreateSignatureFile of error : string
-    | InvalidImplementationFile of diagnostics : FSharpDiagnosticInfo array
-    | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnosticInfo array
+    | InvalidImplementationFile of diagnostics : FSharpDiagnostic array
+    | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnostic array
 
 [<RequireQualifiedAccess>]
 module SignatureCreation =

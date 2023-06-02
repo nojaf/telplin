@@ -331,7 +331,7 @@ let mkTypeForValNode
     (parameters : Pattern list)
     : Type
     =
-    let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+    let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
     mkTypeForValAux bindingInfo typeParameterMap parameters
 
 let mkTypeForGetSetMemberValNode
@@ -342,5 +342,5 @@ let mkTypeForGetSetMemberValNode
     (parameters : Pattern list)
     : Type
     =
-    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.Proxy
+    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.FCSRange
     mkTypeForValAux bindingInfo typeParameterMap parameters
