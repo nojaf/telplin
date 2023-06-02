@@ -1,12 +1,12 @@
-﻿module rec Telplin.UntypedTree.Writer
+﻿module rec Telplin.Core.UntypedTree.Writer
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
-open Telplin.Common
-open ASTCreation
-open TypeForValNode
-open SourceParser
+open Telplin.Core
+open Telplin.Core.UntypedTree.ASTCreation
+open Telplin.Core.UntypedTree.TypeForValNode
+open Telplin.Core.UntypedTree.SourceParser
 
 let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
     let hasDefault =
@@ -373,7 +373,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
                 prefixListNode.Decls |> List.map (fun typarDecl -> typarDecl.TypeParameter.Text)
 
             let typedTreeNames : string list =
-                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.Proxy
+                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.FCSRange
 
             if untypedTreeNames.Length <> typedTreeNames.Length then
                 failwith "unexpected difference in typar count"
@@ -388,7 +388,7 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
         (identifier : IdentListNode)
         (implicitCtor : ImplicitConstructorNode)
         =
-        let bindingInfo = resolver.GetTypeInfo identifier.Range.Proxy
+        let bindingInfo = resolver.GetTypeInfo identifier.Range.FCSRange
 
         let returnType =
             match bindingInfo.ConstructorInfo with
@@ -399,17 +399,35 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
 
         // Convert the SimplePats to Patterns
         let parameters =
-            match implicitCtor.Parameters with
+            let ctorPatterns =
+                implicitCtor.Items
+                |> List.choose (
+                    function
+                    | Choice1Of2 sp -> Some sp
+                    | Choice2Of2 _ -> None
+                )
+
+            match ctorPatterns with
             | [] ->
                 // Even when there are new explicit parameters we still need to pass `()` as a unit parameter.
                 [ Pattern.Unit (UnitNode (stn "(", stn ")", zeroRange)) ]
             | parameters ->
                 let wrapAsTupleIfMultiple (parameters : Pattern list) =
-                    if parameters.Length < 2 then
-                        parameters
-                    else
+                    match parameters with
+                    | []
+                    | [ _ ] -> parameters
+                    | h :: tail ->
+
                         // Wrap as tuple as that is the only way parameters can behave in an implicit constructor.
-                        [ Pattern.Tuple (PatTupleNode (parameters, zeroRange)) ]
+                        let tupleParameters =
+                            [
+                                yield Choice1Of2 h
+                                for p in tail do
+                                    yield Choice2Of2 (stn ",")
+                                    yield Choice1Of2 p
+                            ]
+
+                        [ Pattern.Tuple (PatTupleNode (tupleParameters, zeroRange)) ]
 
                 parameters
                 |> List.map (fun simplePat ->
@@ -671,7 +689,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         let name = getLastIdentFromList externBindingNode.Identifier
 
         let returnType =
-            let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+            let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
 
             mkTypeFromString bindingInfo.ReturnTypeString
             // Type may have unwanted parentheses.

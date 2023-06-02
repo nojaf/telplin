@@ -1,11 +1,11 @@
-module Telplin.UntypedTree.TypeForValNode
+module Telplin.Core.UntypedTree.TypeForValNode
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core.CompilerServices
-open Telplin.Common
-open SourceParser
-open ASTCreation
+open Telplin.Core
+open Telplin.Core.UntypedTree.SourceParser
+open Telplin.Core.UntypedTree.ASTCreation
 
 let mapTypeWithGlobalConstraintsNode (map : Type -> Type) (t : Type) =
     match t with
@@ -195,11 +195,17 @@ let mkTypeForValNodeBasedOnTypedTree
                     )
                 | _ -> typeTreeType
             | Pattern.Tuple patTupleNode ->
+                let tuplePatterns =
+                    patTupleNode.Items
+                    |> List.choose (
+                        function
+                        | Choice1Of2 p -> Some p
+                        | Choice2Of2 _ -> None
+                    )
+
                 match typeTreeType with
-                | Type.Tuple typeTupleNode when
-                    (isTopLevel && patTupleNode.Patterns.Length = typeTupleNode.Types.Length)
-                    ->
-                    (patTupleNode.Patterns, typeTupleNode.Types)
+                | Type.Tuple typeTupleNode when (isTopLevel && tuplePatterns.Length = typeTupleNode.Types.Length) ->
+                    (tuplePatterns, typeTupleNode.Types)
                     ||> List.zip
                     |> List.map (fun (pat, t) -> updateParameter false pat t)
                     |> fun ts ->
@@ -325,7 +331,7 @@ let mkTypeForValNode
     (parameters : Pattern list)
     : Type
     =
-    let bindingInfo = resolver.GetFullForBinding nameRange.Proxy
+    let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
     mkTypeForValAux bindingInfo typeParameterMap parameters
 
 let mkTypeForGetSetMemberValNode
@@ -336,5 +342,5 @@ let mkTypeForGetSetMemberValNode
     (parameters : Pattern list)
     : Type
     =
-    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.Proxy
+    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.FCSRange
     mkTypeForValAux bindingInfo typeParameterMap parameters

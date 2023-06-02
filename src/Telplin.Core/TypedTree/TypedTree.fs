@@ -1,4 +1,4 @@
-﻿module Telplin.TypedTree.Resolver
+﻿module Telplin.Core.TypedTree.Resolver
 
 #nowarn "57"
 
@@ -7,10 +7,10 @@ open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
-open Telplin.Common
-open Telplin.TypedTree.FSharpProjectExtensions
+open Telplin.Core
+open Telplin.Core.TypedTree.FSharpProjectExtensions
 
-let equalProxyRange (proxyRange : RangeProxy) (m : range) : bool =
+let equalProxyRange (proxyRange : range) (m : range) : bool =
     proxyRange.StartLine = m.StartLine
     && proxyRange.StartColumn = m.StartColumn
     && proxyRange.EndLine = m.EndLine
@@ -326,28 +326,14 @@ let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : str
 
     mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions includePrivateBindings
 
-let mapDiagnostics diagnostics =
+let filterDiagnostics diagnostics =
     diagnostics
-    |> Array.choose (fun (d : FSharpDiagnostic) ->
+    |> Array.filter (fun (d : FSharpDiagnostic) ->
         match d.Severity with
-        | FSharpDiagnosticSeverity.Error ->
-            {
-                Severity = FSharpDiagnosticInfoSeverity.Error
-                Message = d.Message
-                ErrorNumber = d.ErrorNumberText
-                Range = RangeProxy (d.StartLine, d.StartColumn, d.EndLine, d.EndColumn)
-            }
-            |> Some
-        | FSharpDiagnosticSeverity.Warning ->
-            {
-                Severity = FSharpDiagnosticInfoSeverity.Warning
-                Message = d.Message
-                ErrorNumber = d.ErrorNumberText
-                Range = RangeProxy (d.StartLine, d.StartColumn, d.EndLine, d.EndColumn)
-            }
-            |> Some
+        | FSharpDiagnosticSeverity.Error _
+        | FSharpDiagnosticSeverity.Warning _ -> true
         | FSharpDiagnosticSeverity.Info
-        | FSharpDiagnosticSeverity.Hidden -> None
+        | FSharpDiagnosticSeverity.Hidden -> false
     )
 
 let typeCheckForImplementation projectOptions sourceCode =
@@ -362,7 +348,7 @@ let typeCheckForImplementation projectOptions sourceCode =
 
     match result with
     | FSharpCheckFileAnswer.Aborted -> Choice1Of2 ()
-    | FSharpCheckFileAnswer.Succeeded checkFileResults -> mapDiagnostics checkFileResults.Diagnostics |> Choice2Of2
+    | FSharpCheckFileAnswer.Succeeded checkFileResults -> filterDiagnostics checkFileResults.Diagnostics |> Choice2Of2
 
 let typeCheckForPair projectOptions implementation signature =
     let fileName = System.Guid.NewGuid().ToString "N"
@@ -385,7 +371,7 @@ let typeCheckForPair projectOptions implementation signature =
     fileCache.TryRemove signatureName |> ignore
     fileCache.TryRemove implementationName |> ignore
 
-    mapDiagnostics result.Diagnostics
+    filterDiagnostics result.Diagnostics
 
 let FCSSignature options implementation =
     let projectOptions : FSharpProjectOptions =

@@ -4,12 +4,13 @@ open System
 open System.IO
 open System.Collections.Generic
 open System.Net
+open FSharp.Compiler.Text
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.CodeAnalysis
 open Microsoft.Net.Http.Headers
 open Thoth.Json.Net
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
-open Telplin.Common
 open Telplin.Core
 
 [<RequireQualifiedAccess>]
@@ -24,7 +25,7 @@ module HeaderValues =
     let ApplicationJson = "application/json"
 
 module Encoding =
-    let encodeRange (r : RangeProxy) =
+    let encodeRange (r : range) =
         Encode.object
             [
                 "startLine", Encode.int r.StartLine
@@ -33,22 +34,22 @@ module Encoding =
                 "endColumn", Encode.int r.EndColumn
             ]
 
-    let encodeDiagnostic (d : FSharpDiagnosticInfo) =
+    let encodeDiagnostic (d : FSharpDiagnostic) =
         Encode.object
             [
                 "severity",
                 Encode.string (
                     match d.Severity with
-                    | FSharpDiagnosticInfoSeverity.Warning -> "warning"
-                    | FSharpDiagnosticInfoSeverity.Error -> "error"
+                    | FSharpDiagnosticSeverity.Warning -> "warning"
+                    | FSharpDiagnosticSeverity.Error -> "error"
                     | _ -> "unknown"
                 )
                 "message", Encode.string d.Message
-                "errorNumber", Encode.string d.ErrorNumber
+                "errorNumber", Encode.int d.ErrorNumber
                 "range", encodeRange d.Range
             ]
 
-    let encodeInvalidImplementationFile (diagnostics : FSharpDiagnosticInfo array) =
+    let encodeInvalidImplementationFile (diagnostics : FSharpDiagnostic array) =
         Encode.object
             [
                 "type", Encode.string "invalidImplementationFile"
@@ -56,7 +57,7 @@ module Encoding =
             ]
         |> Encode.toString 4
 
-    let encodeInvalidSignatureFile (diagnostics : FSharpDiagnosticInfo array) signatureContent =
+    let encodeInvalidSignatureFile (diagnostics : FSharpDiagnostic array) signatureContent =
         Encode.object
             [
                 "type", Encode.string "invalidSignatureFile"

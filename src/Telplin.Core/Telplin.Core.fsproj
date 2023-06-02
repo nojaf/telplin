@@ -7,13 +7,29 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Types.fsi" />
+    <Compile Include="Types.fs" />
+    <Compile Include="UntypedTree\SourceParser.fsi" />
+    <Compile Include="UntypedTree\SourceParser.fs" />
+    <Compile Include="UntypedTree\ASTCreation.fs" />
+    <Compile Include="UntypedTree\TypeTransformer.fs" />
+    <Compile Include="UntypedTree\TypeForValNode.fsi" />
+    <Compile Include="UntypedTree\TypeForValNode.fs" />
+    <Compile Include="UntypedTree\UntypedTree.fsi" />
+    <Compile Include="UntypedTree\UntypedTree.fs" />
+    <Compile Include="TypedTree\Options.fsi" />
+    <Compile Include="TypedTree\Options.fs" />
+    <Compile Include="TypedTree\FSharpProjectExtensions.fs" />
+    <Compile Include="TypedTree\TypedTree.fsi" />
+    <Compile Include="TypedTree\TypedTree.fs" />
     <Compile Include="Library.fsi" />
     <Compile Include="Library.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Telplin.TypedTree\Telplin.TypedTree.fsproj" />
-    <ProjectReference Include="..\Telplin.UntypedTree\Telplin.UntypedTree.fsproj" />
+    <PackageReference Include="Fantomas.Core" Version="6.1.0-alpha-003" />
+    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />
+    <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.815" />
   </ItemGroup>
 
 </Project>

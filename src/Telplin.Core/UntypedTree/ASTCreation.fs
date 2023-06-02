@@ -1,16 +1,18 @@
-module Telplin.UntypedTree.ASTCreation
+module Telplin.Core.UntypedTree.ASTCreation
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
-open Telplin.Common
-
-let zeroRange = Range.Zero
 
 type Range with
 
-    member r.Proxy : RangeProxy =
-        RangeProxy (r.StartLine, r.StartColumn, r.EndLine, r.EndColumn)
+    member this.FCSRange : FSharp.Compiler.Text.Range =
+        FSharp.Compiler.Text.Range.mkRange
+            this.FileName
+            (FSharp.Compiler.Text.Position.mkPos this.StartLine this.StartColumn)
+            (FSharp.Compiler.Text.Position.mkPos this.EndLine this.EndColumn)
+
+let zeroRange = Range.Zero
 
 /// Create a `SingleTextNode` based on the value string.
 let stn v = SingleTextNode (v, zeroRange)

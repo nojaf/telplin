@@ -1,5 +1,5 @@
-module Telplin.UntypedTree.Writer
+module Telplin.Core.UntypedTree.Writer
 
-open Telplin.Common
+open Telplin.Core
 
 val mkSignatureFile : resolver : TypedTreeInfoResolver -> code : string -> string

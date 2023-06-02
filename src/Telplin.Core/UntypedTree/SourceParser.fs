@@ -1,4 +1,4 @@
-﻿module Telplin.UntypedTree.SourceParser
+﻿module Telplin.Core.UntypedTree.SourceParser
 
 open Fantomas.Core.SyntaxOak
 

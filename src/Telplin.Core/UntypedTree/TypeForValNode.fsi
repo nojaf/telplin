@@ -1,8 +1,8 @@
-module Telplin.UntypedTree.TypeForValNode
+module Telplin.Core.UntypedTree.TypeForValNode
 
-open FSharp.Compiler.Text
+open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
-open Telplin.Common
+open Telplin.Core
 
 /// Typed tree information for a `FSharpMemberOrFunctionOrValue`
 type TypedTreeInfo =
