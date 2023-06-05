@@ -44,7 +44,6 @@ type TypeInfoResponse =
 type TypedTreeInfoResolver =
     abstract member GetTypeInfo : range : FSharp.Compiler.Text.range -> Result<TypeInfoResponse, string>
     abstract member GetFullForBinding : bindingNameRange : FSharp.Compiler.Text.range -> Result<BindingInfo, string>
-    abstract member GetTypeTyparNames : range : FSharp.Compiler.Text.range -> Result<string list, string>
 
     abstract member GetPropertyWithIndex :
         identifier : string -> range : FSharp.Compiler.Text.range -> Result<BindingInfo, string>

@@ -17,17 +17,11 @@ type TypedTreeInfo =
 /// And it might need some additional parentheses. For example, when the return type is a function type.
 /// </summary>
 /// <param name="typedTreeInfo">Resolved type information from the typed tree.</param>
-/// <param name="typeParameterMap">A map of generic parameters found in the untyped tree with the ones found in the typed tree.</param>
 /// <param name="parameters">Parameters found in the input Oak. These will be used to enhance the parameters in the `returnType` by adding the name (if present).</param>
-val mkTypeForValNodeBasedOnTypedTree :
-    typedTreeInfo : TypedTreeInfo -> typeParameterMap : Map<string, string> -> parameters : Pattern list -> Type
+val mkTypeForValNodeBasedOnTypedTree : typedTreeInfo : TypedTreeInfo -> parameters : Pattern list -> Type
 
 val mkTypeForValNode :
-    resolver : TypedTreeInfoResolver ->
-    nameRange : range ->
-    typeParameterMap : Map<string, string> ->
-    parameters : Pattern list ->
-        Result<Type, string>
+    resolver : TypedTreeInfoResolver -> nameRange : range -> parameters : Pattern list -> Result<Type, string>
 
 /// <summary>
 /// Specialized version of `mkTypeForValNode` taking the CompiledName of a getter or setting into account.
@@ -36,12 +30,10 @@ val mkTypeForValNode :
 /// <param name="resolver"></param>
 /// <param name="name">Compiled name, e.g. get_Name or set_Name</param>
 /// <param name="nameRange"></param>
-/// <param name="typeParameterMap"></param>
 /// <param name="parameters"></param>
 val mkTypeForGetSetMemberValNode :
     resolver : TypedTreeInfoResolver ->
     name : string ->
     nameRange : range ->
-    typeParameterMap : Map<string, string> ->
     parameters : Pattern list ->
         Result<Type, string>

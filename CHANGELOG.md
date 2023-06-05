@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 - 05-06-23
 
 ### Changed
 * Better error handling and partial signature generation. [#72](https://github.com/nojaf/telplin/issues/72)
+* Update FCS to 43.7.400-preview.23302.5
 
 ## 0.6.0 - 01-06-23
 
