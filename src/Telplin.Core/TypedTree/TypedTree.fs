@@ -290,18 +290,6 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 with ex ->
                     Error ex.Message
 
-            member resolver.GetTypeTyparNames range =
-                try
-                    let typeSymbol, _ = findTypeSymbol range
-
-                    let getName (typar : FSharpGenericParameter) =
-                        let prefix = "'"
-                        $"{prefix}{typar.FullName}"
-
-                    typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList |> Ok
-                with ex ->
-                    Error ex.Message
-
             member resolver.GetPropertyWithIndex name range =
                 try
                     let valSymbol, displayContext = findSymbolForName range name

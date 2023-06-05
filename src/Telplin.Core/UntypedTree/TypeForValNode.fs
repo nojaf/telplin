@@ -99,19 +99,7 @@ let rec updateTypeBasedOnUnTyped (typedTreeType : Type) (untypedTreeType : Type)
     | Type.WithGlobalConstraints _, Type.Var _ -> typedTreeType
     | _ -> untypedTreeType
 
-/// <summary>
-/// The `returnType` from the typed tree won't contain any parameter names (in case of a function).
-/// And it might need some additional parentheses. For example, when the return type is a function type.
-/// </summary>
-/// <param name="typedTreeInfo">Resolved type information from the typed tree.</param>
-/// <param name="typeParameterMap">A map of generic parameters found in the untyped tree with the ones found in the typed tree.</param>
-/// <param name="parameters">Parameters found in the input Oak. These will be used to enhance the parameters in the `returnType` by adding the name (if present).</param>
-let mkTypeForValNodeBasedOnTypedTree
-    (typedTreeInfo : TypedTreeInfo)
-    (typeParameterMap : Map<string, string>)
-    (parameters : Pattern list)
-    : Type
-    =
+let mkTypeForValNodeBasedOnTypedTree (typedTreeInfo : TypedTreeInfo) (parameters : Pattern list) : Type =
     // The `returnType` constructed from the typed tree cannot be trusted 100%.
     // We might receive `int -> int -> int` while the Oak only contained a single parameter.
     // This needs to be transformed to `int -> (int -> int)` to reflect that the return type actually is a function type.
@@ -244,42 +232,7 @@ let mkTypeForValNodeBasedOnTypedTree
 
         mapTypeWithGlobalConstraintsNode updateParameters returnTypeCorrectByActualParameters
 
-    // Update any generic parameters using the typeParameterMap.
-    // This is to re-use the generic parameter names from the untyped tree.
-    let returnTypeWithCorrectGenericParameterNames =
-        if Map.isEmpty typeParameterMap then
-            returnTypeWithParameterNames
-        else
-
-        let mapTypar (typar : SingleTextNode) =
-            match Map.tryFind typar.Text typeParameterMap with
-            | None -> typar
-            | Some untypedName -> stn untypedName
-
-        let mapTypeConstraint (tc : TypeConstraint) =
-            match tc with
-            | TypeConstraint.Single singleConstraint ->
-                TypeConstraintSingleNode (
-                    mapTypar singleConstraint.Typar,
-                    singleConstraint.Kind,
-                    singleConstraint.Range
-                )
-                |> TypeConstraint.Single
-            | _ -> tc
-
-        { new TypeTransformerBase() with
-            member x.TransformVar typar = mapTypar typar
-
-            member x.TransformWithGlobalConstraints globalConstraintsNode =
-                TypeWithGlobalConstraintsNode (
-                    x.TransformType globalConstraintsNode.Type,
-                    List.map mapTypeConstraint globalConstraintsNode.TypeConstraints,
-                    globalConstraintsNode.Range
-                )
-        }
-        |> TypeTransformer.transform returnTypeWithParameterNames
-
-    returnTypeWithCorrectGenericParameterNames
+    returnTypeWithParameterNames
 
 let stripParens (t : Type) =
     let strip t =
@@ -289,12 +242,7 @@ let stripParens (t : Type) =
 
     mapTypeWithGlobalConstraintsNode strip t
 
-let mkTypeForValAux
-    (bindingInfo : BindingInfo)
-    (typeParameterMap : Map<string, string>)
-    (parameters : Pattern list)
-    : Result<Type, string>
-    =
+let mkTypeForValAux (bindingInfo : BindingInfo) (parameters : Pattern list) : Result<Type, string> =
     mkTypeFromString bindingInfo.ReturnTypeString
     |> Result.map (fun typeFromString ->
         let t =
@@ -309,8 +257,7 @@ let mkTypeForValAux
                 TypeGenericParameters = bindingInfo.TypeGenericParameters
             }
 
-        let returnType =
-            mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters
+        let returnType = mkTypeForValNodeBasedOnTypedTree typedTreeInfo parameters
 
         let returnType =
             // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
@@ -330,20 +277,18 @@ let mkTypeForValAux
 let mkTypeForValNode
     (resolver : TypedTreeInfoResolver)
     (nameRange : range)
-    (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
     : Result<Type, string>
     =
     resolver.GetFullForBinding nameRange.FCSRange
-    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo typeParameterMap parameters)
+    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo parameters)
 
 let mkTypeForGetSetMemberValNode
     (resolver : TypedTreeInfoResolver)
     (name : string)
     (nameRange : range)
-    (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
     : Result<Type, string>
     =
     resolver.GetPropertyWithIndex name nameRange.FCSRange
-    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo typeParameterMap parameters)
+    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo parameters)
