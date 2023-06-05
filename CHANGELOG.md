@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+* Better error handling and partial signature generation. [#72](https://github.com/nojaf/telplin/issues/72)
+
 ## 0.6.0 - 01-06-23
 
 ### Changed

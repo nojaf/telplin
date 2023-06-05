@@ -40,9 +40,6 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
             |> Seq.sortBy (fun r -> r.Range.StartLine, r.Range.StartColumn)
             |> Seq.toArray
 
-        let printException ex proxyRange =
-            printfn $"Exception for {proxyRange} in {sourceFileName}\n{ex}"
-
         let tryFindSymbolAux predicate proxyRange =
             allSymbols
             |> Array.tryPick (fun symbol ->
@@ -146,7 +143,7 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
             )
             |> Seq.toList
 
-        let mkBindingInfo displayContext (valSymbol : FSharpMemberOrFunctionOrValue) : BindingInfo =
+        let mkBindingInfo displayContext (valSymbol : FSharpMemberOrFunctionOrValue) : Result<BindingInfo, string> =
             let typeGenericParameters =
                 match valSymbol.DeclaringEntity with
                 | None -> []
@@ -238,11 +235,12 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                 else
                     returnTypeText
 
-            {
-                ReturnTypeString = returnTypeText
-                BindingGenericParameters = genericParameters
-                TypeGenericParameters = typeGenericParameters
-            }
+            Ok
+                {
+                    ReturnTypeString = returnTypeText
+                    BindingGenericParameters = genericParameters
+                    TypeGenericParameters = typeGenericParameters
+                }
 
         { new TypedTreeInfoResolver with
             member resolver.GetTypeInfo proxyRange =
@@ -271,21 +269,26 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
 
                         not hasAttribute
 
-                    {
-                        NeedsClassAttribute = typeSymbol.IsClass && doesNotHaveClassAttribute
-                        ConstructorInfo = ctor
-                    }
+                    Ok
+                        {
+                            NeedsClassAttribute = typeSymbol.IsClass && doesNotHaveClassAttribute
+                            ConstructorInfo =
+                                ctor
+                                |> Option.bind (
+                                    function
+                                    | Ok ctor -> Some ctor
+                                    | Error _ -> None
+                                )
+                        }
                 with ex ->
-                    printException ex proxyRange
-                    raise ex
+                    Result.Error ex.Message
 
             member resolver.GetFullForBinding bindingNameRange =
                 try
                     let valSymbol, displayContext = findSymbol bindingNameRange
                     mkBindingInfo displayContext valSymbol
                 with ex ->
-                    printException ex bindingNameRange
-                    raise ex
+                    Error ex.Message
 
             member resolver.GetTypeTyparNames range =
                 try
@@ -295,18 +298,16 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
                         let prefix = "'"
                         $"{prefix}{typar.FullName}"
 
-                    typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList
+                    typeSymbol.GenericParameters |> Seq.map getName |> Seq.toList |> Ok
                 with ex ->
-                    printException ex range
-                    raise ex
+                    Error ex.Message
 
             member resolver.GetPropertyWithIndex name range =
                 try
                     let valSymbol, displayContext = findSymbolForName range name
                     mkBindingInfo displayContext valSymbol
                 with ex ->
-                    printException ex range
-                    raise ex
+                    Error ex.Message
 
             member resolver.Defines = projectOptions.Defines
             member resolver.IncludePrivateBindings = includePrivateBindings

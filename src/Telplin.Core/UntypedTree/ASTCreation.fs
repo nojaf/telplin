@@ -42,7 +42,7 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
         )
 
 /// Transform a string into Type by parsing a dummy `val` in a signature file.
-let mkTypeFromString (typeText : string) : Type =
+let mkTypeFromString (typeText : string) : Result<Type, string> =
     let pseudoSignature =
         $"""
 [<AbstractClass>]
@@ -50,24 +50,23 @@ type X =
     abstract member Y : {typeText}
 """
 
-    let oak =
-        try
+    try
+        let oak =
             CodeFormatter.ParseOakAsync (true, pseudoSignature)
             |> Async.RunSynchronously
             |> Array.head
             |> fst
-        with ex ->
-            printfn $"Could not parse:\n%s{pseudoSignature}"
-            raise ex
 
-    match oak.ModulesOrNamespaces.[0].Declarations with
-    | [ ModuleDecl.TypeDefn typeDefn ] ->
-        let tdn = TypeDefn.TypeDefnNode typeDefn
+        match oak.ModulesOrNamespaces.[0].Declarations with
+        | [ ModuleDecl.TypeDefn typeDefn ] ->
+            let tdn = TypeDefn.TypeDefnNode typeDefn
 
-        match tdn.Members with
-        | [ MemberDefn.SigMember sigMember ] -> sigMember.Val.Type
-        | members -> failwith $"Unexpected members of type definition: %A{members}"
-    | decls -> failwithf $"Unexpected module decls:%A{decls}"
+            match tdn.Members with
+            | [ MemberDefn.SigMember sigMember ] -> Ok sigMember.Val.Type
+            | members -> Error $"Unexpected members of type definition: %A{members}"
+        | decls -> Error $"Unexpected module decls:%A{decls}"
+    with ex ->
+        Error $"Could not parse:\n%s{pseudoSignature}"
 
 let wrapTypeInParentheses (t : Type) =
     Type.Paren (TypeParenNode (stn "(", t, stn ")", zeroRange))

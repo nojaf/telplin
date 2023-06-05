@@ -27,7 +27,7 @@ val mkTypeForValNode :
     nameRange : range ->
     typeParameterMap : Map<string, string> ->
     parameters : Pattern list ->
-        Type
+        Result<Type, string>
 
 /// <summary>
 /// Specialized version of `mkTypeForValNode` taking the CompiledName of a getter or setting into account.
@@ -44,4 +44,4 @@ val mkTypeForGetSetMemberValNode :
     nameRange : range ->
     typeParameterMap : Map<string, string> ->
     parameters : Pattern list ->
-        Type
+        Result<Type, string>

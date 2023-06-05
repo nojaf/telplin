@@ -3,6 +3,7 @@
 open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
+open Microsoft.FSharp.Core
 open Telplin.Core
 open Telplin.Core.UntypedTree.ASTCreation
 open Telplin.Core.UntypedTree.TypeForValNode
@@ -18,18 +19,27 @@ let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
     else
         propertyNode.LeadingKeyword
 
+[<RequireQualifiedAccess>]
+type MemberDefnResult =
+    | None
+    | SingleMember of MemberDefn
+    | GetAndSetMember of MemberDefn * MemberDefn
+    | Error of TelplinError
+
 let mkMember
     (resolver : TypedTreeInfoResolver)
     (typeParameterMap : Map<string, string>)
     (md : MemberDefn)
-    : MemberDefn list
+    : MemberDefnResult
     =
+    let mdRange = (MemberDefn.Node md).Range
+
     match md with
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
-    | MemberDefn.Inherit _ -> List.singleton md
+    | MemberDefn.Inherit _ -> MemberDefnResult.SingleMember md
     | MemberDefn.LetBinding _
-    | MemberDefn.DoExpr _ -> List.empty
+    | MemberDefn.DoExpr _ -> MemberDefnResult.None
 
     | MemberDefn.ImplicitInherit implicitInherit ->
         let t =
@@ -41,11 +51,11 @@ let mkMember
 
         MemberDefnInheritNode (implicitInherit.InheritKeyword, t, zeroRange)
         |> MemberDefn.Inherit
-        |> List.singleton
+        |> MemberDefnResult.SingleMember
 
     | MemberDefn.Member bindingNode ->
         match bindingNode.FunctionName with
-        | Choice2Of2 _ -> List.empty
+        | Choice2Of2 _ -> MemberDefnResult.None
         | Choice1Of2 name ->
             let valKw = bindingNode.LeadingKeyword
 
@@ -59,8 +69,12 @@ let mkMember
                 | [ IdentifierOrDot.Ident name ] -> name
                 | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-            let returnType =
+            let returnTypeResult =
                 mkTypeForValNode resolver name.Range typeParameterMap bindingNode.Parameters
+
+            match returnTypeResult with
+            | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
+            | Ok returnType ->
 
             MemberDefnSigMemberNode (
                 ValNode (
@@ -81,7 +95,7 @@ let mkMember
                 zeroRange
             )
             |> MemberDefn.SigMember
-            |> List.singleton
+            |> MemberDefnResult.SingleMember
 
     | MemberDefn.AutoProperty autoProperty ->
         let valKw =
@@ -90,7 +104,11 @@ let mkMember
             |> fun keywords -> MultipleTextsNode (keywords, autoProperty.LeadingKeyword.Range)
 
         let name = autoProperty.Identifier
-        let returnType = mkTypeForValNode resolver name.Range Map.empty []
+        let returnTypeResult = mkTypeForValNode resolver name.Range Map.empty []
+
+        match returnTypeResult with
+        | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
+        | Ok returnType ->
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -111,13 +129,17 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> List.singleton
+        |> MemberDefnResult.SingleMember
 
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
 
-        let returnType =
+        let returnTypeResult =
             mkTypeForValNode resolver name.Range Map.empty [ explicitNode.Pattern ]
+
+        match returnTypeResult with
+        | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
+        | Ok returnType ->
 
         MemberDefnSigMemberNode (
             ValNode (
@@ -138,12 +160,12 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> List.singleton
+        |> MemberDefnResult.SingleMember
 
     | MemberDefn.Interface interfaceNode ->
         MemberDefnInterfaceNode (interfaceNode.Interface, interfaceNode.Type, None, [], zeroRange)
         |> MemberDefn.Interface
-        |> List.singleton
+        |> MemberDefnResult.SingleMember
 
     // We need to create two val in this case, see #52
     | PropertyGetSetWithExtraParameter (propertyNode, getBinding, setBinding) ->
@@ -154,10 +176,24 @@ let mkMember
 
         let leadingKeyword = mkLeadingKeywordForProperty propertyNode
 
-        let getSigMember =
-            let returnType =
-                mkTypeForGetSetMemberValNode resolver $"get_%s{name.Text}" name.Range Map.empty getBinding.Parameters
+        let getReturnType =
+            mkTypeForGetSetMemberValNode resolver $"get_%s{name.Text}" name.Range Map.empty getBinding.Parameters
 
+        let setReturnType =
+            mkTypeForGetSetMemberValNode
+                resolver
+                $"set_%s{name.Text}"
+                name.Range
+                Map.empty
+                [ setBinding.Parameters.[0] ]
+
+        match getReturnType, setReturnType with
+        | Error error, Ok _
+        | Ok _, Error error
+        | Error error, Error _ -> MemberDefnResult.Error (TelplinError (mdRange, error))
+        | Ok getReturnType, Ok setReturnType ->
+
+        let getSigMember =
             MemberDefnSigMemberNode (
                 ValNode (
                     propertyNode.XmlDoc,
@@ -168,7 +204,7 @@ let mkMember
                     None,
                     name,
                     None,
-                    returnType,
+                    getReturnType,
                     Some (stn "="),
                     None,
                     zeroRange
@@ -179,14 +215,6 @@ let mkMember
             |> MemberDefn.SigMember
 
         let setSigMember =
-            let returnType =
-                mkTypeForGetSetMemberValNode
-                    resolver
-                    $"set_%s{name.Text}"
-                    name.Range
-                    Map.empty
-                    [ setBinding.Parameters.[0] ]
-
             MemberDefnSigMemberNode (
                 ValNode (
                     propertyNode.XmlDoc,
@@ -197,7 +225,7 @@ let mkMember
                     None,
                     name,
                     None,
-                    returnType,
+                    setReturnType,
                     Some (stn "="),
                     None,
                     zeroRange
@@ -207,7 +235,13 @@ let mkMember
             )
             |> MemberDefn.SigMember
 
-        [ getSigMember ; setSigMember ]
+        let sigs =
+            if Position.posGt getBinding.Range.Start setBinding.Range.Start then
+                getSigMember, setSigMember
+            else
+                setSigMember, getSigMember
+
+        MemberDefnResult.GetAndSetMember sigs
 
     | MemberDefn.PropertyGetSet propertyNode ->
         let name =
@@ -217,7 +251,7 @@ let mkMember
 
         let leadingKeyword = mkLeadingKeywordForProperty propertyNode
 
-        let returnType =
+        let returnTypeResult =
             match propertyNode.LastBinding with
             | None ->
                 let binding = propertyNode.FirstBinding
@@ -254,6 +288,10 @@ let mkMember
                     lastBinding.LeadingKeyword
                 ]
 
+        match returnTypeResult with
+        | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
+        | Ok returnType ->
+
         MemberDefnSigMemberNode (
             ValNode (
                 propertyNode.XmlDoc,
@@ -273,17 +311,24 @@ let mkMember
             zeroRange
         )
         |> MemberDefn.SigMember
-        |> List.singleton
+        |> MemberDefnResult.SingleMember
 
-    | md -> failwith $"todo, 32CF2FF3-D9AD-41B8-96B8-E559A2327E66, {(MemberDefn.Node md).Range} {md}"
+    | md -> MemberDefnResult.Error (TelplinError (mdRange, $"Not implemented MemberDefn: %A{md}"))
 
 let mkMembers
     (resolver : TypedTreeInfoResolver)
     (typeParameterMap : Map<string, string>)
     (ms : MemberDefn list)
-    : MemberDefn list
+    : MemberDefn list * TelplinError list
     =
-    List.collect (mkMember resolver typeParameterMap) ms
+    (ms, ([], []))
+    ||> List.foldBack (fun md (sigMembers, errors) ->
+        match mkMember resolver typeParameterMap md with
+        | MemberDefnResult.None -> sigMembers, errors
+        | MemberDefnResult.Error error -> sigMembers, error :: errors
+        | MemberDefnResult.SingleMember md -> md :: sigMembers, errors
+        | MemberDefnResult.GetAndSetMember (g, s) -> s :: g :: sigMembers, errors
+    )
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.
@@ -293,8 +338,14 @@ let mkMembers
 /// <param name="resolver">Resolves information from the Typed tree.</param>
 /// <param name="forceAndKeyword">In case of a recursive nested module, subsequent types need the `and` keyword.</param>>
 /// <param name="typeDefn">Type definition DU case from the Untyped tree.</param>
-let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (typeDefn : TypeDefn) : TypeDefn =
+let mkTypeDefn
+    (resolver : TypedTreeInfoResolver)
+    (forceAndKeyword : bool)
+    (typeDefn : TypeDefn)
+    : TypeDefn * TelplinError list
+    =
     let tdn = TypeDefn.TypeDefnNode typeDefn
+    let typeDefnRange = (TypeDefn.Node typeDefn).Range
 
     let typeName =
         // To overcome
@@ -366,35 +417,40 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
 
     let typeNameType = Type.LongIdent tdn.TypeName.Identifier
 
-    let typarMap =
+    let typarMapResult : Result<Map<string, string>, string> =
         match tdn.TypeName.TypeParameters with
         | Some (TyparDecls.PostfixList prefixListNode) ->
             let untypedTreeNames =
                 prefixListNode.Decls |> List.map (fun typarDecl -> typarDecl.TypeParameter.Text)
 
-            let typedTreeNames : string list =
-                resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.FCSRange
+            match resolver.GetTypeTyparNames tdn.TypeName.Identifier.Range.FCSRange with
+            | Error error -> Error error
+            | Ok typedTreeNames ->
 
             if untypedTreeNames.Length <> typedTreeNames.Length then
-                failwith "unexpected difference in typar count"
+                Error "unexpected difference in typar count"
             else
-                List.zip typedTreeNames untypedTreeNames |> Map
-        | _ -> Map.empty
-
-    ignore typarMap
+                List.zip typedTreeNames untypedTreeNames |> Map |> Ok
+        | _ -> Ok Map.empty
 
     let mkImplicitCtor
         (resolver : TypedTreeInfoResolver)
         (identifier : IdentListNode)
         (implicitCtor : ImplicitConstructorNode)
+        : Result<MemberDefn, TelplinError>
         =
-        let bindingInfo = resolver.GetTypeInfo identifier.Range.FCSRange
+        let bindingInfoResult = resolver.GetTypeInfo identifier.Range.FCSRange
 
-        let returnType =
+        match bindingInfoResult with
+        | Error error -> TelplinError (implicitCtor.Range, error) |> Result.Error
+        | Ok bindingInfo ->
+
+        let returnTypeResult =
             match bindingInfo.ConstructorInfo with
             | None ->
                 TypeFunsNode ([ Type.LongIdent (iln "unit"), stn "->" ], typeNameType, zeroRange)
                 |> Type.Funs
+                |> Ok
             | Some { ReturnTypeString = typeString } -> mkTypeFromString typeString
 
         // Convert the SimplePats to Patterns
@@ -441,6 +497,10 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
                 )
                 |> wrapAsTupleIfMultiple
 
+        match returnTypeResult with
+        | Error error -> TelplinError (implicitCtor.Range, error) |> Result.Error
+        | Ok returnType ->
+
         let returnType =
             let typedTreeInfo =
                 {
@@ -470,88 +530,123 @@ let mkTypeDefn (resolver : TypedTreeInfoResolver) (forceAndKeyword : bool) (type
             zeroRange
         )
         |> MemberDefn.SigMember
+        |> Result.Ok
 
-    let mkMembersForType members = mkMembers resolver typarMap members
+    let mkMembersForType members =
+        match typarMapResult with
+        | Error error -> [], [ TelplinError (typeDefnRange, error) ]
+        | Ok typarMap -> mkMembers resolver typarMap members
 
     match typeDefn with
     | TypeDefn.Record recordNode ->
-        TypeDefnRecordNode (
-            typeName,
-            recordNode.Accessibility,
-            recordNode.OpeningBrace,
-            recordNode.Fields,
-            recordNode.ClosingBrace,
-            mkMembersForType tdn.Members,
-            zeroRange
-        )
-        |> TypeDefn.Record
+        let members, memberErrors = mkMembersForType tdn.Members
 
-    | TypeDefn.Explicit explicitNode ->
-        let body =
-            TypeDefnExplicitBodyNode (
-                explicitNode.Body.Kind,
-                [
-                    match tdn.TypeName.ImplicitConstructor with
-                    | None -> ()
-                    | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
-                    yield! mkMembersForType explicitNode.Body.Members
-                ],
-                explicitNode.Body.End,
+        let sigRecord =
+            TypeDefnRecordNode (
+                typeName,
+                recordNode.Accessibility,
+                recordNode.OpeningBrace,
+                recordNode.Fields,
+                recordNode.ClosingBrace,
+                members,
                 zeroRange
             )
+            |> TypeDefn.Record
 
-        TypeDefnExplicitNode (typeName, body, mkMembersForType tdn.Members, zeroRange)
-        |> TypeDefn.Explicit
+        sigRecord, memberErrors
+
+    | TypeDefn.Explicit explicitNode ->
+
+        let members, memberErrors =
+            let members, memberErrors = mkMembersForType explicitNode.Body.Members
+
+            match tdn.TypeName.ImplicitConstructor with
+            | None -> members, memberErrors
+            | Some implicitCtor ->
+                match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
+                | Error error -> members, error :: memberErrors
+                | Ok sigCtor -> sigCtor :: members, memberErrors
+
+        let body =
+            TypeDefnExplicitBodyNode (explicitNode.Body.Kind, members, explicitNode.Body.End, zeroRange)
+
+        let extraMembers, extraMemberErrors = mkMembersForType tdn.Members
+
+        let sigExplicit =
+            TypeDefnExplicitNode (typeName, body, extraMembers, zeroRange)
+            |> TypeDefn.Explicit
+
+        sigExplicit, (memberErrors @ extraMemberErrors)
 
     | TypeDefn.Regular _ ->
-        TypeDefnRegularNode (
-            typeName,
-            [
-                match tdn.TypeName.ImplicitConstructor with
-                | None -> ()
-                | Some implicitCtor -> yield mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor
-                yield! mkMembersForType tdn.Members
-            ],
-            zeroRange
-        )
-        |> TypeDefn.Regular
+        let members, memberErrors =
+            let members, memberErrors = mkMembersForType tdn.Members
+
+            match tdn.TypeName.ImplicitConstructor with
+            | None -> members, memberErrors
+            | Some implicitCtor ->
+                match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
+                | Error error -> members, error :: memberErrors
+                | Ok sigCtor -> sigCtor :: members, memberErrors
+
+        let sigRegular =
+            TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
+
+        sigRegular, memberErrors
 
     | TypeDefn.Union unionNode ->
-        TypeDefnUnionNode (
-            typeName,
-            unionNode.Accessibility,
-            unionNode.UnionCases,
-            mkMembersForType tdn.Members,
-            zeroRange
-        )
-        |> TypeDefn.Union
+        let members, memberErrors = mkMembersForType tdn.Members
+
+        let sigUnion =
+            TypeDefnUnionNode (typeName, unionNode.Accessibility, unionNode.UnionCases, members, zeroRange)
+            |> TypeDefn.Union
+
+        sigUnion, memberErrors
 
     | TypeDefn.Abbrev abbrevNode ->
-        TypeDefnAbbrevNode (typeName, abbrevNode.Type, mkMembersForType tdn.Members, zeroRange)
-        |> TypeDefn.Abbrev
+        let members, memberErrors = mkMembersForType tdn.Members
+
+        let sigAbbrev =
+            TypeDefnAbbrevNode (typeName, abbrevNode.Type, members, zeroRange)
+            |> TypeDefn.Abbrev
+
+        sigAbbrev, memberErrors
 
     | TypeDefn.Augmentation _ ->
-        TypeDefnAugmentationNode (typeName, mkMembersForType tdn.Members, zeroRange)
-        |> TypeDefn.Augmentation
+        let members, memberErrors = mkMembersForType tdn.Members
 
-    | TypeDefn.None _ -> tdn.TypeName |> TypeDefn.None
+        let sigAugmentation =
+            TypeDefnAugmentationNode (typeName, members, zeroRange) |> TypeDefn.Augmentation
+
+        sigAugmentation, memberErrors
+
+    | TypeDefn.None _ -> (TypeDefn.None tdn.TypeName), []
     | TypeDefn.Enum _
-    | TypeDefn.Delegate _ -> typeDefn
+    | TypeDefn.Delegate _ -> typeDefn, []
 
 let getLastIdentFromList (identList : IdentListNode) =
     match identList.Content with
     | [ IdentifierOrDot.Ident name ] -> name
     | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
 
-let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDecl option =
+[<RequireQualifiedAccess>]
+type ModuleDeclResult =
+    | None
+    | SingleModuleDecl of ModuleDecl
+    | Error of TelplinError
+    | Nested of parent : ModuleDecl * childErrors : TelplinError list
+
+let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDeclResult =
+    let mdlRange = (ModuleDecl.Node mdl).Range
+
     match mdl with
     | ModuleDecl.DeclExpr _
-    | ModuleDecl.Attributes _ -> None
+    | ModuleDecl.Attributes _ -> ModuleDeclResult.None
     | ModuleDecl.OpenList _
     | ModuleDecl.Val _
     | ModuleDecl.HashDirectiveList _
-    | ModuleDecl.ModuleAbbrev _ -> Some mdl
-    | PrivateTopLevelBinding when not resolver.IncludePrivateBindings -> None
+    | ModuleDecl.ModuleAbbrev _ -> ModuleDeclResult.SingleModuleDecl mdl
+    | PrivateTopLevelBinding when not resolver.IncludePrivateBindings -> ModuleDeclResult.None
     | ModuleDecl.TopLevelBinding bindingNode ->
         match bindingNode.FunctionName with
         | Choice1Of2 name ->
@@ -559,8 +654,12 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             let nameRange = name.Range
             let name = getLastIdentFromList name
 
-            let returnType =
+            let returnTypeResult =
                 mkTypeForValNode resolver nameRange Map.empty bindingNode.Parameters
+
+            match returnTypeResult with
+            | Error error -> ModuleDeclResult.Error (TelplinError (mdlRange, error))
+            | Ok returnType ->
 
             let expr =
                 if hasAnyAttribute (Set.singleton "Literal") bindingNode.Attributes then
@@ -616,86 +715,107 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 zeroRange
             )
             |> ModuleDecl.Val
-            |> Some
-        | _ -> failwith "todo, C98DD050-A18C-4D8D-A025-083B352C57A5"
+            |> ModuleDeclResult.SingleModuleDecl
+        | Choice2Of2 _ -> ModuleDeclResult.Error (TelplinError (mdlRange, "Pattern identifiers are not supported"))
 
-    | ModuleDecl.TypeDefn typeDefn -> mkTypeDefn resolver false typeDefn |> ModuleDecl.TypeDefn |> Some
+    | ModuleDecl.TypeDefn typeDefn ->
+        let sigTypeDefn, memberErrors = mkTypeDefn resolver false typeDefn
+        ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, memberErrors)
 
     | ModuleDecl.NestedModule nestedModule ->
-        let decls =
+        let sigs, errors =
             if not nestedModule.IsRecursive then
-                List.choose (mkModuleDecl resolver) nestedModule.Declarations
+                (nestedModule.Declarations, ([], []))
+                ||> List.foldBack (fun decl (sigs, errors) ->
+                    match mkModuleDecl resolver decl with
+                    | ModuleDeclResult.None -> sigs, errors
+                    | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
+                    | ModuleDeclResult.Error error -> sigs, error :: errors
+                    | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
+                )
             else
                 // A nested module cannot be recursive in a signature file.
                 // Any subsequent types (SynModuleDecl.Types) should be transformed to use the `and` keyword.
                 let rec visit
                     (lastItemIsType : bool)
                     (decls : ModuleDecl list)
-                    (continuation : ModuleDecl list -> ModuleDecl list)
-                    : ModuleDecl list
+                    (continuation : ModuleDecl list * TelplinError list -> ModuleDecl list * TelplinError list)
+                    : ModuleDecl list * TelplinError list
                     =
                     match decls with
-                    | [] -> continuation []
+                    | [] -> continuation ([], [])
                     | currentDecl :: nextDecls ->
 
-                    let isType, sigDecl =
+                    let isType, declResult =
                         match currentDecl with
                         | ModuleDecl.TypeDefn typeDefnNode ->
-                            let sigDecl =
-                                mkTypeDefn resolver lastItemIsType typeDefnNode |> ModuleDecl.TypeDefn |> Some
+                            let sigTypeDefn, errors = mkTypeDefn resolver lastItemIsType typeDefnNode
 
-                            true, sigDecl
+                            true, ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, errors)
                         | decl -> false, mkModuleDecl resolver decl
 
                     visit
                         isType
                         nextDecls
-                        (fun sigDecls ->
-                            match sigDecl with
-                            | None -> sigDecls
-                            | Some sigDecl -> sigDecl :: sigDecls
+                        (fun (sigs, errors) ->
+                            match declResult with
+                            | ModuleDeclResult.None -> sigs, errors
+                            | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
+                            | ModuleDeclResult.Error error -> sigs, error :: errors
+                            | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
                             |> continuation
                         )
 
                 visit false nestedModule.Declarations id
 
-        NestedModuleNode (
-            nestedModule.XmlDoc,
-            nestedModule.Attributes,
-            nestedModule.Module,
-            nestedModule.Accessibility,
-            false,
-            nestedModule.Identifier,
-            nestedModule.Equals,
-            decls,
-            zeroRange
-        )
-        |> ModuleDecl.NestedModule
-        |> Some
+        let sigNestedModule =
+            NestedModuleNode (
+                nestedModule.XmlDoc,
+                nestedModule.Attributes,
+                nestedModule.Module,
+                nestedModule.Accessibility,
+                false,
+                nestedModule.Identifier,
+                nestedModule.Equals,
+                sigs,
+                zeroRange
+            )
+            |> ModuleDecl.NestedModule
+
+        ModuleDeclResult.Nested (sigNestedModule, errors)
     | ModuleDecl.Exception exceptionNode ->
-        ExceptionDefnNode (
-            exceptionNode.XmlDoc,
-            exceptionNode.Attributes,
-            exceptionNode.Accessibility,
-            exceptionNode.UnionCase,
-            exceptionNode.WithKeyword,
-            mkMembers resolver Map.empty exceptionNode.Members,
-            zeroRange
-        )
-        |> ModuleDecl.Exception
-        |> Some
+        let sigMembers, errors = mkMembers resolver Map.empty exceptionNode.Members
+
+        let sigException =
+            ExceptionDefnNode (
+                exceptionNode.XmlDoc,
+                exceptionNode.Attributes,
+                exceptionNode.Accessibility,
+                exceptionNode.UnionCase,
+                exceptionNode.WithKeyword,
+                sigMembers,
+                zeroRange
+            )
+            |> ModuleDecl.Exception
+
+        ModuleDeclResult.Nested (sigException, errors)
     | ModuleDecl.ExternBinding externBindingNode ->
         let nameRange = externBindingNode.Identifier.Range
         let name = getLastIdentFromList externBindingNode.Identifier
+        let bindingInfoResult = resolver.GetFullForBinding nameRange.FCSRange
+
+        match bindingInfoResult with
+        | Error error -> ModuleDeclResult.Error (TelplinError (mdlRange, error))
+        | Ok bindingInfo ->
+
+        match mkTypeFromString bindingInfo.ReturnTypeString with
+        | Error error -> ModuleDeclResult.Error (TelplinError (mdlRange, error))
+        | Ok returnType ->
 
         let returnType =
-            let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
-
-            mkTypeFromString bindingInfo.ReturnTypeString
-            // Type may have unwanted parentheses.
-            |> function
-                | Type.Paren parenNode -> parenNode.Type
-                | t -> t
+            match returnType with
+            | Type.Paren parenNode -> parenNode.Type
+            | t -> t
 
         ValNode (
             externBindingNode.XmlDoc,
@@ -712,26 +832,37 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             zeroRange
         )
         |> ModuleDecl.Val
-        |> Some
+        |> ModuleDeclResult.SingleModuleDecl
 
 let mkModuleOrNamespace
     (resolver : TypedTreeInfoResolver)
     (moduleNode : ModuleOrNamespaceNode)
-    : ModuleOrNamespaceNode
+    : ModuleOrNamespaceNode * TelplinError list
     =
-    let decls = List.choose (mkModuleDecl resolver) moduleNode.Declarations
-    ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange)
+    let decls, errors =
+        (moduleNode.Declarations, ([], []))
+        ||> List.foldBack (fun mdl (sigs, errors) ->
+            match mkModuleDecl resolver mdl with
+            | ModuleDeclResult.None -> sigs, errors
+            | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
+            | ModuleDeclResult.Error error -> sigs, error :: errors
+            | ModuleDeclResult.Nested (sigDecl, childErrors) -> sigDecl :: sigs, childErrors @ errors
+        )
 
-let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) =
+    ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange), errors
+
+let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string * TelplinError list =
     let ast, _diagnostics =
         Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) resolver.Defines
 
     let implementationOak = CodeFormatter.TransformAST (ast, code)
 
-    let signatureOak =
-        let mdns =
+    let signatureOak, (errors : TelplinError list) =
+        let mdns, errors =
             List.map (mkModuleOrNamespace resolver) implementationOak.ModulesOrNamespaces
+            |> List.unzip
 
-        Oak (implementationOak.ParsedHashDirectives, mdns, zeroRange)
+        Oak (implementationOak.ParsedHashDirectives, mdns, zeroRange), List.concat errors
 
-    CodeFormatter.FormatOakAsync signatureOak |> Async.RunSynchronously
+    let code = CodeFormatter.FormatOakAsync signatureOak |> Async.RunSynchronously
+    code, errors

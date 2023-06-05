@@ -51,6 +51,7 @@ type FetchSignatureResponse =
     | OK of signature : string
     | InvalidImplementation of diagnostics : Diagnostic array
     | InvalidSignature of signature : string * diagnostics : Diagnostic array
+    | PartialSignature of signature : string * error : TelplinError array
     | InternalError of string
 
 and Diagnostic =
@@ -60,6 +61,8 @@ and Diagnostic =
         ErrorNumber : int
         Range : Range
     }
+
+and TelplinError = { Range : Range ; Error : string }
 
 and Range =
     {
@@ -89,6 +92,14 @@ let decodeDiagnostic =
         }
     )
 
+let decodeTelplinError =
+    Decode.object (fun get ->
+        {
+            Range = get.Required.Field "range" decodeRange
+            Error = get.Required.Field "error" Decode.string
+        }
+    )
+
 let decodeBadResult =
     Decode.object (fun get ->
         let typeName = get.Required.Field "type" Decode.string
@@ -101,6 +112,10 @@ let decodeBadResult =
             let signature = get.Required.Field "signature" Decode.string
             let diagnostics = get.Required.Field "diagnostics" (Decode.array decodeDiagnostic)
             FetchSignatureResponse.InvalidSignature (signature, diagnostics)
+        | "partialSignatureFile" ->
+            let signature = get.Required.Field "signature" Decode.string
+            let errors = get.Required.Field "errors" (Decode.array decodeTelplinError)
+            FetchSignatureResponse.PartialSignature (signature, errors)
         | other -> FetchSignatureResponse.InternalError $"Unexpected type name \"{other}\""
     )
 
@@ -121,8 +136,9 @@ type Model =
         Implementation : string
         Signature : string
         IsLoading : bool
-        Error : string
+        MainError : string
         Diagnostics : Diagnostic array
+        Errors : TelplinError array
         Mode : Mode
     }
 
@@ -182,8 +198,9 @@ let init _ =
         Implementation = urlInfo.Implementation
         Signature = ""
         IsLoading = false
-        Error = ""
+        MainError = ""
         Diagnostics = Array.empty
+        Errors = Array.empty
         Mode = Mode.Telplin
     },
     cmd
@@ -207,7 +224,7 @@ let update msg (model : Model) =
         { model with
             IsLoading = true
             Signature = ""
-            Error = ""
+            MainError = ""
             Diagnostics = Array.empty
         },
         Cmd.batch [
@@ -233,7 +250,7 @@ let update msg (model : Model) =
             | FetchSignatureResponse.InternalError error ->
                 { model with
                     IsLoading = false
-                    Error = error
+                    MainError = error
                 }
 
             | FetchSignatureResponse.InvalidImplementation diagnostics ->
@@ -246,6 +263,12 @@ let update msg (model : Model) =
                     IsLoading = false
                     Signature = signature
                     Diagnostics = diagnostics
+                }
+            | FetchSignatureResponse.PartialSignature (signature, errors) ->
+                { model with
+                    IsLoading = false
+                    Signature = signature
+                    Errors = errors
                 }
 
         nextModel, Cmd.none
@@ -311,42 +334,55 @@ FCS: FSharpCheckFileResults.GenerateSignature
 
     sprintf "https://github.com/dotnet/fsharp/issues/new?title=%s&body=%s" "<Insert meaningful title>" issueTemplate
 
+let badge key range severity errorNumber message =
+    div [ Key key ] [
+        strong [] [
+            str $"({range.StartLine}, {range.StartColumn}) ({range.EndLine},{range.EndColumn})"
+        ]
+        span [ ClassName $"{Style.Badge} {severity}" ] [ str severity ]
+        match errorNumber with
+        | None -> ()
+        | Some errorNumber -> span [ ClassName $"{Style.Badge}" ] [ ofInt errorNumber ]
+        p [] [ str message ]
+    ]
+
 [<ReactComponent>]
 let App () =
     let model, dispatch = React.useElmish (init, update, Array.empty)
 
     let errorPanel =
-        if Array.isEmpty model.Diagnostics && String.IsNullOrWhiteSpace model.Error then
+        if
+            Array.isEmpty model.Diagnostics
+            && Array.isEmpty model.Errors
+            && String.IsNullOrWhiteSpace model.MainError
+        then
             None
         else
-            let error =
-                if String.IsNullOrWhiteSpace model.Error then
+            let mainError =
+                if String.IsNullOrWhiteSpace model.MainError then
                     None
                 else
-                    div [ Id "error" ] [ str model.Error ] |> Some
+                    div [ Id "error" ] [ str model.MainError ] |> Some
 
-            let diagnostics =
-                model.Diagnostics
-                |> Array.mapi (fun idx diag ->
+            let errors =
+                [|
+                    yield!
+                        model.Diagnostics
+                        |> Array.mapi (fun idx diag ->
+                            badge $"diag_{idx}" diag.Range diag.Severity (Some diag.ErrorNumber) diag.Message
+                        )
+                    yield!
+                        model.Errors
+                        |> Array.mapi (fun idx error -> badge $"error_{idx}" error.Range "error" None error.Error)
+                |]
 
-                    div [ Key !!idx ] [
-                        strong [] [
-                            str
-                                $"({diag.Range.StartLine}, {diag.Range.StartColumn}) ({diag.Range.EndLine},{diag.Range.EndColumn})"
-                        ]
-                        span [ ClassName $"{Style.Badge} {diag.Severity}" ] [ str diag.Severity ]
-                        span [ ClassName $"{Style.Badge}" ] [ ofInt diag.ErrorNumber ]
-                        p [] [ str diag.Message ]
-                    ]
-                )
-
-            div [ Id "error-panel" ] [ ofOption error ; ofArray diagnostics ] |> Some
+            div [ Id "error-panel" ] [ ofOption mainError ; ofArray errors ] |> Some
 
     let reportIssueButton =
         if
             String.IsNullOrWhiteSpace model.Signature
             && Array.isEmpty model.Diagnostics
-            && String.IsNullOrWhiteSpace model.Error
+            && String.IsNullOrWhiteSpace model.MainError
         then
             None
         else
@@ -376,7 +412,6 @@ let App () =
                     li [
                         ClassName (if model.Mode = Mode.FCS then "active" else "")
                         OnClick (fun _ -> dispatch (ChangeMode Mode.FCS))
-
                     ] [ str "FCS" ]
                 ]
 

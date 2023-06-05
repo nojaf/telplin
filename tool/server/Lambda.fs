@@ -12,6 +12,7 @@ open Thoth.Json.Net
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
 open Telplin.Core
+open Telplin.Core.UntypedTree.ASTCreation
 
 [<RequireQualifiedAccess>]
 module HeaderValues =
@@ -57,11 +58,23 @@ module Encoding =
             ]
         |> Encode.toString 4
 
+    let encodeTelplinError (TelplinError (range, error)) =
+        Encode.object [ "range", encodeRange range.FCSRange ; "error", Encode.string error ]
+
     let encodeInvalidSignatureFile (diagnostics : FSharpDiagnostic array) signatureContent =
         Encode.object
             [
                 "type", Encode.string "invalidSignatureFile"
                 "diagnostics", Encode.array (Array.map encodeDiagnostic diagnostics)
+                "signature", Encode.string signatureContent
+            ]
+        |> Encode.toString 4
+
+    let encodePartialSignatureFile (errors : TelplinError list) signatureContent =
+        Encode.object
+            [
+                "type", Encode.string "partialSignatureFile"
+                "errors", Encode.list (List.map encodeTelplinError errors)
                 "signature", Encode.string signatureContent
             ]
         |> Encode.toString 4
@@ -162,6 +175,8 @@ let mkProcessRequest<'t>
             onInternalError "Could not type check the implementation file. Type checking was aborted."
         | SignatureVerificationResult.FailedToCreateSignatureFile error ->
             onInternalError $"Internal error when creating signature file:\n{error}"
+        | SignatureVerificationResult.PartialSignatureFile (signature, errors) ->
+            onInvalidSignatureFile (Encoding.encodePartialSignatureFile errors signature)
     with ex ->
         onInternalError ex.Message
 
