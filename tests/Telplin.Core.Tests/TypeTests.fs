@@ -234,6 +234,7 @@ type State =
 """
 
 [<Test>]
+[<Ignore "Requires fix in https://github.com/dotnet/fsharp/pull/15285">]
 let ``static getter/setter should remain static, 51`` () =
     assertSignature
         """
@@ -630,9 +631,9 @@ open System
 type ColumnIndentedTextWriter =
     new: unit -> ColumnIndentedTextWriter
     member Write: s: string -> unit
-    member Write: s: string * [<ParamArray>] objs: obj[] -> unit
+    member Write: s: string * [<ParamArray>] objs: obj array -> unit
     member WriteLine: s: string -> unit
-    member WriteLine: s: string * [<ParamArray>] objs: obj[] -> unit
+    member WriteLine: s: string * [<ParamArray>] objs: obj array -> unit
     member WriteBlankLines: count: int -> unit
     member Indent: i: int -> unit
     member Unindent: i: int -> unit

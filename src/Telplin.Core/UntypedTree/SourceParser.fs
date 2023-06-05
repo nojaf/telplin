@@ -59,3 +59,21 @@ let (|PrivateMemberDefnExplicitCtor|_|) =
         | Some Private -> Some ()
         | _ -> None
     | _ -> None
+
+let (|PatParen|_|) p =
+    match p with
+    | Pattern.Paren parenNode -> Some parenNode.Pattern
+    | _ -> None
+
+let (|SingleIdentType|_|) t =
+    match t with
+    | Type.LongIdent node ->
+        match node.Content with
+        | [ IdentifierOrDot.Ident ident ] -> Some ident.Text
+        | _ -> None
+    | _ -> None
+
+let (|NameOfPat|_|) p =
+    match p with
+    | Pattern.Named name -> Some name.Name
+    | _ -> None

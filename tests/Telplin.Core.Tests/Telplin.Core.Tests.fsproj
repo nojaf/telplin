@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />
+<!--    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />-->
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
     <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
@@ -30,4 +30,9 @@
     <ProjectReference Include="..\..\src\Telplin.Core\Telplin.Core.fsproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="FSharp.Compiler.Service">
+      <HintPath>..\..\..\fsharp\artifacts\bin\FSharp.Compiler.Service\Debug\netstandard2.0\FSharp.Compiler.Service.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

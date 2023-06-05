@@ -14,3 +14,6 @@ val (|PropertyGetSetWithExtraParameter|_|) :
 val (|PrivateTopLevelBinding|_|) : ModuleDecl -> unit option
 val (|PrivateConstructor|_|) : ImplicitConstructorNode -> unit option
 val (|PrivateMemberDefnExplicitCtor|_|) : MemberDefn -> unit option
+val (|PatParen|_|) : Pattern -> Pattern option
+val (|SingleIdentType|_|) : Type -> string option
+val (|NameOfPat|_|) : Pattern -> SingleTextNode option

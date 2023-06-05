@@ -268,7 +268,7 @@ let (|Foo|) = function | 1 -> 2 | x -> x
         """
 module Hej
 
-val (|Foo|): (int -> int)
+val (|Foo|): int -> int
 """
 
 [<Test>]
@@ -494,7 +494,7 @@ let (|Two|) (DU.DU(one, two) as du) = two
 module Hej
 
 type DU = DU of one: string * two: int
-val (|Two|): DU -> int
+val (|Two|): du: DU -> int
 """
 
 [<Test>]
@@ -650,7 +650,7 @@ let f (a : string) (b : char) = fun (c : float) -> 2.0
         """
 module L
 
-val f: a: string -> b: char -> (float -> float)
+val f: a: string -> b: char -> c: float -> float
 """
 
 [<Test>]
@@ -664,7 +664,7 @@ let f (v : int -> int) (x : int -> int) : int -> int = fun z -> z + 1
         """
 module F
 
-val f: v: (int -> int) -> x: (int -> int) -> (int -> int)
+val f: v: (int -> int) -> x: (int -> int) -> z: int -> int
 """
 
 [<Test>]
@@ -678,7 +678,7 @@ let f (v : int -> int) (x : int -> int) = fun z -> z + 1
         """
 module F
 
-val f: v: (int -> int) -> x: (int -> int) -> (int -> int)
+val f: v: (int -> int) -> x: (int -> int) -> z: int -> int
 """
 
 [<Test>]
@@ -1087,10 +1087,10 @@ module Telplin
 /// Optimized arrays equality. ~100x faster than `array1 = array2` on strings.
 /// ~2x faster for floats
 /// ~0.8x slower for ints
-val inline areEqual: xs: 'T[] -> ys: 'T[] -> bool when 'T: equality
+val inline areEqual: xs: 'T array -> ys: 'T array -> bool when 'T: equality
 /// check if subArray is found in the wholeArray starting
 /// at the provided index
-val inline isSubArray: subArray: 'T[] -> wholeArray: 'T[] -> index: int -> bool when 'T: equality
+val inline isSubArray: subArray: 'T array -> wholeArray: 'T array -> index: int -> bool when 'T: equality
 /// Returns true if one array has another as its subset from index 0.
 val startsWith: prefix: 'a array -> whole: 'a array -> bool when 'a: equality
 """
@@ -1131,7 +1131,7 @@ module Telplin
 type Node =
     abstract Children: int array
 
-val noa<'n when 'n :> Node> : n: 'n option -> Node array
+val noa: n: #Node option -> Node array
 """
 
 [<Test>]
@@ -1154,8 +1154,7 @@ module Telplin
 open System
 open System.Threading.Tasks
 
-val mapWithAdditionalDependenies:
-    mapping: ('a -> 'b * #seq<#IDisposable>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
+val mapWithAdditionalDependenies: mapping: ('a -> 'b * #seq<'b1>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
 """
 
 [<Test>]

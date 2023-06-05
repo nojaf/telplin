@@ -39,12 +39,7 @@ type TypeInfoResponse =
     }
 
 type TypedTreeInfoResolver =
-    abstract member GetTypeInfo : range : FSharp.Compiler.Text.range -> Result<TypeInfoResponse, string>
-    abstract member GetFullForBinding : bindingNameRange : FSharp.Compiler.Text.range -> Result<BindingInfo, string>
-
-    abstract member GetPropertyWithIndex :
-        identifier : string -> range : FSharp.Compiler.Text.range -> Result<BindingInfo, string>
-
+    abstract member GetValText : name : string * range : FSharp.Compiler.Text.range -> Result<string, string>
     abstract member Defines : string list
     abstract member IncludePrivateBindings : bool
 

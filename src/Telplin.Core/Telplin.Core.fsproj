@@ -13,8 +13,6 @@
     <Compile Include="UntypedTree\SourceParser.fs" />
     <Compile Include="UntypedTree\ASTCreation.fs" />
     <Compile Include="UntypedTree\TypeTransformer.fs" />
-    <Compile Include="UntypedTree\TypeForValNode.fsi" />
-    <Compile Include="UntypedTree\TypeForValNode.fs" />
     <Compile Include="UntypedTree\UntypedTree.fsi" />
     <Compile Include="UntypedTree\UntypedTree.fs" />
     <Compile Include="TypedTree\Options.fsi" />
@@ -28,8 +26,14 @@
 
   <ItemGroup>
     <PackageReference Include="Fantomas.Core" Version="6.1.0-alpha-003" />
-    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />
+<!--    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />-->
     <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.815" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FSharp.Compiler.Service">
+      <HintPath>..\..\..\fsharp\artifacts\bin\FSharp.Compiler.Service\Debug\netstandard2.0\FSharp.Compiler.Service.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
