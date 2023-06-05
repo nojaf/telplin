@@ -92,6 +92,13 @@ let assertSignatureWith
     | SignatureVerificationResult.InvalidSignatureFile (_, diagnosticInfos) ->
         Array.iter (fun d -> printfn "%A" d) diagnosticInfos
         failwith "Could not compile source implementation file with signature file"
+    | SignatureVerificationResult.PartialSignatureFile (signature, telplinErrors) ->
+        ignore signature
+
+        for TelplinError (m, error) in telplinErrors do
+            printfn $"%A{m}: %s{error}"
+
+        failwith "Only a partial signature file was created."
 
 let assertSignature implementation expectedSignature =
     assertSignatureWith id true implementation expectedSignature

@@ -293,46 +293,49 @@ let mkTypeForValAux
     (bindingInfo : BindingInfo)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
-    : Type
+    : Result<Type, string>
     =
-    let t =
-        mkTypeFromString bindingInfo.ReturnTypeString
-        // Type may have unwanted parentheses.
-        |> stripParens
+    mkTypeFromString bindingInfo.ReturnTypeString
+    |> Result.map (fun typeFromString ->
+        let t =
+            typeFromString
+            // Type may have unwanted parentheses.
+            |> stripParens
 
-    let typedTreeInfo =
-        {
-            ReturnType = t
-            BindingGenericParameters = bindingInfo.BindingGenericParameters
-            TypeGenericParameters = bindingInfo.TypeGenericParameters
-        }
+        let typedTreeInfo =
+            {
+                ReturnType = t
+                BindingGenericParameters = bindingInfo.BindingGenericParameters
+                TypeGenericParameters = bindingInfo.TypeGenericParameters
+            }
 
-    let returnType =
-        mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters
+        let returnType =
+            mkTypeForValNodeBasedOnTypedTree typedTreeInfo typeParameterMap parameters
 
-    let returnType =
-        // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
-        // See test ``function return type``
-        match returnType with
-        | Type.Funs funsNode ->
-            match funsNode.ReturnType with
-            | Type.Funs _ ->
-                let parenNode = TypeParenNode (stn "(", funsNode.ReturnType, stn ")", zeroRange)
-                TypeFunsNode (funsNode.Parameters, Type.Paren parenNode, zeroRange) |> Type.Funs
+        let returnType =
+            // If the return parameter of a function type is a function type, we need to wrap it in parenthesis.
+            // See test ``function return type``
+            match returnType with
+            | Type.Funs funsNode ->
+                match funsNode.ReturnType with
+                | Type.Funs _ ->
+                    let parenNode = TypeParenNode (stn "(", funsNode.ReturnType, stn ")", zeroRange)
+                    TypeFunsNode (funsNode.Parameters, Type.Paren parenNode, zeroRange) |> Type.Funs
+                | _ -> returnType
             | _ -> returnType
-        | _ -> returnType
 
-    returnType
+        returnType
+    )
 
 let mkTypeForValNode
     (resolver : TypedTreeInfoResolver)
     (nameRange : range)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
-    : Type
+    : Result<Type, string>
     =
-    let bindingInfo = resolver.GetFullForBinding nameRange.FCSRange
-    mkTypeForValAux bindingInfo typeParameterMap parameters
+    resolver.GetFullForBinding nameRange.FCSRange
+    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo typeParameterMap parameters)
 
 let mkTypeForGetSetMemberValNode
     (resolver : TypedTreeInfoResolver)
@@ -340,7 +343,7 @@ let mkTypeForGetSetMemberValNode
     (nameRange : range)
     (typeParameterMap : Map<string, string>)
     (parameters : Pattern list)
-    : Type
+    : Result<Type, string>
     =
-    let bindingInfo = resolver.GetPropertyWithIndex name nameRange.FCSRange
-    mkTypeForValAux bindingInfo typeParameterMap parameters
+    resolver.GetPropertyWithIndex name nameRange.FCSRange
+    |> Result.bind (fun bindingInfo -> mkTypeForValAux bindingInfo typeParameterMap parameters)

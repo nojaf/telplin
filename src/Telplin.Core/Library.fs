@@ -11,26 +11,29 @@ type SignatureVerificationResult =
     | FailedToCreateSignatureFile of error : string
     | InvalidImplementationFile of diagnostics : FSharpDiagnostic array
     | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnostic array
+    | PartialSignatureFile of signature : string * TelplinError list
+
+type MkSignature = FSharpProjectOptions -> string -> string * TelplinError list
 
 [<RequireQualifiedAccess>]
 module SignatureCreation =
-    let telplin includePrivateBindings (options : FSharpProjectOptions) (implementation : string) : string =
+    let telplin includePrivateBindings (options : FSharpProjectOptions) (implementation : string) =
         let resolver =
             TypedTree.Resolver.mkResolverForCode options includePrivateBindings implementation
 
         UntypedTree.Writer.mkSignatureFile resolver implementation
 
-    let fcs (options : FSharpProjectOptions) (implementation : string) : string =
+    let fcs (options : FSharpProjectOptions) (implementation : string) =
         match TypedTree.Resolver.FCSSignature options implementation with
         | Choice1Of2 _ -> failwith "Could not generate a signature via FCS"
-        | Choice2Of2 signature -> signature
+        | Choice2Of2 signature -> signature, List.empty<TelplinError>
 
 type internal TelplinInternalApi =
     static member VerifySignatureWithImplementation
         (
             implementation : string,
             options : FSharpProjectOptions,
-            mkSignature : FSharpProjectOptions -> string -> string,
+            mkSignature : MkSignature,
             ?assertSignature : string -> unit
         )
         =
@@ -53,7 +56,11 @@ type internal TelplinInternalApi =
 
         match signature with
         | Error error -> SignatureVerificationResult.FailedToCreateSignatureFile error
-        | Ok signature ->
+        | Ok (signature, errors) ->
+
+        if not errors.IsEmpty then
+            SignatureVerificationResult.PartialSignatureFile (signature, errors)
+        else
 
         Option.iter (fun assertSignature -> assertSignature signature) assertSignature
 

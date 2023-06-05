@@ -1,11 +1,19 @@
-﻿open System.IO
+﻿open System
+open System.IO
 open Argu
 open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin.Core
 
-let private meh = 5
+module ColorPrint =
+    let inline private withColor color (text : string) =
+        let old = Console.ForegroundColor
+        Console.ForegroundColor <- color
+        Console.WriteLine text
+        Console.ForegroundColor <- old
+
+    let inline printRedn (text : string) = withColor ConsoleColor.Red text
 
 type CliArguments =
     | [<MainCommand>] Input of path : string
@@ -100,7 +108,7 @@ let main args =
         printfn $"Wrote compiler arguments to %s{responseFile}"
 
     if not onlyRecord then
-        let signatures =
+        let signatureResults =
             let sourceFiles =
                 match arguments.TryGetResult <@ Files @> with
                 | None -> projectOptions.SourceFiles
@@ -132,7 +140,13 @@ let main args =
                 Some (sourceFile, signature)
             )
 
-        for fileName, signature in signatures do
+        for fileName, (signature, errors) in signatureResults do
+            if not errors.IsEmpty then
+                ColorPrint.printRedn $"Errors in {fileName}:"
+
+                for TelplinError (m, error) in errors do
+                    ColorPrint.printRedn $"%A{m}: %s{error}"
+
             if arguments.Contains <@ Dry_Run @> then
                 let length = fileName.Length + 4
                 printfn "%s" (String.init length (fun _ -> "-"))
