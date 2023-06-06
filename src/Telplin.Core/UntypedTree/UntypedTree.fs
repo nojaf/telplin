@@ -8,6 +8,14 @@ open Telplin.Core
 open Telplin.Core.UntypedTree.ASTCreation
 open Telplin.Core.UntypedTree.SourceParser
 
+let processResults<'T, 'TResult>
+    (foldFn : 'T -> 'TResult list -> TelplinError list -> 'TResult list * TelplinError list)
+    (items : 'T list)
+    : 'TResult list * TelplinError list
+    =
+    (items, (List.empty<'TResult>, List.empty<TelplinError>))
+    ||> List.foldBack (fun item (results : 'TResult list, errors : TelplinError list) -> foldFn item results errors)
+
 let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
     let hasDefault =
         propertyNode.LeadingKeyword.Content
@@ -342,14 +350,15 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
     | md -> MemberDefnResult.Error (TelplinError (mdRange, $"Not implemented MemberDefn: %A{md}"))
 
 let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list * TelplinError list =
-    (ms, ([], []))
-    ||> List.foldBack (fun md (sigMembers, errors) ->
-        match mkMember resolver md with
-        | MemberDefnResult.None -> sigMembers, errors
-        | MemberDefnResult.Error error -> sigMembers, error :: errors
-        | MemberDefnResult.SingleMember md -> md :: sigMembers, errors
-        | MemberDefnResult.GetAndSetMember (g, s) -> s :: g :: sigMembers, errors
-    )
+    processResults
+        (fun md (sigMembers : MemberDefn list) (errors : TelplinError list) ->
+            match mkMember resolver md with
+            | MemberDefnResult.None -> sigMembers, errors
+            | MemberDefnResult.Error error -> sigMembers, error :: errors
+            | MemberDefnResult.SingleMember md -> md :: sigMembers, errors
+            | MemberDefnResult.GetAndSetMember (g, s) -> s :: g :: sigMembers, errors
+        )
+        ms
 
 /// <summary>
 /// Map a TypeDefn to its signature counterpart.
@@ -601,14 +610,15 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
     | ModuleDecl.NestedModule nestedModule ->
         let sigs, errors =
             if not nestedModule.IsRecursive then
-                (nestedModule.Declarations, ([], []))
-                ||> List.foldBack (fun decl (sigs, errors) ->
-                    match mkModuleDecl resolver decl with
-                    | ModuleDeclResult.None -> sigs, errors
-                    | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
-                    | ModuleDeclResult.Error error -> sigs, error :: errors
-                    | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
-                )
+                processResults
+                    (fun decl sigs errors ->
+                        match mkModuleDecl resolver decl with
+                        | ModuleDeclResult.None -> sigs, errors
+                        | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
+                        | ModuleDeclResult.Error error -> sigs, error :: errors
+                        | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
+                    )
+                    nestedModule.Declarations
             else
                 // A nested module cannot be recursive in a signature file.
                 // Any subsequent types (SynModuleDecl.Types) should be transformed to use the `and` keyword.
@@ -710,14 +720,15 @@ let mkModuleOrNamespace
     : ModuleOrNamespaceNode * TelplinError list
     =
     let decls, errors =
-        (moduleNode.Declarations, ([], []))
-        ||> List.foldBack (fun mdl (sigs, errors) ->
-            match mkModuleDecl resolver mdl with
-            | ModuleDeclResult.None -> sigs, errors
-            | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
-            | ModuleDeclResult.Error error -> sigs, error :: errors
-            | ModuleDeclResult.Nested (sigDecl, childErrors) -> sigDecl :: sigs, childErrors @ errors
-        )
+        processResults
+            (fun mdl sigs errors ->
+                match mkModuleDecl resolver mdl with
+                | ModuleDeclResult.None -> sigs, errors
+                | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
+                | ModuleDeclResult.Error error -> sigs, error :: errors
+                | ModuleDeclResult.Nested (sigDecl, childErrors) -> sigDecl :: sigs, childErrors @ errors
+            )
+            moduleNode.Declarations
 
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange), errors
 
