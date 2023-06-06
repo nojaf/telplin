@@ -7,6 +7,8 @@
 
 ### Fixed
 * Private constructor in struct. [#79](https://github.com/nojaf/telplin/issues/79)
+* Generic type parameter doesn't parse internally. [#68](https://github.com/nojaf/telplin/issues/68)
+* Optional function type cannot be parsed. [#78](https://github.com/nojaf/telplin/issues/78)
 
 ## 0.7.0 - 05-06-23
 

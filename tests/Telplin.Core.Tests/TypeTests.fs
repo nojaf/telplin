@@ -1109,3 +1109,46 @@ type S =
         private new: w: string -> S
     end
 """
+
+[<Test>]
+let ``generic type parameter in path, 68`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+open System.Collections.Generic
+open System.Collections.Immutable
+
+type ImmutableArrayViaBuilder<'T>(builder: ImmutableArray<'T>.Builder) =
+    class end
+"""
+        """
+module Telplin
+
+open System
+open System.Collections.Generic
+open System.Collections.Immutable
+
+type ImmutableArrayViaBuilder<'T> =
+    class
+        new: builder: ImmutableArray<'T>.Builder -> ImmutableArrayViaBuilder<'T>
+    end
+"""
+
+[<Test>]
+let ``optional function type, 78`` () =
+    assertSignature
+        """
+module Telplin
+
+type Foo (v:int) =
+    member val Bar : (int -> unit -> bool) option = None
+"""
+        """
+module Telplin
+
+type Foo =
+    new: v: int -> Foo
+    member Bar: (int -> unit -> bool) option
+"""
