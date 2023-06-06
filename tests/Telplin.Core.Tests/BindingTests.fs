@@ -1214,3 +1214,17 @@ type Foo =
     new: unit -> Foo
     member Bar: (int -> string)
 """
+
+[<Test>]
+let ``mutable value, 67`` () =
+    assertSignature
+        """
+module X
+
+let mutable lastDisplayContext : obj = null
+"""
+        """
+module X
+
+val mutable lastDisplayContext: obj
+"""
