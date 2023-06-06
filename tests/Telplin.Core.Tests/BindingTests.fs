@@ -1197,3 +1197,20 @@ open System
 /// Reference equality.
 val inline (==): a: 'A -> b: 'B -> bool when 'A: not struct and 'B: not struct
 """
+
+[<Test>]
+let ``property member with function return type`` () =
+    assertSignature
+        """
+module Telplin
+
+type Foo() =
+    member x.Bar = fun (i:int) -> ""
+"""
+        """
+module Telplin
+
+type Foo =
+    new: unit -> Foo
+    member Bar: (int -> string)
+"""
