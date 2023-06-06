@@ -18,37 +18,24 @@ When the `untyped` tree does not contain sufficient information, a `FSharpSymbol
 
 <div class="mermaid text-center">
 graph TD
-    A[Telplin.Common] --> B
-    A --> C
-    B[Telplin.UntypedTree] --> D[Teplin.Core]
-    C[Telplin.TypedTree] --> D
-    D --> E[Telplin]
-    D --> F[Telplin.Lambda]
-    D --> G[Telplin.Core.Tests]
+    D[Teplin.Core]
+    E[Telplin]
+    F[Telplin.Lambda]
+    G[Telplin.Core.Tests]
+    D --> E
+    D --> F
+    D --> G
     H[Telplin.Deploy]
     I[OnlineTool]
  </div>
 
-### Telplin.Common
-
-Contains some shared types and interfaces.
-
-### Teplin.UntypedTree
-
-Has a reference to [Fantomas.Core](https://www.nuget.org/packages/Fantomas.Core) and processes the `untyped` tree.
-Note that Fantomas does not use [FSharp.Compiler.Service](https://www.nuget.org/packages/FSharp.Compiler.Service).  
-The `untyped` tree types that `Fantomas.FCS` exposes are nearly identical to `FCS` but are not binary compatible.
-
-In short, Fantomas needs *Fantomas flavoured* AST to produce source code and that is why there is a strict boundary drawn between the `untyped` and `typed` trees.
-
-### Telplin.TypedTree
-
-References the [FSharp.Compiler.Service](https://www.nuget.org/packages/FSharp.Compiler.Service) and is being used to type check the implementation file.  
-The `untyped` tree constructed by the `FSharpChecker` is very deliberately not used, due to its incompatibility with Fantomas.
-
 ### Telplin.Core
 
-Orchestrates the processing of both syntax trees.
+Has a reference to [Fantomas.Core](https://www.nuget.org/packages/Fantomas.Core) and processes the `untyped` tree using the `Oak` model.
+Note that Fantomas does not use [FSharp.Compiler.Service](https://www.nuget.org/packages/FSharp.Compiler.Service).  
+
+Also references the [FSharp.Compiler.Service](https://www.nuget.org/packages/FSharp.Compiler.Service) and is being used to type check the implementation file.  
+The `untyped` tree constructed by the `FSharpChecker` is very deliberately not used, due to its incompatibility with Fantomas.
 
 ### Telplin
 

@@ -37,8 +37,9 @@ This improvement can make the IDE feel a lot snappier when working in a large co
 
 ### Compilation improvement
 
-In [dotnet/fsharp#13737](https://github.com/dotnet/fsharp/pull/13737), a similar feature was introduced to optimize the compiler. If an implementation file is backed by a signature file, the verification of whether the implementation and its signature match will be done in parallel.  
-This can be enabled by adding `<OtherFlags>--test:ParallelCheckingWithSignatureFilesOn</OtherFlags>` to your `fsproj`.
+In [dotnet/fsharp#14494](https://github.com/dotnet/fsharp/pull/14494), a new feature was introduced to optimize the compiler. If an implementation file is backed by a signature file, the verification of whether the implementation and its signature match will be done in parallel.  
+If a file relies on a backed file as a dependency, it can leverage the signature information to perform self-type checking. This approach not only improves efficiency but also significantly speeds up the type-checking process compared to checking the implementation file alone.  
+This feature will be part of dotnet `7.0.4xx` and can be enabled by adding `<OtherFlags>--test:GraphBasedChecking</OtherFlags>` to your `fsproj`.
 
 ## Why this tool?
 
