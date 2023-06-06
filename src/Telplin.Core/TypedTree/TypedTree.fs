@@ -7,7 +7,6 @@ open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
-open Telplin.Core
 open Telplin.Core.TypedTree.FSharpProjectExtensions
 
 let fileCache = ConcurrentDictionary<string, ISourceText> ()
@@ -22,6 +21,35 @@ let documentSource fileName =
 let inMemoryChecker =
     FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
 
+type TypedTreeInfoResolver
+    (defines, includePrivateBindings, sourceText : ISourceText, checkFileResults : FSharpCheckFileResults)
+    =
+    member val Defines = defines
+    member val IncludePrivateBindings = includePrivateBindings
+
+    member _.GetValText (name, range : range) =
+        try
+            let line = sourceText.GetLineString (range.StartLine - 1)
+
+            let symbolUse =
+                checkFileResults.GetSymbolUseAtLocation (range.StartLine, range.EndColumn, line, [ name ])
+
+            match symbolUse with
+            | None -> Error "no symbol use"
+            | Some symbolUse ->
+                match symbolUse.Symbol with
+                | :? FSharpMemberOrFunctionOrValue as mfv ->
+                    let sigTextOpt = mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
+
+                    match sigTextOpt with
+                    | None -> Error $"No sig text for %A{mfv}"
+                    | Some sigText -> Ok sigText
+
+                | _ -> Error "Symbol is not FSharpMemberOrFunctionOrValue"
+
+        with ex ->
+            Error ex.Message
+
 let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions includePrivateBindings =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
@@ -29,39 +57,7 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
 
     match checkFileAnswer with
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
-        { new TypedTreeInfoResolver with
-            member resolver.GetValText (name, bindingNameRange) : Result<string, string> =
-                try
-                    let line = sourceText.GetLineString (bindingNameRange.StartLine - 1)
-
-                    let symbolUse =
-                        checkFileResults.GetSymbolUseAtLocation (
-                            bindingNameRange.StartLine,
-                            bindingNameRange.EndColumn,
-                            line,
-                            [ name ]
-                        )
-
-                    match symbolUse with
-                    | None -> failwith "no symbol use"
-                    | Some symbolUse ->
-                        match symbolUse.Symbol with
-                        | :? FSharpMemberOrFunctionOrValue as mfv ->
-                            let sigTextOpt = mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
-
-                            match sigTextOpt with
-                            | None -> Error $"No sig text for %A{mfv}"
-                            | Some sigText -> Ok sigText
-
-                        | _ -> Error "Symbol is not FSharpMemberOrFunctionOrValue"
-
-                with ex ->
-                    Error ex.Message
-
-            member resolver.Defines = projectOptions.Defines
-            member resolver.IncludePrivateBindings = includePrivateBindings
-
-        }
+        TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
 let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =

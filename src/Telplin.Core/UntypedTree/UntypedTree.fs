@@ -5,6 +5,7 @@ open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 open Microsoft.FSharp.Core
 open Telplin.Core
+open Telplin.Core.TypedTree.Resolver
 open Telplin.Core.UntypedTree.ASTCreation
 open Telplin.Core.UntypedTree.SourceParser
 
