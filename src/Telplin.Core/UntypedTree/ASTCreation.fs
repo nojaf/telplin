@@ -41,13 +41,15 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
             )
         )
 
+let parseSignatureOak text =
+    CodeFormatter.ParseOakAsync (true, text)
+    |> Async.RunSynchronously
+    |> Array.head
+    |> fst
+
 let mkValFromString (valText : string) : Result<ValNode, string> =
     try
-        let oak =
-            CodeFormatter.ParseOakAsync (true, valText)
-            |> Async.RunSynchronously
-            |> Array.head
-            |> fst
+        let oak = parseSignatureOak valText
 
         match oak.ModulesOrNamespaces.[0].Declarations with
         | [ ModuleDecl.Val valNode ] -> Ok valNode
@@ -64,11 +66,7 @@ type A =
 """
 
     try
-        let oak =
-            CodeFormatter.ParseOakAsync (true, pseudoSignature)
-            |> Async.RunSynchronously
-            |> Array.head
-            |> fst
+        let oak = parseSignatureOak pseudoSignature
 
         match oak.ModulesOrNamespaces.[0].Declarations.[0] with
         | ModuleDecl.TypeDefn typeDefn ->
@@ -90,11 +88,7 @@ let mkPrimaryConstructorFromString (primaryCtorText : string) : Result<MemberDef
             """
 
     try
-        let oak =
-            CodeFormatter.ParseOakAsync (true, pseudoSignature)
-            |> Async.RunSynchronously
-            |> Array.head
-            |> fst
+        let oak = parseSignatureOak pseudoSignature
 
         match oak.ModulesOrNamespaces.[0].Declarations.[0] with
         | ModuleDecl.TypeDefn typeDefn ->
