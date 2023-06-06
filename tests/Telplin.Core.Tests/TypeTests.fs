@@ -234,7 +234,6 @@ type State =
 """
 
 [<Test>]
-[<Ignore "Requires fix in https://github.com/dotnet/fsharp/pull/15285">]
 let ``static getter/setter should remain static, 51`` () =
     assertSignature
         """

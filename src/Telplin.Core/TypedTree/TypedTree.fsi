@@ -9,6 +9,8 @@ type TypedTreeInfoResolver =
     /// Tries to find a FSharpSymbol for the given name and range.
     /// Returns the signature text for the found symbol.
     member GetValText : name : string * range : range -> Result<string, string>
+    /// Similar to `GetValText` but look for a symbol with `.ctor` as CompiledName
+    member GetValTextForConstructor : range : range -> Result<string, string>
     member Defines : string list
     member IncludePrivateBindings : bool
 

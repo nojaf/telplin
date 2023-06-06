@@ -452,7 +452,7 @@ let mkTypeDefn
         : Result<MemberDefn, TelplinError>
         =
         let sigMemberResult =
-            resolver.GetValText (".ctor", identifier.Range.FCSRange)
+            resolver.GetValTextForConstructor identifier.Range.FCSRange
             |> Result.bind mkPrimaryConstructorFromString
 
         match sigMemberResult with

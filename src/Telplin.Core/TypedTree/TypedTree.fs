@@ -50,6 +50,26 @@ type TypedTreeInfoResolver
         with ex ->
             Error ex.Message
 
+    member _.GetValTextForConstructor (range : range) =
+        try
+            let line = sourceText.GetLineString (range.StartLine - 1)
+
+            let valText =
+                checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ ".ctor" ])
+                |> List.tryPick (fun symbolUse ->
+                    match symbolUse.Symbol with
+                    | :? FSharpMemberOrFunctionOrValue as mfv when mfv.CompiledName = ".ctor" ->
+                        mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
+                    | _ -> None
+                )
+
+            match valText with
+            | None -> Error "No FSharpMemberOrFunctionOrValue was found for .ctor"
+            | Some valText -> Ok valText
+
+        with ex ->
+            Error ex.Message
+
 let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions includePrivateBindings =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
