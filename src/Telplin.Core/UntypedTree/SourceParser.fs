@@ -36,10 +36,26 @@ let (|PropertyGetSetWithExtraParameter|_|) (md : MemberDefn) =
         )
     | _ -> None
 
+let (|Private|_|) (stn : SingleTextNode) =
+    if stn.Text = "private" then Some () else None
+
 let (|PrivateTopLevelBinding|_|) (mdl : ModuleDecl) =
     match mdl with
     | ModuleDecl.TopLevelBinding binding ->
         match binding.Accessibility with
-        | Some ao -> if ao.Text = "private" then Some () else None
+        | Some Private -> Some ()
+        | _ -> None
+    | _ -> None
+
+let (|PrivateConstructor|_|) (implicitCtor : ImplicitConstructorNode) =
+    match implicitCtor.Accessibility with
+    | Some Private -> Some ()
+    | _ -> None
+
+let (|PrivateMemberDefnExplicitCtor|_|) =
+    function
+    | MemberDefn.ExplicitCtor node ->
+        match node.Accessibility with
+        | Some Private -> Some ()
         | _ -> None
     | _ -> None

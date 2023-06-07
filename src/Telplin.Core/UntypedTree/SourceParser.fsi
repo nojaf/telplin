@@ -12,3 +12,5 @@ val (|PropertyGetSetWithExtraParameter|_|) :
     md : MemberDefn -> (MemberDefnPropertyGetSetNode * PropertyGetSetBindingNode * PropertyGetSetBindingNode) option
 
 val (|PrivateTopLevelBinding|_|) : ModuleDecl -> unit option
+val (|PrivateConstructor|_|) : ImplicitConstructorNode -> unit option
+val (|PrivateMemberDefnExplicitCtor|_|) : MemberDefn -> unit option
