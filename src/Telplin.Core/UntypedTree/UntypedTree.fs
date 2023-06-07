@@ -125,9 +125,10 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         |> MemberDefn.SigMember
         |> MemberDefnResult.SingleMember
 
+    | PrivateMemberDefnExplicitCtor when not resolver.IncludePrivateBindings -> MemberDefnResult.None
+
     | MemberDefn.ExplicitCtor explicitNode ->
         let name = explicitNode.New
-
         let returnTypeResult = mkTypeForValNode resolver name.Range [ explicitNode.Pattern ]
 
         match returnTypeResult with
@@ -519,6 +520,7 @@ let mkTypeDefn
             let members, memberErrors = mkMembers resolver explicitNode.Body.Members
 
             match tdn.TypeName.ImplicitConstructor with
+            | Some PrivateConstructor when not resolver.IncludePrivateBindings -> members, memberErrors
             | None -> members, memberErrors
             | Some implicitCtor ->
                 match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
@@ -542,6 +544,7 @@ let mkTypeDefn
 
             match tdn.TypeName.ImplicitConstructor with
             | None -> members, memberErrors
+            | Some PrivateConstructor when not resolver.IncludePrivateBindings -> members, memberErrors
             | Some implicitCtor ->
                 match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
                 | Error error -> members, error :: memberErrors
