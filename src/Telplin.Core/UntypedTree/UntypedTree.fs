@@ -142,7 +142,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                 None,
                 None,
                 false,
-                None,
+                explicitNode.Accessibility,
                 name,
                 None,
                 returnType,

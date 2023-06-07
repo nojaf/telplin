@@ -1086,3 +1086,25 @@ module Bar =
     and Y = string
     val z: a: int -> int
 """
+
+[<Test>]
+let ``private explicit constructor`` () =
+    assertSignature
+        """
+module Telplin
+
+type S =
+    struct
+        val T: int
+        private new (w: string) = { T =  0 }
+    end
+"""
+        """
+module Telplin
+
+type S =
+    struct
+        val T: int
+        private new: w: string -> S
+    end
+"""
