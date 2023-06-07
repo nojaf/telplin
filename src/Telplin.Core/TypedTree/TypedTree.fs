@@ -346,21 +346,37 @@ let typeCheckForPair projectOptions implementation signature =
 
     fileCache.TryAdd (signatureName, SourceText.ofString signature) |> ignore
 
-    fileCache.TryAdd (implementationName, SourceText.ofString implementation)
-    |> ignore
-
     let projectOptions : FSharpProjectOptions =
         { projectOptions with
             SourceFiles = [| signatureName ; implementationName |]
         }
 
-    let result =
-        inMemoryChecker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+    let _, signatureCheckResult =
+        inMemoryChecker.ParseAndCheckFileInProject (signatureName, 0, SourceText.ofString signature, projectOptions)
+        |> Async.RunSynchronously
+
+    let _, implementationCheckResult =
+        inMemoryChecker.ParseAndCheckFileInProject (
+            implementationName,
+            0,
+            SourceText.ofString implementation,
+            projectOptions
+        )
+        |> Async.RunSynchronously
 
     fileCache.TryRemove signatureName |> ignore
     fileCache.TryRemove implementationName |> ignore
 
-    filterDiagnostics result.Diagnostics
+    [|
+        match signatureCheckResult with
+        | FSharpCheckFileAnswer.Aborted -> ()
+        | FSharpCheckFileAnswer.Succeeded checkFileResults -> yield! checkFileResults.Diagnostics
+
+        match implementationCheckResult with
+        | FSharpCheckFileAnswer.Aborted -> ()
+        | FSharpCheckFileAnswer.Succeeded checkFileResults -> yield! checkFileResults.Diagnostics
+    |]
+    |> filterDiagnostics
 
 let FCSSignature options implementation =
     let projectOptions : FSharpProjectOptions =
