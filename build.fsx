@@ -22,6 +22,7 @@ let runCommand (file : string) (arguments : string) =
                 .WithWorkingDirectory(fsharpCompiler.FullName)
                 .WithArguments(arguments)
                 .WithStandardOutputPipe(PipeTarget.ToDelegate (printfn "%s"))
+                .WithStandardErrorPipe(PipeTarget.ToDelegate (printfn "%s"))
                 .ExecuteAsync()
                 .Task
 
