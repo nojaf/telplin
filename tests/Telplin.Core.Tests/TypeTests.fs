@@ -948,7 +948,7 @@ module ResultCEExtensions =
         /// <summary>
         /// Needed to allow `for..in` and `for..do` functionality
         /// </summary>
-        member inline Source: s: 'a -> 'a when 'a :> seq<'b>
+        member inline Source: s: 'a -> 'a when 'a :> 'b seq
 """
 
 [<Test>]

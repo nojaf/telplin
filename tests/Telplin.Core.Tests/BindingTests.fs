@@ -70,7 +70,7 @@ let a (b:string list) : seq<int> = failwith "not implemented"
         """
 module A
 
-val a: b: string list -> seq<int>
+val a: b: string list -> int seq
 """
 
 [<Test>]
@@ -850,7 +850,7 @@ let intersperse separator (sequence: #seq<'a>) =
         """
 module FA
 
-val intersperse: separator: 'a -> sequence: #seq<'a> -> seq<'a>
+val intersperse: separator: 'a -> sequence: #('a seq) -> 'a seq
 """
 
 [<Test>]
@@ -1143,7 +1143,7 @@ module Telplin
 open System
 open System.Threading.Tasks
 
-let mapWithAdditionalDependenies
+let mapWithAdditionalDependencies
     (mapping: 'a -> 'b * #seq<#IDisposable>) 
     (value: Task<'a>) : Task<'b> =
     failwith "meh"
@@ -1154,7 +1154,8 @@ module Telplin
 open System
 open System.Threading.Tasks
 
-val mapWithAdditionalDependenies: mapping: ('a -> 'b * #seq<'b1>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
+val mapWithAdditionalDependencies:
+    mapping: ('a -> 'b * #('b1 seq)) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
 """
 
 [<Test>]
