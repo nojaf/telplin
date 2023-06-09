@@ -11,7 +11,8 @@ open CliWrap
 
 let apiKey = Environment.GetEnvironmentVariable "TELPLIN_NUGET_KEY"
 let fsharpCompiler = Path.Combine (__SOURCE_DIRECTORY__, ".fsharp") |> DirectoryInfo
-let fsharpCompilerCommit = "1e5b5e4f52b8c09015d0420c2adbcc33a73456c5" // Don't consider seq`1 prefix in NicePrint.
+let fsharpCompilerRemote = "https://github.com/nojaf/fsharp.git"
+let fsharpCompilerCommit = "43ec6a35a81738947c3fe6dc2ec1d9734a4a024d" // See https://github.com/dotnet/fsharp/compare/main...nojaf:fsharp:hash-contraint-seq-fix
 
 let runCommand (file : string) (arguments : string) =
     task {
@@ -38,7 +39,7 @@ pipeline "Init" {
                 if not fsharpCompiler.Exists then
                     fsharpCompiler.Create ()
                     do! git "init"
-                    do! git "remote add origin https://github.com/dotnet/fsharp.git"
+                    do! git $"remote add origin {fsharpCompilerRemote}"
                     do! git "fetch origin"
                 do! git $"reset --hard {fsharpCompilerCommit}"
                 do! dotnet "build src/Compiler/FSharp.Compiler.Service.fsproj /p:BUILDING_USING_DOTNET=true"
