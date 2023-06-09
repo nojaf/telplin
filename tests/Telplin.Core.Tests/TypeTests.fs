@@ -1151,3 +1151,52 @@ type Foo =
     new: v: int -> Foo
     member Bar: (int -> unit -> bool) option
 """
+
+[<Test>]
+let ``struct without IComparable interface should get additional attribute, 80`` () =
+    assertSignature
+        """
+namespace FSInteractive
+
+open System
+
+[<Struct>]
+type LocalReadWriteLockCookie(locker: obj) =
+    interface IDisposable with
+        member _.Dispose () = ()
+        """
+        """
+namespace FSInteractive
+
+open System
+
+[<NoComparison>]
+[<Struct>]
+type LocalReadWriteLockCookie =
+    new: locker: obj -> LocalReadWriteLockCookie
+    interface IDisposable
+"""
+
+[<Test>]
+let ``comparable struct`` () =
+    assertSignature
+        """
+namespace Moo
+
+type Point3D =
+    struct
+        val x: float
+        val y: float
+        val z: float
+    end
+"""
+        """
+namespace Moo
+
+type Point3D =
+    struct
+        val x: float
+        val y: float
+        val z: float
+    end
+"""

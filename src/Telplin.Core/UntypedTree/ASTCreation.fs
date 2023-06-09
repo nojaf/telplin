@@ -41,6 +41,10 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
             )
         )
 
+/// Create a `MultipleAttributeListNode` with a single attribute without any parameters.
+let mkAttributeList name =
+    AttributeListNode (stn "[<", [ AttributeNode (iln name, None, None, zeroRange) ], stn ">]", zeroRange)
+
 let parseSignatureOak text =
     CodeFormatter.ParseOakAsync (true, text)
     |> Async.RunSynchronously
