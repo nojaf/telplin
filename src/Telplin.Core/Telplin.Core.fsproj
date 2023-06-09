@@ -32,8 +32,12 @@
 
   <ItemGroup>
     <Reference Include="FSharp.Compiler.Service">
-      <HintPath>..\..\..\fsharp\artifacts\bin\FSharp.Compiler.Service\Debug\netstandard2.0\FSharp.Compiler.Service.dll</HintPath>
+      <HintPath>$(FSharpCompilerPath)</HintPath>
     </Reference>
   </ItemGroup>
+
+  <Target Name="AcquireCompilerFiles" Condition="!Exists('../../.fsharp')" BeforeTargets="CollectPackageReferences">
+    <Exec Command="dotnet fsi ../../build.fsx -p Init" />
+  </Target>
 
 </Project>

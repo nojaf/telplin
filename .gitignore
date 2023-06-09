@@ -499,3 +499,6 @@ tmp/
 # Tool
 tool/client/*.js
 tool/client/dist
+
+# Local compiler
+.fsharp/
