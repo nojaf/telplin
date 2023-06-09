@@ -630,9 +630,9 @@ open System
 type ColumnIndentedTextWriter =
     new: unit -> ColumnIndentedTextWriter
     member Write: s: string -> unit
-    member Write: s: string * [<ParamArray>] objs: obj[] -> unit
+    member Write: s: string * [<ParamArray>] objs: obj array -> unit
     member WriteLine: s: string -> unit
-    member WriteLine: s: string * [<ParamArray>] objs: obj[] -> unit
+    member WriteLine: s: string * [<ParamArray>] objs: obj array -> unit
     member WriteBlankLines: count: int -> unit
     member Indent: i: int -> unit
     member Unindent: i: int -> unit
@@ -948,7 +948,7 @@ module ResultCEExtensions =
         /// <summary>
         /// Needed to allow `for..in` and `for..do` functionality
         /// </summary>
-        member inline Source: s: 'a -> 'a when 'a :> seq<'b>
+        member inline Source: s: 'a -> 'a when 'a :> 'b seq
 """
 
 [<Test>]
@@ -1107,4 +1107,47 @@ type S =
         val T: int
         private new: w: string -> S
     end
+"""
+
+[<Test>]
+let ``generic type parameter in path, 68`` () =
+    assertSignature
+        """
+module Telplin
+
+open System
+open System.Collections.Generic
+open System.Collections.Immutable
+
+type ImmutableArrayViaBuilder<'T>(builder: ImmutableArray<'T>.Builder) =
+    class end
+"""
+        """
+module Telplin
+
+open System
+open System.Collections.Generic
+open System.Collections.Immutable
+
+type ImmutableArrayViaBuilder<'T> =
+    class
+        new: builder: ImmutableArray<'T>.Builder -> ImmutableArrayViaBuilder<'T>
+    end
+"""
+
+[<Test>]
+let ``optional function type, 78`` () =
+    assertSignature
+        """
+module Telplin
+
+type Foo (v:int) =
+    member val Bar : (int -> unit -> bool) option = None
+"""
+        """
+module Telplin
+
+type Foo =
+    new: v: int -> Foo
+    member Bar: (int -> unit -> bool) option
 """

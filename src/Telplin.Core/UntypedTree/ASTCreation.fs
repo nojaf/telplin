@@ -41,32 +41,63 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
             )
         )
 
-/// Transform a string into Type by parsing a dummy `val` in a signature file.
-let mkTypeFromString (typeText : string) : Result<Type, string> =
+let parseSignatureOak text =
+    CodeFormatter.ParseOakAsync (true, text)
+    |> Async.RunSynchronously
+    |> Array.head
+    |> fst
+
+let mkValFromString (valText : string) : Result<ValNode, string> =
+    try
+        let oak = parseSignatureOak valText
+
+        match oak.ModulesOrNamespaces.[0].Declarations with
+        | [ ModuleDecl.Val valNode ] -> Ok valNode
+        | decls -> Error $"Unexpected module decls:%A{decls}"
+    with ex ->
+        Error $"Could not parse:\n%s{valText}"
+
+let mkMemberSigFromString (memberText : string) : Result<MemberDefnSigMemberNode, string> =
     let pseudoSignature =
         $"""
-[<AbstractClass>]
-type X =
-    abstract member Y : {typeText}
+type A =
+    new: unit -> A
+    {memberText}
 """
 
     try
-        let oak =
-            CodeFormatter.ParseOakAsync (true, pseudoSignature)
-            |> Async.RunSynchronously
-            |> Array.head
-            |> fst
+        let oak = parseSignatureOak pseudoSignature
 
-        match oak.ModulesOrNamespaces.[0].Declarations with
-        | [ ModuleDecl.TypeDefn typeDefn ] ->
+        match oak.ModulesOrNamespaces.[0].Declarations.[0] with
+        | ModuleDecl.TypeDefn typeDefn ->
             let tdn = TypeDefn.TypeDefnNode typeDefn
 
             match tdn.Members with
-            | [ MemberDefn.SigMember sigMember ] -> Ok sigMember.Val.Type
-            | members -> Error $"Unexpected members of type definition: %A{members}"
+            | [ _ctor ; MemberDefn.SigMember sigMember ] -> Ok sigMember
+            | ms -> Error $"Unexpected members:%A{ms}"
+
         | decls -> Error $"Unexpected module decls:%A{decls}"
     with ex ->
         Error $"Could not parse:\n%s{pseudoSignature}"
 
-let wrapTypeInParentheses (t : Type) =
-    Type.Paren (TypeParenNode (stn "(", t, stn ")", zeroRange))
+let mkPrimaryConstructorFromString (primaryCtorText : string) : Result<MemberDefnSigMemberNode, string> =
+    let pseudoSignature =
+        $"""
+            type A =
+                {primaryCtorText}
+            """
+
+    try
+        let oak = parseSignatureOak pseudoSignature
+
+        match oak.ModulesOrNamespaces.[0].Declarations.[0] with
+        | ModuleDecl.TypeDefn typeDefn ->
+            let tdn = TypeDefn.TypeDefnNode typeDefn
+
+            match tdn.Members.[0] with
+            | MemberDefn.SigMember ctor -> Ok ctor
+            | ms -> Error $"Unexpected members:%A{ms}"
+
+        | decls -> Error $"Unexpected module decls:%A{decls}"
+    with ex ->
+        Error $"Could not parse:\n%s{pseudoSignature}"

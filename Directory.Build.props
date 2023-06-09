@@ -21,6 +21,10 @@
         <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
         <!-- Also bump FSharp.Core down below -->
         <FCSVersion>43.7.400-preview.23302.5</FCSVersion>
+        <!-- Temporary use a local compiler -->
+        <FSharpCompilerPath>$(MSBuildThisFileDirectory).fsharp\artifacts\bin\FSharp.Compiler.Service\Debug\netstandard2.0\FSharp.Compiler.Service.dll</FSharpCompilerPath>
+        <!-- $(Configuration) can't be used in the path at this point. MSBuild doesn't know it yet. -->
+        <FSharpCompilerPath Condition="'$(Configuration)' == 'Release'">$(MSBuildThisFileDirectory).fsharp\artifacts\bin\FSharp.Compiler.Service\Release\netstandard2.0\FSharp.Compiler.Service.dll</FSharpCompilerPath>
     </PropertyGroup>
 
     <PropertyGroup>

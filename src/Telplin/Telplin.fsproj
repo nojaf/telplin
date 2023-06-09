@@ -26,4 +26,10 @@
     <ProjectReference Include="..\Telplin.Core\Telplin.Core.fsproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="FSharp.Compiler.Service">
+      <HintPath>$(FSharpCompilerPath)</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
