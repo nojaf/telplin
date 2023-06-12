@@ -64,6 +64,9 @@ jobs:
       - name: Restore local tools
         run: dotnet tool restore
 
+      - name: Build release compiler
+        run: dotnet fsi build.fsx -p Init -c Release
+
       - name: Package lambda
         working-directory: tool/server
         run: dotnet lambda package

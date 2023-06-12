@@ -43,7 +43,20 @@ pipeline "Init" {
                     do! git $"remote add origin {fsharpCompilerRemote}"
                     do! git "fetch origin"
                 do! git $"reset --hard {fsharpCompilerCommit}"
-                do! dotnet "build src/Compiler/FSharp.Compiler.Service.fsproj /p:BUILDING_USING_DOTNET=true"
+
+                let configuration =
+                    let idx = fsi.CommandLineArgs |> Array.tryFindIndex (fun arg -> arg = "-c")
+                    match idx with
+                    | None -> "Debug"
+                    | Some idx ->
+                        if idx + 1 < fsi.CommandLineArgs.Length then
+                            fsi.CommandLineArgs.[idx + 1]
+                        else
+                            "Debug"
+
+                do!
+                    dotnet
+                        $"build -c {configuration} src/Compiler/FSharp.Compiler.Service.fsproj /p:BUILDING_USING_DOTNET=true"
             }
         )
     }
