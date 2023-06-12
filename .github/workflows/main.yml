@@ -19,6 +19,12 @@ jobs:
 
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
+        
+      # To build F# compiler
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.203'
 
       - name: Build / Release
         run: dotnet fsi ./build.fsx --push
@@ -47,7 +53,13 @@ jobs:
           fetch-depth: 0
 
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
+        
+      # To build F# compiler
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.203'
 
       - name: Restore local tools
         run: dotnet tool restore
