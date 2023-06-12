@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.8.0 - 12-06-23
 
 ### Changed
 * Exclude private constructors by default. [#70](https://github.com/nojaf/telplin/issues/70)
