@@ -11,6 +11,8 @@ type TypedTreeInfoResolver =
     member GetValText : name : string * range : range -> Result<string, string>
     /// Similar to `GetValText` but look for a symbol with `.ctor` as CompiledName
     member GetValTextForConstructor : range : range -> Result<string, string>
+    /// Verifies if an FSharpEntity is a struct without the IComparison interface.
+    member IsStructWithoutComparison : range : range -> Result<bool, string>
     member Defines : string list
     member IncludePrivateBindings : bool
 

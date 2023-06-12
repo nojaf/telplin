@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.8.0 - 12-06-23
 
 ### Changed
 * Exclude private constructors by default. [#70](https://github.com/nojaf/telplin/issues/70)
@@ -11,6 +11,7 @@
 * Optional function type cannot be parsed. [#78](https://github.com/nojaf/telplin/issues/78)
 * Property member with function return type. [#66](https://github.com/nojaf/telplin/issues/66)
 * Mutable is lost from let binding. [#67](https://github.com/nojaf/telplin/issues/67)
+* Non comparable struct should have `[<NoComparison>]` attribute [#80](https://github.com/nojaf/telplin/issues/80)
 
 ## 0.7.0 - 05-06-23
 

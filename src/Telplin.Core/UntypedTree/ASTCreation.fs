@@ -41,6 +41,23 @@ let hasAnyAttribute (names : Set<string>) (multipleAttributeListNode : MultipleA
             )
         )
 
+/// Create a `MultipleAttributeListNode` with a single attribute without any parameters.
+let mkAttributeList name =
+    AttributeListNode (stn "[<", [ AttributeNode (iln name, None, None, zeroRange) ], stn ">]", zeroRange)
+
+/// Add a new attribute in the `MultipleAttributeListNode`.
+/// Creates a new node if the current node is `None`.
+let addAttribute
+    (attributeName : string)
+    (currentAttributes : MultipleAttributeListNode option)
+    : MultipleAttributeListNode option
+    =
+    match currentAttributes with
+    | None -> Some (MultipleAttributeListNode ([ mkAttributeList attributeName ], zeroRange))
+    | Some attributes ->
+        MultipleAttributeListNode (mkAttributeList attributeName :: attributes.AttributeLists, zeroRange)
+        |> Some
+
 let parseSignatureOak text =
     CodeFormatter.ParseOakAsync (true, text)
     |> Async.RunSynchronously

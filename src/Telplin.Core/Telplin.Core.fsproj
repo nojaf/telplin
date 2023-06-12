@@ -17,7 +17,6 @@
     <Compile Include="UntypedTree\SourceParser.fsi" />
     <Compile Include="UntypedTree\SourceParser.fs" />
     <Compile Include="UntypedTree\ASTCreation.fs" />
-    <Compile Include="UntypedTree\TypeTransformer.fs" />
     <Compile Include="UntypedTree\UntypedTree.fsi" />
     <Compile Include="UntypedTree\UntypedTree.fs" />
     <Compile Include="Library.fsi" />

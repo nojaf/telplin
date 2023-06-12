@@ -2,21 +2,6 @@
 
 open Fantomas.Core.SyntaxOak
 
-type TypeTupleNode with
-
-    member x.Types =
-        x.Path
-        |> List.choose (
-            function
-            | Choice1Of2 t -> Some t
-            | Choice2Of2 _ -> None
-        )
-
-let (|TParen|_|) =
-    function
-    | Type.Paren parenNode -> Some parenNode.Type
-    | _ -> None
-
 let (|PropertyGetSetWithExtraParameter|_|) (md : MemberDefn) =
     match md with
     | MemberDefn.PropertyGetSet node ->

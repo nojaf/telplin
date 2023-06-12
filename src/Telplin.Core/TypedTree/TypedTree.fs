@@ -2,12 +2,33 @@
 
 #nowarn "57"
 
+open System.Text
 open System.Collections.Concurrent
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
 open Telplin.Core.TypedTree.FSharpProjectExtensions
+
+type ISourceText with
+
+    member x.GetContentAt (range : range) : string =
+        let startLine = range.StartLine - 1
+        let line = x.GetLineString startLine
+
+        if range.StartLine = range.EndLine then
+            let length = range.EndColumn - range.StartColumn
+            line.Substring (range.StartColumn, length)
+        else
+
+        let firstLineContent = line.Substring range.StartColumn
+        let sb = StringBuilder().AppendLine firstLineContent
+
+        for lineNumber in [ range.StartLine .. range.EndLine - 2 ] do
+            sb.AppendLine (x.GetLineString lineNumber) |> ignore
+
+        let lastLine = x.GetLineString (range.EndLine - 1)
+        sb.Append(lastLine.Substring (0, range.EndColumn)).ToString ()
 
 let fileCache = ConcurrentDictionary<string, ISourceText> ()
 
@@ -66,6 +87,42 @@ type TypedTreeInfoResolver
             match valText with
             | None -> Error "No FSharpMemberOrFunctionOrValue was found for .ctor"
             | Some valText -> Ok valText
+
+        with ex ->
+            Error ex.Message
+
+    member _.IsStructWithoutComparison (range : range) =
+        try
+            let line = sourceText.GetLineString (range.StartLine - 1)
+            let name = sourceText.GetContentAt range
+
+            let allSymbols =
+                checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ name ])
+
+            let entityOpt =
+                allSymbols
+                |> List.tryPick (fun symbolUse ->
+                    match symbolUse.Symbol with
+                    | :? FSharpEntity as entity -> Some entity
+                    | _ -> None
+                )
+
+            match entityOpt with
+            | None -> Error "No FSharpEntity was found"
+            | Some entity ->
+
+            let doesNotHaveIComparable () =
+                let hasIComparable =
+                    entity.DeclaredInterfaces
+                    |> Seq.exists (fun i -> i.TypeDefinition.FullName = "System.IComparable")
+
+                let hasIComparableOfT =
+                    entity.DeclaredInterfaces
+                    |> Seq.exists (fun i -> i.TypeDefinition.FullName = "System.IComparable`1")
+
+                not (hasIComparable && hasIComparableOfT)
+
+            Ok (entity.IsValueType && not entity.IsEnum && doesNotHaveIComparable ())
 
         with ex ->
             Error ex.Message
