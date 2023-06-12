@@ -24,12 +24,11 @@ type ISourceText with
         let firstLineContent = line.Substring range.StartColumn
         let sb = StringBuilder().AppendLine firstLineContent
 
-        (sb, [ range.StartLine .. range.EndLine - 2 ])
-        ||> List.fold (fun sb lineNumber -> sb.AppendLine (x.GetLineString lineNumber))
-        |> fun sb ->
-            let lastLine = x.GetLineString (range.EndLine - 1)
+        for lineNumber in [ range.StartLine .. range.EndLine - 2 ] do
+            sb.AppendLine (x.GetLineString lineNumber) |> ignore
 
-            sb.Append(lastLine.Substring (0, range.EndColumn)).ToString ()
+        let lastLine = x.GetLineString (range.EndLine - 1)
+        sb.Append(lastLine.Substring (0, range.EndColumn)).ToString ()
 
 let fileCache = ConcurrentDictionary<string, ISourceText> ()
 
@@ -76,9 +75,6 @@ type TypedTreeInfoResolver
         try
             let line = sourceText.GetLineString (range.StartLine - 1)
 
-            let allSymbols =
-                checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ ".ctor" ])
-
             let valText =
                 checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ ".ctor" ])
                 |> List.tryPick (fun symbolUse ->
@@ -98,7 +94,7 @@ type TypedTreeInfoResolver
     member _.IsStructWithoutComparison (range : range) =
         try
             let line = sourceText.GetLineString (range.StartLine - 1)
-            let name = sourceText.GetContentAt (range)
+            let name = sourceText.GetContentAt range
 
             let allSymbols =
                 checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ name ])

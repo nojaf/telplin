@@ -396,17 +396,7 @@ let mkTypeDefn
                 then
                     tdn.TypeName.Attributes
                 else
-                    let classAttribute = mkAttributeList "Class"
-
-                    match tdn.TypeName.Attributes with
-                    | None -> Some (MultipleAttributeListNode ([ classAttribute ], zeroRange))
-                    | Some multipleAttributeListNode ->
-                        Some (
-                            MultipleAttributeListNode (
-                                classAttribute :: multipleAttributeListNode.AttributeLists,
-                                zeroRange
-                            )
-                        )
+                    addAttribute "Class" tdn.TypeName.Attributes
             | _ -> tdn.TypeName.Attributes
 
         // To overcome: warning FS1178: The struct, record or union type is not structurally comparable because the type 'obj' does not satisfy the 'comparison' constraint.
@@ -426,12 +416,7 @@ let mkTypeDefn
             if hasExistingNoComparisonAttribute then
                 attributes
             else
-
-            match attributes with
-            | None -> Some (MultipleAttributeListNode ([ mkAttributeList "NoComparison" ], zeroRange))
-            | Some attributes ->
-                MultipleAttributeListNode (mkAttributeList "NoComparison" :: attributes.AttributeLists, zeroRange)
-                |> Some
+                addAttribute "NoComparison" attributes
 
         let leadingKeyword =
             if forceAndKeyword then

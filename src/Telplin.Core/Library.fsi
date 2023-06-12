@@ -16,7 +16,9 @@ type MkSignature = FSharpProjectOptions -> string -> string * TelplinError list
 
 [<RequireQualifiedAccess>]
 module SignatureCreation =
+    /// Create a signature file for the given implementation file using Telplin.
     val telplin : includePrivateBindings : bool -> MkSignature
+    /// Create a signature file for the given implementation file using `FSharpCheckFileResults.GenerateSignature`.
     val fcs : MkSignature
 
 [<Class>]
