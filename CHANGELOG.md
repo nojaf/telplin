@@ -1,6 +1,6 @@
 # Changelog
 
-## 8.0.1 - 13-06-23
+## 0.8.1 - 13-06-23
 
 ### Fixed
 * C# Override member generation [#84](https://github.com/nojaf/telplin/issues/84)
