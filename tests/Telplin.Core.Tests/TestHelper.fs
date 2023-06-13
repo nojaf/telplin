@@ -144,7 +144,7 @@ let downloadNugetPackage packageName version targetFramework =
                 caches
                 |> Array.tryPick (fun cacheFolder ->
                     let nugetPackageFolder =
-                        Path.Combine (cacheFolder, packageName.ToLower(), version) |> DirectoryInfo
+                        Path.Combine (cacheFolder, packageName.ToLower (), version) |> DirectoryInfo
 
                     if nugetPackageFolder.Exists then
                         Some nugetPackageFolder
