@@ -125,7 +125,7 @@ let downloadNugetPackage packageName version targetFramework =
             let! _ =
                 Cli
                     .Wrap("dotnet")
-                    .WithArguments($"add package {packageName} --version {version}")
+                    .WithArguments($"add package %s{packageName} --version %s{version}")
                     .WithWorkingDirectory(tempDir.FullName)
                     .ExecuteAsync ()
 
@@ -144,7 +144,7 @@ let downloadNugetPackage packageName version targetFramework =
                 caches
                 |> Array.tryPick (fun cacheFolder ->
                     let nugetPackageFolder =
-                        Path.Combine (cacheFolder, packageName, version) |> DirectoryInfo
+                        Path.Combine (cacheFolder, packageName.ToLower(), version) |> DirectoryInfo
 
                     if nugetPackageFolder.Exists then
                         Some nugetPackageFolder
@@ -153,12 +153,12 @@ let downloadNugetPackage packageName version targetFramework =
                 )
 
             match nugetFolder with
-            | None -> return failwith $"Failed to download {packageName}, {version}"
+            | None -> return failwith $"Failed to download %s{packageName}, %s{version}"
             | Some nugetFolder ->
                 let assemblyFolder = Path.Combine (nugetFolder.FullName, "lib", targetFramework)
 
                 if not (Path.Exists (assemblyFolder)) then
-                    return failwith $"{packageName} does not contains {targetFramework}"
+                    return failwith $"%s{packageName} does not contains %s{targetFramework}"
                 else
 
                 match Directory.EnumerateFiles (assemblyFolder, "*.dll") |> Seq.tryHead with
