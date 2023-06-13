@@ -1200,3 +1200,46 @@ type Point3D =
         val z: float
     end
 """
+
+[<Test>]
+let ``override of C# abstract member`` () =
+    task {
+        let! newtonsoftJson = downloadNugetPackage "Newtonsoft.Json" "13.0.3" "netstandard2.0"
+
+        assertSignatureWith
+            (fun options ->
+                { options with
+                    OtherOptions = [| yield! options.OtherOptions ; yield $"-r:{newtonsoftJson}" |]
+                }
+            )
+            true
+            """
+module Telplin
+
+open Newtonsoft.Json
+open System
+
+[<Sealed>]
+type EnumConverter () =
+    inherit JsonConverter ()
+    let fail s = failwithf "Unable to parse JSON data - %s" s
+    override __.WriteJson(writer, value, serializer) =
+        ()
+    override __.ReadJson(reader, objectType, existingValue, serializer) = TimeSpan.Zero
+    override __.CanConvert objectType = false
+"""
+            """
+module Telplin
+
+open Newtonsoft.Json
+open System
+
+[<Sealed>]
+type EnumConverter =
+    new: unit -> EnumConverter
+    inherit JsonConverter
+    override WriteJson: writer: JsonWriter * value: obj * serializer: JsonSerializer -> unit
+    override ReadJson: reader: JsonReader * objectType: Type * existingValue: obj * serializer: JsonSerializer -> obj
+    override CanConvert: objectType: Type -> bool
+"""
+    }

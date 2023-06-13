@@ -2,7 +2,9 @@
 
 open System
 open System.IO
+open CliWrap
 open FSharp.Compiler.CodeAnalysis
+open CliWrap.Buffered
 open NUnit.Framework
 open Telplin.Core
 
@@ -102,3 +104,68 @@ let assertSignatureWith
 
 let assertSignature implementation expectedSignature =
     assertSignatureWith id true implementation expectedSignature
+
+/// Downloads a nuget package and returns the dll for the selected target framework.
+let downloadNugetPackage packageName version targetFramework =
+    task {
+        let tempDir =
+            Path.Combine (Path.GetTempPath (), Guid.NewGuid().ToString ("N"))
+            |> DirectoryInfo
+
+        try
+            tempDir.Create ()
+
+            let! _ =
+                Cli
+                    .Wrap("dotnet")
+                    .WithArguments("new classlib")
+                    .WithWorkingDirectory(tempDir.FullName)
+                    .ExecuteAsync ()
+
+            let! _ =
+                Cli
+                    .Wrap("dotnet")
+                    .WithArguments($"add package {packageName} --version {version}")
+                    .WithWorkingDirectory(tempDir.FullName)
+                    .ExecuteAsync ()
+
+            let! caches = Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync ()
+
+            let caches =
+                caches.StandardOutput.Split ('\n')
+                |> Array.choose (fun line ->
+                    if not (line.Contains ": ") then
+                        None
+                    else
+                        line.Split(": ").[1].Trim () |> Some
+                )
+
+            let nugetFolder =
+                caches
+                |> Array.tryPick (fun cacheFolder ->
+                    let nugetPackageFolder =
+                        Path.Combine (cacheFolder, packageName, version) |> DirectoryInfo
+
+                    if nugetPackageFolder.Exists then
+                        Some nugetPackageFolder
+                    else
+                        None
+                )
+
+            match nugetFolder with
+            | None -> return failwith $"Failed to download {packageName}, {version}"
+            | Some nugetFolder ->
+                let assemblyFolder = Path.Combine (nugetFolder.FullName, "lib", targetFramework)
+
+                if not (Path.Exists (assemblyFolder)) then
+                    return failwith $"{packageName} does not contains {targetFramework}"
+                else
+
+                match Directory.EnumerateFiles (assemblyFolder, "*.dll") |> Seq.tryHead with
+                | None -> return failwith $"No assembly found in {assemblyFolder}"
+                | Some dll -> return dll
+
+        finally
+            if tempDir.Exists then
+                tempDir.Delete (true)
+    }
