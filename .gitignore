@@ -502,3 +502,6 @@ tool/client/dist
 
 # Local compiler
 .fsharp/
+
+# dotnet sdk in gitpod
+.sdk/
