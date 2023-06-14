@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2 - 14-06-23
+
+### Fixed
+* Order of generic parameters don't match. [#82](https://github.com/nojaf/telplin/issues/82)
+
 ## 0.8.1 - 13-06-23
 
 ### Fixed
