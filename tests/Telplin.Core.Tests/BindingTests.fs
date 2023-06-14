@@ -1229,3 +1229,19 @@ module X
 
 val mutable lastDisplayContext: obj
 """
+
+[<Test>]
+let ``order of generic parameters, 82`` () =
+    assertSignature
+        """
+module Telplin
+
+let f<'a, 'b> (x: 'b) (y: 'a) = ()
+let g<'a, 'b> (x: 'b, y: 'a) = ()
+"""
+        """
+module Telplin
+
+val f<'a, 'b> : x: 'b -> y: 'a -> unit
+val g<'a, 'b> : x: 'b * y: 'a -> unit
+"""
