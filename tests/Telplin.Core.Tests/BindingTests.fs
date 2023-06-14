@@ -1245,3 +1245,20 @@ module Telplin
 val f<'a, 'b> : x: 'b -> y: 'a -> unit
 val g<'a, 'b> : x: 'b * y: 'a -> unit
 """
+
+[<Test>]
+let ``private member get binding, 87`` () =
+    assertSignature
+        """
+module Telplin
+
+type X() =
+    member private this.Y with get() = "meh"
+"""
+        """
+module Telplin
+
+type X =
+    new: unit -> X
+    member private Y: string with get
+"""
