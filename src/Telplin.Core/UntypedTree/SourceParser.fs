@@ -49,6 +49,16 @@ let (|PrivateMemberDefn|_|) =
         | _ -> None
     | _ -> None
 
+let (|PrivateTypeDefnAugmentation|_|) typeDefn =
+    match typeDefn with
+    | TypeDefn.Augmentation _ ->
+        let tdn = TypeDefn.TypeDefnNode typeDefn
+
+        match tdn.Members with
+        | [ PrivateMemberDefn ] -> Some ()
+        | _ -> None
+    | _ -> None
+
 let (|PatParen|_|) p =
     match p with
     | Pattern.Paren parenNode -> Some parenNode.Pattern

@@ -89,3 +89,22 @@ type T =
     class
     end
 """
+
+[<Test>]
+let ``private augmentation is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+open System
+
+type String with
+    member private this.V x y = x + y
+"""
+        """
+module Telplin
+
+open System
+"""
