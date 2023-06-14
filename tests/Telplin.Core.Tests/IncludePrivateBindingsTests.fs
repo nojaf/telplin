@@ -69,3 +69,23 @@ type Point2D =
         member GetDistanceFrom: p: Point2D -> float
     end
 """
+
+[<Test>]
+let ``private member is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T =
+    member private this.X () = 1
+"""
+        """
+module Telplin
+
+[<Class>]
+type T =
+    class
+    end
+"""

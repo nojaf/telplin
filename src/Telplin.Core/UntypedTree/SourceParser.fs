@@ -37,9 +37,13 @@ let (|PrivateConstructor|_|) (implicitCtor : ImplicitConstructorNode) =
     | Some Private -> Some ()
     | _ -> None
 
-let (|PrivateMemberDefnExplicitCtor|_|) =
+let (|PrivateMemberDefn|_|) =
     function
     | MemberDefn.ExplicitCtor node ->
+        match node.Accessibility with
+        | Some Private -> Some ()
+        | _ -> None
+    | MemberDefn.Member node ->
         match node.Accessibility with
         | Some Private -> Some ()
         | _ -> None

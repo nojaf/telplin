@@ -97,6 +97,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
     let mdRange = (MemberDefn.Node md).Range
 
     match md with
+    | PrivateMemberDefn when not resolver.IncludePrivateBindings -> MemberDefnResult.None
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
     | MemberDefn.Inherit _ -> MemberDefnResult.SingleMember md
@@ -196,8 +197,6 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         )
         |> MemberDefn.SigMember
         |> MemberDefnResult.SingleMember
-
-    | PrivateMemberDefnExplicitCtor when not resolver.IncludePrivateBindings -> MemberDefnResult.None
 
     | MemberDefn.ExplicitCtor explicitNode ->
         let sigMemberResult =
@@ -507,7 +506,17 @@ let mkTypeDefn
                 | Ok sigCtor -> sigCtor :: members, memberErrors
 
         let sigRegular =
-            TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
+            if members.IsEmpty then
+                // No member are present, this could be the case when all members were private and got excluded
+                TypeDefnExplicitNode (
+                    typeName,
+                    TypeDefnExplicitBodyNode (stn "class", [], stn "end", zeroRange),
+                    [],
+                    zeroRange
+                )
+                |> TypeDefn.Explicit
+            else
+                TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
 
         sigRegular, memberErrors
 
