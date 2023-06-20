@@ -256,7 +256,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                         propertyNode.XmlDoc,
                         propertyNode.Attributes,
                         Some leadingKeyword,
-                        None,
+                        propertyNode.Inline,
                         false,
                         valNode.Accessibility,
                         name,
