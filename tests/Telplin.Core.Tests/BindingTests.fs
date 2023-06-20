@@ -1245,3 +1245,71 @@ module Telplin
 val f<'a, 'b> : x: 'b -> y: 'a -> unit
 val g<'a, 'b> : x: 'b * y: 'a -> unit
 """
+
+[<Test>]
+let ``private member get binding, 87`` () =
+    assertSignature
+        """
+module Telplin
+
+type X() =
+    member private this.Y with get() = "meh"
+"""
+        """
+module Telplin
+
+type X =
+    new: unit -> X
+    member private Y: string
+"""
+
+[<Test>]
+let ``a difference in accessibility leads to separate get,set members`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T =
+    struct
+        member private this.X with get () : int = 1 and set (_:int) = ()
+        member this.Y with set (_:int) = () and private get () = 1
+        member this.Z with private set (_:int) = () and get () = 2
+    end
+"""
+        """
+module Telplin
+
+type T =
+    struct
+        member private X: int with get, set
+        member Y: int with set
+        member private Y: int with get
+        member private Z: int with set
+        member Z: int with get
+    end
+"""
+
+[<Test>]
+let ``use accessibility from identifier pattern`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T() =
+        member private this.X with get () : int = 1 and set (_:int) = ()
+        member public this.Y with set (_:int) = () and get () = 1
+        member internal this.Z with set (_:int) = () and get () = 2
+"""
+        """
+module Telplin
+
+type T =
+    new: unit -> T
+    member private X: int with get, set
+    member public Y: int with set, get
+    member internal Z: int with set, get
+"""

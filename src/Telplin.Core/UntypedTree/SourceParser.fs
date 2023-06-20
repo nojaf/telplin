@@ -2,12 +2,15 @@
 
 open Fantomas.Core.SyntaxOak
 
-let (|PropertyGetSetWithExtraParameter|_|) (md : MemberDefn) =
+let (|PropertyGetSetThatNeedSplit|_|) (md : MemberDefn) =
     match md with
     | MemberDefn.PropertyGetSet node ->
         node.LastBinding
         |> Option.bind (fun lastBinding ->
-            if node.FirstBinding.Parameters.Length = lastBinding.Parameters.Length then
+            if
+                node.FirstBinding.Parameters.Length = lastBinding.Parameters.Length
+                && node.FirstBinding.Accessibility = lastBinding.Accessibility
+            then
                 None
             else
 
@@ -37,11 +40,25 @@ let (|PrivateConstructor|_|) (implicitCtor : ImplicitConstructorNode) =
     | Some Private -> Some ()
     | _ -> None
 
-let (|PrivateMemberDefnExplicitCtor|_|) =
+let (|PrivateMemberDefn|_|) =
     function
     | MemberDefn.ExplicitCtor node ->
         match node.Accessibility with
         | Some Private -> Some ()
+        | _ -> None
+    | MemberDefn.Member node ->
+        match node.Accessibility with
+        | Some Private -> Some ()
+        | _ -> None
+    | _ -> None
+
+let (|PrivateTypeDefnAugmentation|_|) typeDefn =
+    match typeDefn with
+    | TypeDefn.Augmentation _ ->
+        let tdn = TypeDefn.TypeDefnNode typeDefn
+
+        match tdn.Members with
+        | [ PrivateMemberDefn ] -> Some ()
         | _ -> None
     | _ -> None
 

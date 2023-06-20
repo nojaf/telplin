@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+* Private keyword lost in getter. [#87](https://github.com/nojaf/telplin/issues/87)
+
 ## 0.8.2 - 14-06-23
 
 ### Fixed

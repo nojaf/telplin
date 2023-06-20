@@ -97,6 +97,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
     let mdRange = (MemberDefn.Node md).Range
 
     match md with
+    | PrivateMemberDefn when not resolver.IncludePrivateBindings -> MemberDefnResult.None
     | MemberDefn.ValField _
     | MemberDefn.AbstractSlot _
     | MemberDefn.Inherit _ -> MemberDefnResult.SingleMember md
@@ -146,7 +147,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                     Some bindingNode.LeadingKeyword,
                     bindingNode.Inline,
                     bindingNode.IsMutable,
-                    bindingNode.Accessibility,
+                    valNode.Accessibility,
                     valNode.Identifier,
                     valNode.TypeParams,
                     sanitizeReturnType bindingNode.Parameters valNode.Type,
@@ -197,8 +198,6 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         |> MemberDefn.SigMember
         |> MemberDefnResult.SingleMember
 
-    | PrivateMemberDefnExplicitCtor when not resolver.IncludePrivateBindings -> MemberDefnResult.None
-
     | MemberDefn.ExplicitCtor explicitNode ->
         let sigMemberResult =
             resolver.GetValText (explicitNode.New.Text, explicitNode.New.Range.FCSRange)
@@ -238,7 +237,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         |> MemberDefnResult.SingleMember
 
     // We need to create two val in this case, see #52
-    | PropertyGetSetWithExtraParameter (propertyNode, getBinding, setBinding) ->
+    | PropertyGetSetThatNeedSplit (propertyNode, getBinding, setBinding) ->
         let name =
             match List.tryLast propertyNode.MemberName.Content with
             | Some (IdentifierOrDot.Ident name) -> name
@@ -259,7 +258,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                         Some leadingKeyword,
                         None,
                         false,
-                        None,
+                        valNode.Accessibility,
                         name,
                         None,
                         valNode.Type,
@@ -317,6 +316,11 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                     lastBinding.LeadingKeyword
                 ]
 
+        let accessibility =
+            match propertyNode.LastBinding with
+            | Some _ -> propertyNode.Accessibility
+            | None -> propertyNode.FirstBinding.Accessibility
+
         MemberDefnSigMemberNode (
             ValNode (
                 propertyNode.XmlDoc,
@@ -324,7 +328,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                 Some leadingKeyword,
                 None,
                 false,
-                None,
+                accessibility,
                 name,
                 None,
                 valNode.Type,
@@ -363,7 +367,7 @@ let mkTypeDefn
     (resolver : TypedTreeInfoResolver)
     (forceAndKeyword : bool)
     (typeDefn : TypeDefn)
-    : TypeDefn * TelplinError list
+    : TypeDefn option * TelplinError list
     =
     let tdn = TypeDefn.TypeDefnNode typeDefn
 
@@ -453,6 +457,7 @@ let mkTypeDefn
         | Ok sigMember -> MemberDefn.SigMember sigMember |> Result.Ok
 
     match typeDefn with
+    | PrivateTypeDefnAugmentation -> None, []
     | TypeDefn.Record recordNode ->
         let members, memberErrors = mkMembers resolver tdn.Members
 
@@ -468,7 +473,7 @@ let mkTypeDefn
             )
             |> TypeDefn.Record
 
-        sigRecord, memberErrors
+        Some sigRecord, memberErrors
 
     | TypeDefn.Explicit explicitNode ->
 
@@ -492,7 +497,7 @@ let mkTypeDefn
             TypeDefnExplicitNode (typeName, body, extraMembers, zeroRange)
             |> TypeDefn.Explicit
 
-        sigExplicit, (memberErrors @ extraMemberErrors)
+        Some sigExplicit, (memberErrors @ extraMemberErrors)
 
     | TypeDefn.Regular _ ->
         let members, memberErrors =
@@ -507,9 +512,19 @@ let mkTypeDefn
                 | Ok sigCtor -> sigCtor :: members, memberErrors
 
         let sigRegular =
-            TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
+            if members.IsEmpty then
+                // No member are present, this could be the case when all members were private and got excluded
+                TypeDefnExplicitNode (
+                    typeName,
+                    TypeDefnExplicitBodyNode (stn "class", [], stn "end", zeroRange),
+                    [],
+                    zeroRange
+                )
+                |> TypeDefn.Explicit
+            else
+                TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
 
-        sigRegular, memberErrors
+        Some sigRegular, memberErrors
 
     | TypeDefn.Union unionNode ->
         let members, memberErrors = mkMembers resolver tdn.Members
@@ -518,7 +533,7 @@ let mkTypeDefn
             TypeDefnUnionNode (typeName, unionNode.Accessibility, unionNode.UnionCases, members, zeroRange)
             |> TypeDefn.Union
 
-        sigUnion, memberErrors
+        Some sigUnion, memberErrors
 
     | TypeDefn.Abbrev abbrevNode ->
         let members, memberErrors = mkMembers resolver tdn.Members
@@ -527,7 +542,7 @@ let mkTypeDefn
             TypeDefnAbbrevNode (typeName, abbrevNode.Type, members, zeroRange)
             |> TypeDefn.Abbrev
 
-        sigAbbrev, memberErrors
+        Some sigAbbrev, memberErrors
 
     | TypeDefn.Augmentation _ ->
         let members, memberErrors = mkMembers resolver tdn.Members
@@ -535,11 +550,11 @@ let mkTypeDefn
         let sigAugmentation =
             TypeDefnAugmentationNode (typeName, members, zeroRange) |> TypeDefn.Augmentation
 
-        sigAugmentation, memberErrors
+        Some sigAugmentation, memberErrors
 
-    | TypeDefn.None _ -> (TypeDefn.None tdn.TypeName), []
+    | TypeDefn.None _ -> Some (TypeDefn.None tdn.TypeName), []
     | TypeDefn.Enum _
-    | TypeDefn.Delegate _ -> typeDefn, []
+    | TypeDefn.Delegate _ -> Some typeDefn, []
 
 [<RequireQualifiedAccess>]
 type ModuleDeclResult =
@@ -599,7 +614,10 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
 
     | ModuleDecl.TypeDefn typeDefn ->
         let sigTypeDefn, memberErrors = mkTypeDefn resolver false typeDefn
-        ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, memberErrors)
+
+        match sigTypeDefn with
+        | None -> ModuleDeclResult.None
+        | Some sigTypeDefn -> ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, memberErrors)
 
     | ModuleDecl.NestedModule nestedModule ->
         let sigs, errors =
@@ -630,6 +648,10 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                         match currentDecl with
                         | ModuleDecl.TypeDefn typeDefnNode ->
                             let sigTypeDefn, errors = mkTypeDefn resolver lastItemIsType typeDefnNode
+
+                            match sigTypeDefn with
+                            | None -> true, ModuleDeclResult.None
+                            | Some sigTypeDefn ->
 
                             true, ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, errors)
                         | decl -> false, mkModuleDecl resolver decl

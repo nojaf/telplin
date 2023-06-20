@@ -69,3 +69,70 @@ type Point2D =
         member GetDistanceFrom: p: Point2D -> float
     end
 """
+
+[<Test>]
+let ``private member is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T =
+    member private this.X () = 1
+"""
+        """
+module Telplin
+
+[<Class>]
+type T =
+    class
+    end
+"""
+
+[<Test>]
+let ``private get,set member is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T =
+    struct
+        member private this.X with get () : int = 1 and set (_:int) = ()
+        member this.Y with set (_:int) = () and private get () = 1
+        member this.Z with private set (_:int) = () and get () = 2
+    end
+"""
+        """
+module Telplin
+
+type T =
+    struct
+        member private X: int with get, set
+        member Y: int with set
+        member private Y: int with get
+        member private Z: int with set
+        member Z: int with get
+    end
+"""
+
+[<Test>]
+let ``private augmentation is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+open System
+
+type String with
+    member private this.V x y = x + y
+"""
+        """
+module Telplin
+
+open System
+"""
