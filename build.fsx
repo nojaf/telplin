@@ -12,7 +12,7 @@ open CliWrap
 let apiKey = Environment.GetEnvironmentVariable "TELPLIN_NUGET_KEY"
 let fsharpCompiler = Path.Combine (__SOURCE_DIRECTORY__, ".fsharp") |> DirectoryInfo
 let fsharpCompilerRemote = "https://github.com/dotnet/fsharp.git"
-let fsharpCompilerCommit = "24eef2cbaf6f65c03cdaa8217253fa0187e64c6e" // See https://github.com/dotnet/fsharp/pull/15366
+let fsharpCompilerCommit = "fd051378c015490d5a8a7a3424f8fc260378bffd" // See https://github.com/dotnet/fsharp/pull/15435
 
 let runCommand (file : string) (arguments : string) =
     task {
