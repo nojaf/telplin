@@ -57,9 +57,15 @@ let (|PrivateTypeDefnAugmentation|_|) typeDefn =
     | TypeDefn.Augmentation _ ->
         let tdn = TypeDefn.TypeDefnNode typeDefn
 
-        match tdn.Members with
-        | [ PrivateMemberDefn ] -> Some ()
-        | _ -> None
+        let allMembersArePrivate =
+            tdn.Members
+            |> List.forall (
+                function
+                | PrivateMemberDefn _ -> true
+                | _ -> false
+            )
+
+        if allMembersArePrivate then Some () else None
     | _ -> None
 
 let (|PatParen|_|) p =

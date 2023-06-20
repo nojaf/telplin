@@ -136,3 +136,19 @@ module Telplin
 
 open System
 """
+
+[<Test>]
+let ``multiple private augmentations in type`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type System.String with
+    member private x.Foo () = 3
+    member private x.Bar () = 4
+"""
+        """
+module Telplin
+"""
