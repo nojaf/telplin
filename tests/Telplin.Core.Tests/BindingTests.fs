@@ -1313,3 +1313,23 @@ type T =
     member public Y: int with set, get
     member internal Z: int with set, get
 """
+
+[<Test>]
+let ``inline keyword in property, 90`` () =
+    assertSignature
+        """
+module Meh
+
+type Foo =
+    member inline this.Item
+        with get (i:int,j: char) : string = ""
+        and set (i:int,j: char) (x:string) = printfn "%i %c" i j
+"""
+        """
+module Meh
+
+[<Class>]
+type Foo =
+    member inline Item: i: int * j: char -> string with get
+    member inline Item: i: int * j: char -> string with set
+"""

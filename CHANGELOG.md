@@ -4,6 +4,7 @@
 
 ### Fixed
 * Private keyword lost in getter. [#87](https://github.com/nojaf/telplin/issues/87)
+* Inline keyword is missing. [#90](https://github.com/nojaf/telplin/issues/90)
 
 ## 0.8.2 - 14-06-23
 
