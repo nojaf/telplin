@@ -19,23 +19,17 @@
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
-        <!-- Also bump FSharp.Core down below -->
-        <FCSVersion>43.7.400-preview.23302.5</FCSVersion>
-        <!-- Temporary use a local compiler -->
-        <FSharpCompilerPath>$(MSBuildThisFileDirectory).fsharp\artifacts\bin\FSharp.Compiler.Service\Debug\netstandard2.0\FSharp.Compiler.Service.dll</FSharpCompilerPath>
-        <!-- $(Configuration) can't be used in the path at this point. MSBuild doesn't know it yet. -->
-        <FSharpCompilerPath Condition="'$(Configuration)' == 'Release'">$(MSBuildThisFileDirectory).fsharp\artifacts\bin\FSharp.Compiler.Service\Release\netstandard2.0\FSharp.Compiler.Service.dll</FSharpCompilerPath>
     </PropertyGroup>
 
     <PropertyGroup>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <WarningsAsErrors>FS0025</WarningsAsErrors>
-        <NoWarn>NU5104</NoWarn>
-        <OtherFlags>--test:GraphBasedChecking</OtherFlags>
+        <NoWarn>NU5104;FS0075</NoWarn>
+        <OtherFlags>$(OtherFlags) --test:GraphBasedChecking --test:ParallelOptimization --test:ParallelIlxGen --parallelreferenceresolution</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="FSharp.Core" Version="7.0.400-beta.23302.5" />
+        <PackageReference Include="FSharp.Core" />
     </ItemGroup>
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
@@ -45,6 +39,6 @@
     <ItemGroup Condition="'$(IsPackable)' == 'true'">
         <None Include="$(MSBuildThisFileDirectory)icon.png" Visible="false" Pack="true" PackagePath="" />
         <None Include="$(MSBuildThisFileDirectory)README.md" Visible="false" Pack="true" PackagePath="" />
-        <PackageReference Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" PrivateAssets="all" />
+        <PackageReference Include="Ionide.KeepAChangelog.Tasks" PrivateAssets="all" />
     </ItemGroup>
 </Project>

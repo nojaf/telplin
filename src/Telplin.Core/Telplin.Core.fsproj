@@ -24,19 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Fantomas.Core" Version="6.1.0-alpha-006" />
-<!--    <PackageReference Include="FSharp.Compiler.Service" Version="$(FCSVersion)" />-->
-    <PackageReference Include="MSBuild.StructuredLogger" Version="2.1.815" />
+    <PackageReference Include="Fantomas.Core" />
+    <PackageReference Include="FSharp.Compiler.Service" />
+    <PackageReference Include="MSBuild.StructuredLogger" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="FSharp.Compiler.Service">
-      <HintPath>$(FSharpCompilerPath)</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <Target Name="AcquireCompilerFiles" Condition="!Exists('../../.fsharp')" BeforeTargets="CollectPackageReferences">
-    <Exec Command="dotnet fsi ../../build.fsx -p Init" />
-  </Target>
 
 </Project>
