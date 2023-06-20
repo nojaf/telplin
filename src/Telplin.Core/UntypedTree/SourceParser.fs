@@ -2,12 +2,15 @@
 
 open Fantomas.Core.SyntaxOak
 
-let (|PropertyGetSetWithExtraParameter|_|) (md : MemberDefn) =
+let (|PropertyGetSetThatNeedSplit|_|) (md : MemberDefn) =
     match md with
     | MemberDefn.PropertyGetSet node ->
         node.LastBinding
         |> Option.bind (fun lastBinding ->
-            if node.FirstBinding.Parameters.Length = lastBinding.Parameters.Length then
+            if
+                node.FirstBinding.Parameters.Length = lastBinding.Parameters.Length
+                && node.FirstBinding.Accessibility = lastBinding.Accessibility
+            then
                 None
             else
 

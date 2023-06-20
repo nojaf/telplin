@@ -2,7 +2,7 @@ module Telplin.Core.UntypedTree.SourceParser
 
 open Fantomas.Core.SyntaxOak
 
-val (|PropertyGetSetWithExtraParameter|_|) :
+val (|PropertyGetSetThatNeedSplit|_|) :
     md : MemberDefn -> (MemberDefnPropertyGetSetNode * PropertyGetSetBindingNode * PropertyGetSetBindingNode) option
 
 val (|PrivateTopLevelBinding|_|) : ModuleDecl -> unit option

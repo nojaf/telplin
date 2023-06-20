@@ -91,6 +91,34 @@ type T =
 """
 
 [<Test>]
+let ``private get,set member is excluded`` () =
+    assertSignatureWith
+        id
+        false
+        """
+module Telplin
+
+type T =
+    struct
+        member private this.X with get () : int = 1 and set (_:int) = ()
+        member this.Y with set (_:int) = () and private get () = 1
+        member this.Z with private set (_:int) = () and get () = 2
+    end
+"""
+        """
+module Telplin
+
+type T =
+    struct
+        member private X: int with get, set
+        member Y: int with set
+        member private Y: int with get
+        member private Z: int with set
+        member Z: int with get
+    end
+"""
+
+[<Test>]
 let ``private augmentation is excluded`` () =
     assertSignatureWith
         id

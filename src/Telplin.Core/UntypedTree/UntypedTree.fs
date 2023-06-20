@@ -237,7 +237,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         |> MemberDefnResult.SingleMember
 
     // We need to create two val in this case, see #52
-    | PropertyGetSetWithExtraParameter (propertyNode, getBinding, setBinding) ->
+    | PropertyGetSetThatNeedSplit (propertyNode, getBinding, setBinding) ->
         let name =
             match List.tryLast propertyNode.MemberName.Content with
             | Some (IdentifierOrDot.Ident name) -> name
@@ -258,7 +258,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                         Some leadingKeyword,
                         None,
                         false,
-                        None,
+                        valNode.Accessibility,
                         name,
                         None,
                         valNode.Type,
@@ -316,6 +316,11 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                     lastBinding.LeadingKeyword
                 ]
 
+        let accessibility =
+            match propertyNode.LastBinding with
+            | Some _ -> propertyNode.Accessibility
+            | None -> propertyNode.FirstBinding.Accessibility
+
         MemberDefnSigMemberNode (
             ValNode (
                 propertyNode.XmlDoc,
@@ -323,7 +328,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                 Some leadingKeyword,
                 None,
                 false,
-                valNode.Accessibility,
+                accessibility,
                 name,
                 None,
                 valNode.Type,
