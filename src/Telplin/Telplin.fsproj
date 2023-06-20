@@ -18,18 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Argu" Version="6.1.1" />
-    <PackageReference Include="CliWrap" Version="3.6.0" />
+    <PackageReference Include="Argu" />
+    <PackageReference Include="CliWrap" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Telplin.Core\Telplin.Core.fsproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="FSharp.Compiler.Service">
-      <HintPath>$(FSharpCompilerPath)</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>
