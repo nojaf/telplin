@@ -1333,3 +1333,26 @@ type Foo =
     member inline Item: i: int * j: char -> string with get
     member inline Item: i: int * j: char -> string with set
 """
+
+[<Test>]
+let ``generic type with member with same generic parameter name, 89`` () =
+    assertSignature
+        """
+module Telplin
+
+type 'a Foo =
+    {
+        Bar: 'a array
+        D: int
+    }
+    static member Make<'a> (array: 'a array) : 'a Foo = failwith "meh"
+"""
+        """
+module Telplin
+
+type 'a Foo =
+    { Bar: 'a array
+      D: int }
+
+    static member Make<'a> : array: 'a array -> 'a Foo
+"""

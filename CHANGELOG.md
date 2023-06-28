@@ -1,10 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## 0.8.3 - 28-06-23
 
 ### Fixed
 * Private keyword lost in getter. [#87](https://github.com/nojaf/telplin/issues/87)
 * Inline keyword is missing. [#90](https://github.com/nojaf/telplin/issues/90)
+* Generic type with static member. [#89](https://github.com/nojaf/telplin/issues/89)
 
 ## 0.8.2 - 14-06-23
 
