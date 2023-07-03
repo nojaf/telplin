@@ -403,16 +403,16 @@ let App () =
             ]
         ]
         if not model.IsLoading then
+            let telplinClass = if model.Mode = Mode.Telplin then "active" else ""
+            let fcsClass = if model.Mode = Mode.FCS then "active" else ""
+
             div [ Id "result" ] [
                 ul [] [
                     li [
-                        ClassName (if model.Mode = Mode.Telplin then "active" else "")
+                        ClassName telplinClass
                         OnClick (fun _ -> dispatch (ChangeMode Mode.Telplin))
                     ] [ str "Telplin" ]
-                    li [
-                        ClassName (if model.Mode = Mode.FCS then "active" else "")
-                        OnClick (fun _ -> dispatch (ChangeMode Mode.FCS))
-                    ] [ str "FCS" ]
+                    li [ ClassName fcsClass ; OnClick (fun _ -> dispatch (ChangeMode Mode.FCS)) ] [ str "FCS" ]
                 ]
 
                 MonacoEditor [
