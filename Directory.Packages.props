@@ -5,9 +5,9 @@
   <ItemGroup>
     <!-- Common -->
     <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" />
-    <PackageVersion Include="FSharp.Core" Version="7.0.400-beta.23327.7" />
-    <PackageVersion Include="FSharp.Compiler.Service" Version="43.7.400-preview.23327.7" />
-    <PackageVersion Include="Fantomas.Core" Version="6.1.0" />
+    <PackageVersion Include="FSharp.Core" Version="7.0.400" />
+    <PackageVersion Include="FSharp.Compiler.Service" Version="43.7.400" />
+    <PackageVersion Include="Fantomas.Core" Version="6.1.2" />
     <PackageVersion Include="MSBuild.StructuredLogger" Version="2.1.815" />
     <!-- Console application -->
     <PackageVersion Include="Argu" Version="6.1.1" />

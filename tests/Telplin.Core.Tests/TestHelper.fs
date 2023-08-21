@@ -118,7 +118,7 @@ let downloadNugetPackage packageName version targetFramework =
             let! _ =
                 Cli
                     .Wrap("dotnet")
-                    .WithArguments("new classlib")
+                    .WithArguments("new classlib -f netstandard2.0")
                     .WithWorkingDirectory(tempDir.FullName)
                     .ExecuteAsync ()
 
