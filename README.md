@@ -1,6 +1,6 @@
 # Telplin
 
-![Logo](./Telplin.png)
+![Logo](https://raw.githubusercontent.com/nojaf/telplin/main/Telplin.png)
 
 Telplin helps F# users to generate matching signature files for implementation files.
 
