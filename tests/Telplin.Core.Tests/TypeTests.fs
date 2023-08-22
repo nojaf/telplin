@@ -458,8 +458,8 @@ module X
 
 type X =
     new: unit -> X
-    member Item: m: int -> string with set
     member Item: m: int -> string with get
+    member Item: m: int -> string with set
 """
 
 [<Test>]
@@ -994,8 +994,8 @@ namespace Sample
 module Inner =
     type Facts =
         new: name1: string * name2: string -> Facts
-        member Name: s: string -> float with set
         member Name: j: float -> string with get
+        member Name: s: string -> float with set
 """
 
 [<Test>]
@@ -1243,3 +1243,22 @@ type EnumConverter =
     override CanConvert: objectType: Type -> bool
 """
     }
+
+[<Test>]
+let ``auto property`` () =
+    assertSignature
+        """
+module Telplin
+
+type X() =
+    /// Good stuff
+    member val Foo = "bla" with get, set
+"""
+        """
+module Telplin
+
+type X =
+    new: unit -> X
+    /// Good stuff
+    member Foo: string with get, set
+"""

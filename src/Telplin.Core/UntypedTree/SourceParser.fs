@@ -13,14 +13,7 @@ let (|PropertyGetSetThatNeedSplit|_|) (md : MemberDefn) =
             then
                 None
             else
-
-            let getBinding, setBinding =
-                if node.FirstBinding.LeadingKeyword.Text = "get" then
-                    node.FirstBinding, lastBinding
-                else
-                    lastBinding, node.FirstBinding
-
-            Some (node, getBinding, setBinding)
+                Some node
         )
     | _ -> None
 

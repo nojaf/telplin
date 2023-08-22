@@ -1284,10 +1284,10 @@ module Telplin
 type T =
     struct
         member private X: int with get, set
+        member private Y: int
         member Y: int with set
-        member private Y: int with get
+        member Z: int
         member private Z: int with set
-        member Z: int with get
     end
 """
 
@@ -1315,6 +1315,7 @@ type T =
 """
 
 [<Test>]
+[<Ignore "Needs https://github.com/dotnet/fsharp/pull/15827">]
 let ``inline keyword in property, 90`` () =
     assertSignature
         """
