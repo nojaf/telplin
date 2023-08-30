@@ -163,11 +163,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
 
     | MemberDefn.AutoProperty autoProperty ->
         let sigMemberResult =
-            // See https://github.com/dotnet/fsharp/pull/15835
-            let mAutoProperty =
-                match autoProperty.WithGetSet with
-                | None -> autoProperty.Range.FCSRange
-                | Some withGetSet -> (Range.unionRanges autoProperty.Range withGetSet.Range).FCSRange
+            let mAutoProperty = autoProperty.Range.FCSRange
 
             resolver.GetValText (
                 autoProperty.Identifier.Text,
