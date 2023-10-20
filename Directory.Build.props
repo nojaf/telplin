@@ -34,6 +34,7 @@
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
         <RepositoryUrl>https://github.com/nojaf/telplin</RepositoryUrl>
+        <FsDocsLogoSource>/assets/Telplin.png</FsDocsLogoSource>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(IsPackable)' == 'true'">
