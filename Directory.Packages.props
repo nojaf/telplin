@@ -8,7 +8,6 @@
     <PackageVersion Include="FSharp.Core" Version="8.0.100-beta.23519.2" />
     <PackageVersion Include="FSharp.Compiler.Service" Version="43.8.100-preview.23519.2" />
     <PackageVersion Include="Fantomas.Core" Version="6.2.0" />
-    <PackageVersion Include="MSBuild.StructuredLogger" Version="2.1.844" />
     <!-- Console application -->
     <PackageVersion Include="Argu" Version="6.1.1" />
     <PackageVersion Include="CliWrap" Version="3.6.0" />

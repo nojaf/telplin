@@ -2,5 +2,5 @@
 
 open FSharp.Compiler.CodeAnalysis
 
-val mkOptionsFromBinaryLog : binLogPath : string -> FSharpProjectOptions
+val mkOptionsFromDesignTimeBuild : fsproj : string -> additionalArguments : string -> FSharpProjectOptions
 val mkOptionsFromResponseFile : responseFilePath : string -> FSharpProjectOptions

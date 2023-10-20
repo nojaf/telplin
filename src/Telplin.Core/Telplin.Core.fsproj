@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -26,7 +26,6 @@
   <ItemGroup>
     <PackageReference Include="Fantomas.Core" />
     <PackageReference Include="FSharp.Compiler.Service" />
-    <PackageReference Include="MSBuild.StructuredLogger" />
   </ItemGroup>
 
 </Project>
