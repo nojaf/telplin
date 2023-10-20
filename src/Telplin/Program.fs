@@ -37,7 +37,7 @@ Example: telplin MyProject.fsproj -- -c Release
                 "Create a response file containing compiler arguments that can be used as an alternative input to the *.fsproj file, thus avoiding the need for a full project rebuild. The response file will be saved as a *.rsp file."
             | Only_Record ->
                 "Alternative option for --record. Only create an *.rsp file without processing any of the files."
-            | Include_Private_Bindings _ -> "Include private bindings in the signature file."
+            | Include_Private_Bindings -> "Include private bindings in the signature file."
 
 [<EntryPoint>]
 let main args =

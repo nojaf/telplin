@@ -168,8 +168,8 @@ let filterDiagnostics diagnostics =
     diagnostics
     |> Array.filter (fun (d : FSharpDiagnostic) ->
         match d.Severity with
-        | FSharpDiagnosticSeverity.Error _
-        | FSharpDiagnosticSeverity.Warning _ -> true
+        | FSharpDiagnosticSeverity.Error
+        | FSharpDiagnosticSeverity.Warning -> true
         | FSharpDiagnosticSeverity.Info
         | FSharpDiagnosticSeverity.Hidden -> false
     )
