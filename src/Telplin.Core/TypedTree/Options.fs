@@ -46,6 +46,8 @@ let dotnet pwd args =
     ps.WaitForExit ()
     output.Trim ()
 
+// TODO: this won't work when there are wildcards in the CompileItems
+
 let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string) =
     if not (File.Exists fsproj) then
         invalidArg (nameof fsproj) $"\"%s{fsproj}\" does not exist."
