@@ -73,7 +73,7 @@ let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string
         let json =
             dotnet
                 pwd
-                $"msbuild /t:%s{targets} /p:DesignTimeBuild=True /p:SkipCompilerExecution=True /p:ProvideCommandLineArgs=True p:DesignTimeBuild=True --getItem:FscCommandLineArgs %s{additionalArguments}"
+                $"msbuild /t:%s{targets} /p:DesignTimeBuild=True /p:SkipCompilerExecution=True /p:ProvideCommandLineArgs=True --getItem:FscCommandLineArgs %s{additionalArguments}"
 
         let jsonDocument = JsonDocument.Parse json
 
