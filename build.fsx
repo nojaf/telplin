@@ -40,7 +40,7 @@ pipeline "Build" {
         run "dotnet fsi ./docs/.style/style.fsx"
         run "dotnet fsi ./tool/client/dev-server.fsx build"
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
-        run "dotnet fsdocs build --nodefaultcontent --noapidocs"
+        run "dotnet fsdocs build --noapidocs"
     }
     stage "lambda" {
         workingDir "tool/server"
