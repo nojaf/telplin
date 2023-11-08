@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,400;0,500;0,600;1,300&display=swap');
+
+:root {
+    --primary: #ffdd59;
+    --secondary: #6d7276;
+    --background: #fdfdfd;
+    --header-background: var(--primary);
+    --system-font: 'Raleway', sans-serif;
+    --header-brand-text-transform: capitalize;
+    --aside-width:270px;
+    --code-background: rgba(210, 222, 222, 0.15);
+}
+
+[data-theme=dark] {
+    --header-background: var(--secondary);
+    --background: #38393a;
+    --menu-item-hover-background: #38393a;
+}
+
+header .start strong {
+    font-weight: 600;
+    font-size: var(--font-400);
+}
+
+.nav-header {
+    font-weight: 600;
+}
+
+.nav-item {
+    font-weight: 500;
+}
+
+.fancy {
+    quotes: "\201C" "\201D" "\2018" "\2019";
+    background-color: #6d7276;
+    color: #ffdd59;
+    margin: var(--spacing-300) 0;
+    padding: var(--spacing-200);
+    border-left: var(--spacing-100) solid #ffdd59;
+    
+    &:before {
+        color: var(--primary);
+        content: open-quote;
+        font-size: var(--font-900);
+        line-height: 0.1em;
+        margin-right: var(--spacing-50);
+        vertical-align: calc(-1 * var(--spacing-500));
+    }
+    
+    & p {
+        margin-top: var(--spacing-50);
+        font-size: var(--font-300);
+        
+        & strong {
+            font-size: var(--font-500);
+        }
+    }
+}

@@ -477,7 +477,6 @@ $RECYCLE.BIN/
 *.lnk
 
 .idea/
-docs/**/*.css
 
 # Copied from dist folder in .tool
 docs/index.html
