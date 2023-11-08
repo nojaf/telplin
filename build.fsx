@@ -37,7 +37,6 @@ pipeline "Build" {
     stage "test" { run "dotnet test --no-restore --no-build -c Release" }
     stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin" }
     stage "docs" {
-        run "dotnet fsi ./docs/.style/style.fsx"
         run "dotnet fsi ./tool/client/dev-server.fsx build"
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
         run "dotnet fsdocs build --noapidocs"
