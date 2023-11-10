@@ -32,9 +32,7 @@ type private T private () =
         """
 module Telplin
 
-type private T =
-    class
-    end
+type private T = class end
 """
 
 [<Test>]
@@ -85,9 +83,7 @@ type T =
 module Telplin
 
 [<Class>]
-type T =
-    class
-    end
+type T = class end
 """
 
 [<Test>]

@@ -192,10 +192,7 @@ let map (f: 'b -> 'c) (t: Teq<'a, 'b>) : Teq<'a, 'c> = failwith "todo"
         """
 module Foo
 
-type Teq<'a, 'b> =
-    class
-    end
-
+type Teq<'a, 'b> = class end
 val map: f: ('b -> 'c) -> t: Teq<'a, 'b> -> Teq<'a, 'c>
 """
 
@@ -560,7 +557,6 @@ type System.Object with
 module P
 
 type System.Object with
-
     member Range: int
 """
 

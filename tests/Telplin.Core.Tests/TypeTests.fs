@@ -37,9 +37,7 @@ type Bar = struct end
 namespace Foo
 
 [<Struct>]
-type Bar =
-    struct
-    end
+type Bar = struct end
 """
 
 [<Test>]
@@ -552,7 +550,6 @@ module FA
 open System.Collections.Concurrent
 
 type ConcurrentDictionary<'key, 'value> with
-
     member TryFind: key: 'key -> 'value option
 """
 
@@ -570,7 +567,6 @@ type List<'E> with
 module Extensions
 
 type List<'E> with
-
     member X: 'E
 """
 
@@ -588,7 +584,6 @@ type Map<'K, 'V when 'K: comparison> with
 module Telplin
 
 type Map<'K, 'V when 'K: comparison> with
-
     member X: t: 'T -> k: 'K -> 'K option * ({| n: 'K array |} * int) when 'K: comparison
 """
 
@@ -817,7 +812,6 @@ type System.String with
 module Telplin
 
 type System.String with
-
     member inline XDoc: string
 """
 
@@ -944,7 +938,6 @@ module ResultCE =
 [<AutoOpen>]
 module ResultCEExtensions =
     type ResultBuilder with
-
         /// <summary>
         /// Needed to allow `for..in` and `for..do` functionality
         /// </summary>
