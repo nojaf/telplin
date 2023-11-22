@@ -118,7 +118,7 @@ let downloadNugetPackage packageName version targetFramework =
             let! _ =
                 Cli
                     .Wrap("dotnet")
-                    .WithArguments("new classlib")
+                    .WithArguments("new classlib -f netstandard2.0")
                     .WithWorkingDirectory(tempDir.FullName)
                     .ExecuteAsync ()
 
@@ -157,7 +157,7 @@ let downloadNugetPackage packageName version targetFramework =
             | Some nugetFolder ->
                 let assemblyFolder = Path.Combine (nugetFolder.FullName, "lib", targetFramework)
 
-                if not (Path.Exists (assemblyFolder)) then
+                if not (Path.Exists assemblyFolder) then
                     return failwith $"%s{packageName} does not contains %s{targetFramework}"
                 else
 

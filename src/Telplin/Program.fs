@@ -1,7 +1,6 @@
 ﻿open System
 open System.IO
 open Argu
-open CliWrap
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin.Core
@@ -27,7 +26,7 @@ type CliArguments =
         member this.Usage =
             match this with
             | Input _ ->
-                """FSharp project file (.fsproj), binary log (.binlog) or response file (.rsp) to process. An fsproj will be build first by Telplin.
+                """FSharp project file (.fsproj) or response file (.rsp) to process. An fsproj will be (design time) build first by Telplin.
 Additional build arguments for the .fsproj can be passed after the --.
 Example: telplin MyProject.fsproj -- -c Release
 """
@@ -37,7 +36,7 @@ Example: telplin MyProject.fsproj -- -c Release
                 "Create a response file containing compiler arguments that can be used as an alternative input to the *.fsproj file, thus avoiding the need for a full project rebuild. The response file will be saved as a *.rsp file."
             | Only_Record ->
                 "Alternative option for --record. Only create an *.rsp file without processing any of the files."
-            | Include_Private_Bindings _ -> "Include private bindings in the signature file."
+            | Include_Private_Bindings -> "Include private bindings in the signature file."
 
 [<EntryPoint>]
 let main args =
@@ -69,29 +68,10 @@ let main args =
 
     let projectOptions =
         if input.EndsWith ".fsproj" then
-            let binaryLog =
-                let folder = FileInfo(input).DirectoryName
-                let additionalArgs = String.concat " " additionalArgs
-                printfn $"Building %s{input}..."
+            let additionalArgs = String.concat " " additionalArgs
 
-                Cli
-                    .Wrap("dotnet")
-                    .WithArguments($"build \"{input}\" -bl:telplin.binlog --no-incremental {additionalArgs}")
-                    .WithValidation(CommandResultValidation.None)
-                    .ExecuteAsync()
-                    .Task.Result
-                |> ignore
-
-                Path.Combine (folder, "telplin.binlog")
-
-            let options = TypedTree.Options.mkOptionsFromBinaryLog binaryLog
-
-            if File.Exists binaryLog then
-                File.Delete binaryLog
-
-            options
-        elif input.EndsWith ".binlog" then
-            TypedTree.Options.mkOptionsFromBinaryLog input
+            TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
+            |> Async.RunSynchronously
         else
             TypedTree.Options.mkOptionsFromResponseFile input
 

@@ -97,6 +97,32 @@ type A =
     with ex ->
         Error $"Could not parse:\n%s{pseudoSignature}"
 
+let mkPropertySigFromString (memberText : string) : Result<MemberDefnSigMemberNode * MemberDefnSigMemberNode, string> =
+    let lines =
+        memberText.Split [| '\n' |] |> Seq.map (sprintf "    %s") |> String.concat "\n"
+
+    let pseudoSignature =
+        $"""
+type A =
+    new: unit -> A
+    {lines}
+"""
+
+    try
+        let oak = parseSignatureOak pseudoSignature
+
+        match oak.ModulesOrNamespaces.[0].Declarations.[0] with
+        | ModuleDecl.TypeDefn typeDefn ->
+            let tdn = TypeDefn.TypeDefnNode typeDefn
+
+            match tdn.Members with
+            | [ _ctor ; MemberDefn.SigMember getSig ; MemberDefn.SigMember setSig ] -> Ok (getSig, setSig)
+            | ms -> Error $"Unexpected members:%A{ms}"
+
+        | decls -> Error $"Unexpected module decls:%A{decls}"
+    with ex ->
+        Error $"Could not parse:\n%s{pseudoSignature}"
+
 let mkPrimaryConstructorFromString (primaryCtorText : string) : Result<MemberDefnSigMemberNode, string> =
     let pseudoSignature =
         $"""

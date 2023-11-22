@@ -32,9 +32,7 @@ type private T private () =
         """
 module Telplin
 
-type private T =
-    class
-    end
+type private T = class end
 """
 
 [<Test>]
@@ -85,9 +83,7 @@ type T =
 module Telplin
 
 [<Class>]
-type T =
-    class
-    end
+type T = class end
 """
 
 [<Test>]
@@ -111,10 +107,10 @@ module Telplin
 type T =
     struct
         member private X: int with get, set
+        member private Y: int
         member Y: int with set
-        member private Y: int with get
+        member Z: int
         member private Z: int with set
-        member Z: int with get
     end
 """
 

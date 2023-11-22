@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 - 22-11-23
+
+### Changed
+* Update to FCS 43.8.100
+* Update tfm to `net8.0`
+
 ## 0.8.3 - 28-06-23
 
 ### Fixed

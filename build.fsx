@@ -1,4 +1,4 @@
-#r "nuget: Fun.Build, 0.3.8"
+#r "nuget: Fun.Build, 1.0.4"
 #r "nuget: Fake.IO.FileSystem, 6.0.0"
 
 open System
@@ -57,6 +57,7 @@ pipeline "Build" {
 pipeline "Watch" {
     workingDir __SOURCE_DIRECTORY__
     stage "main" {
+        run "dotnet tool restore"
         paralle
         run "dotnet fsi ./tool/client/dev-server.fsx"
         run "dotnet fsdocs watch --port 7890 --noapidocs"

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -9,9 +9,9 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Types.fsi" />
     <Compile Include="Types.fs" />
+    <Compile Include="TypedTree\FSharpProjectExtensions.fs" />
     <Compile Include="TypedTree\Options.fsi" />
     <Compile Include="TypedTree\Options.fs" />
-    <Compile Include="TypedTree\FSharpProjectExtensions.fs" />
     <Compile Include="TypedTree\TypedTree.fsi" />
     <Compile Include="TypedTree\TypedTree.fs" />
     <Compile Include="UntypedTree\SourceParser.fsi" />
@@ -26,7 +26,6 @@
   <ItemGroup>
     <PackageReference Include="Fantomas.Core" />
     <PackageReference Include="FSharp.Compiler.Service" />
-    <PackageReference Include="MSBuild.StructuredLogger" />
   </ItemGroup>
 
 </Project>

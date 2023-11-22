@@ -163,7 +163,18 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
 
     | MemberDefn.AutoProperty autoProperty ->
         let sigMemberResult =
-            resolver.GetValText (autoProperty.Identifier.Text, autoProperty.Identifier.Range.FCSRange)
+            let mAutoProperty = autoProperty.Range.FCSRange
+
+            resolver.GetValText (
+                autoProperty.Identifier.Text,
+                autoProperty.Identifier.Range.FCSRange,
+                fun mfv ->
+                    // Workaround for https://github.com/dotnet/fsharp/issues/15831
+                    let posGeq = FSharp.Compiler.Text.Position.posGeq
+
+                    posGeq mfv.DeclarationLocation.Start mAutoProperty.Start
+                    && posGeq mAutoProperty.End mfv.DeclarationLocation.End
+            )
             |> Result.bind mkMemberSigFromString
 
         match sigMemberResult with
@@ -172,16 +183,11 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
 
         let valNode = sigMember.Val
 
-        let valKw =
-            autoProperty.LeadingKeyword.Content
-            |> List.filter (fun stn -> stn.Text <> "val")
-            |> fun keywords -> MultipleTextsNode (keywords, autoProperty.LeadingKeyword.Range)
-
         MemberDefnSigMemberNode (
             ValNode (
                 autoProperty.XmlDoc,
                 autoProperty.Attributes,
-                Some valKw,
+                valNode.LeadingKeyword,
                 valNode.Inline,
                 valNode.IsMutable,
                 autoProperty.Accessibility,
@@ -237,57 +243,23 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
         |> MemberDefnResult.SingleMember
 
     // We need to create two val in this case, see #52
-    | PropertyGetSetThatNeedSplit (propertyNode, getBinding, setBinding) ->
+    | PropertyGetSetThatNeedSplit propertyNode ->
         let name =
             match List.tryLast propertyNode.MemberName.Content with
             | Some (IdentifierOrDot.Ident name) -> name
             | _ -> failwith "Property does not have a name?"
 
-        let leadingKeyword = mkLeadingKeywordForProperty propertyNode
+        let sigMembers =
+            resolver.GetValText (name.Text, name.Range.FCSRange)
+            |> Result.bind mkPropertySigFromString
 
-        let mkSigMember getOrSet =
-            resolver.GetValText ($"%s{getOrSet}_{name.Text}", name.Range.FCSRange)
-            |> Result.bind mkMemberSigFromString
-            |> Result.map (fun sigMember ->
-                let valNode = sigMember.Val
-
-                MemberDefnSigMemberNode (
-                    ValNode (
-                        propertyNode.XmlDoc,
-                        propertyNode.Attributes,
-                        Some leadingKeyword,
-                        propertyNode.Inline,
-                        false,
-                        valNode.Accessibility,
-                        name,
-                        None,
-                        valNode.Type,
-                        Some (stn "="),
-                        None,
-                        zeroRange
-                    ),
-                    Some (MultipleTextsNode ([ stn "with" ; stn getOrSet ], zeroRange)),
-                    zeroRange
-                )
-                |> MemberDefn.SigMember
-            )
-
-        let getSigMemberResult = mkSigMember "get"
-        let setSigMemberResult = mkSigMember "set"
-
-        match getSigMemberResult, setSigMemberResult with
-        | Error error, Ok _
-        | Ok _, Error error
-        | Error error, Error _ -> MemberDefnResult.Error (TelplinError (mdRange, error))
-        | Ok getSigMember, Ok setSigMember ->
-
-        let sigs =
-            if Position.posGt getBinding.Range.Start setBinding.Range.Start then
-                getSigMember, setSigMember
+        match sigMembers with
+        | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
+        | Ok (getSig, setSig) ->
+            if Position.posGt getSig.Range.Start setSig.Range.Start then
+                MemberDefnResult.GetAndSetMember (MemberDefn.SigMember getSig, MemberDefn.SigMember setSig)
             else
-                setSigMember, getSigMember
-
-        MemberDefnResult.GetAndSetMember sigs
+                MemberDefnResult.GetAndSetMember (MemberDefn.SigMember setSig, MemberDefn.SigMember getSig)
 
     | MemberDefn.PropertyGetSet propertyNode ->
         let name =

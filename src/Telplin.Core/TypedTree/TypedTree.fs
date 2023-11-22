@@ -48,25 +48,40 @@ type TypedTreeInfoResolver
     member val Defines = defines
     member val IncludePrivateBindings = includePrivateBindings
 
-    member _.GetValText (name, range : range) =
+    member _.GetValText (name, range : range, predicate) =
         try
             let line = sourceText.GetLineString (range.StartLine - 1)
 
-            let symbolUse =
-                checkFileResults.GetSymbolUseAtLocation (range.StartLine, range.EndColumn, line, [ name ])
+            let symbolUseInfo =
+                match predicate with
+                | None ->
+                    checkFileResults.GetSymbolUseAtLocation (range.StartLine, range.EndColumn, line, [ name ])
+                    |> Option.bind (fun symbolUse ->
+                        match symbolUse.Symbol with
+                        | :? FSharpMemberOrFunctionOrValue as mfv ->
+                            Some (symbolUse.DisplayContext, symbolUse.Range, mfv)
+                        | _ -> None
+                    )
+                | Some predicate ->
+                    let symbolUses =
+                        checkFileResults.GetSymbolUsesAtLocation (range.StartLine, range.EndColumn, line, [ name ])
 
-            match symbolUse with
-            | None -> Error "no symbol use"
-            | Some symbolUse ->
-                match symbolUse.Symbol with
-                | :? FSharpMemberOrFunctionOrValue as mfv ->
-                    let sigTextOpt = mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
+                    symbolUses
+                    |> List.tryPick (fun symbolUse ->
+                        match symbolUse.Symbol with
+                        | :? FSharpMemberOrFunctionOrValue as mfv when predicate mfv ->
+                            Some (symbolUse.DisplayContext, symbolUse.Range, mfv)
+                        | _ -> None
+                    )
 
-                    match sigTextOpt with
-                    | None -> Error $"No sig text for %A{mfv}"
-                    | Some sigText -> Ok sigText
+            match symbolUseInfo with
+            | None -> Error "No FSharpMemberOrFunctionOrValue found"
+            | Some (displayContext, m, mfv) ->
+                let sigTextOpt = mfv.GetValSignatureText (displayContext, m)
 
-                | _ -> Error "Symbol is not FSharpMemberOrFunctionOrValue"
+                match sigTextOpt with
+                | None -> Error $"No sig text for %A{mfv}"
+                | Some sigText -> Ok sigText
 
         with ex ->
             Error ex.Message
@@ -134,7 +149,14 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
 
     match checkFileAnswer with
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
-        TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
+        let firstErrorDiag =
+            checkFileResults.Diagnostics
+            |> Array.tryFind (fun diag -> diag.Severity = FSharpDiagnosticSeverity.Error)
+
+        match firstErrorDiag with
+        | Some diag ->
+            failwithf $"Type-checking %s{projectOptions.ProjectFileName} lead to errors. The first one being %A{diag}"
+        | None -> TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
 let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =
@@ -153,8 +175,8 @@ let filterDiagnostics diagnostics =
     diagnostics
     |> Array.filter (fun (d : FSharpDiagnostic) ->
         match d.Severity with
-        | FSharpDiagnosticSeverity.Error _
-        | FSharpDiagnosticSeverity.Warning _ -> true
+        | FSharpDiagnosticSeverity.Error
+        | FSharpDiagnosticSeverity.Warning -> true
         | FSharpDiagnosticSeverity.Info
         | FSharpDiagnosticSeverity.Hidden -> false
     )

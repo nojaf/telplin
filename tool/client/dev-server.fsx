@@ -54,6 +54,7 @@ let build () =
         .Wrap("dotnet")
         .WithArguments($"fable {fableArgs}")
         .WithWorkingDirectory(__SOURCE_DIRECTORY__)
+        .WithStandardErrorPipe(PipeTarget.ToDelegate (printfn "%s"))
         .ExecuteAsync()
         .Task.Wait ()
 

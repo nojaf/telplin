@@ -9,6 +9,8 @@
     --header-brand-text-transform: capitalize;
     --aside-width:270px;
     --code-background: rgba(210, 222, 222, 0.15);
+    --dialog-link-color: #38393a;
+    --dialog-link-hover-background-color: var(--secondary);
 }
 
 [data-theme=dark] {
