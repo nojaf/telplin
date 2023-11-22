@@ -26,7 +26,7 @@ let zipPath =
     </> "server"
     </> "bin"
     </> "Release"
-    </> "net7.0"
+    </> "net8.0"
     </> "server.zip"
 
 let infra () =
