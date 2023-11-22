@@ -16,7 +16,7 @@
     <PackageVersion Include="Pulumi.FSharp" Version="3.55.1" />
     <PackageVersion Include="Pulumi.Aws" Version="5.41.0" />
     <!-- Test -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="NUnit" Version="3.13.3" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.2.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="3.3.0" />
