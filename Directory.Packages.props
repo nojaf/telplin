@@ -28,7 +28,7 @@
     <PackageVersion Include="Feliz.CompilerPlugins" Version="2.2.0" />
     <PackageVersion Include="Feliz" Version="2.6.0" />
     <PackageVersion Include="Feliz.UseElmish" Version="2.4.0" />
-    <PackageVersion Include="Thoth.Json" Version="9.0.0" />
+    <PackageVersion Include="Thoth.Json" Version="10.2.0" />
     <PackageVersion Include="Zanaptak.TypedCssClasses" Version="1.0.0" />
     <!-- Lambda -->
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.1.0" />
