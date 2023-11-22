@@ -2,5 +2,5 @@
 
 open FSharp.Compiler.CodeAnalysis
 
-val mkOptionsFromDesignTimeBuild : fsproj : string -> additionalArguments : string -> FSharpProjectOptions
+val mkOptionsFromDesignTimeBuild : fsproj : string -> additionalArguments : string -> Async<FSharpProjectOptions>
 val mkOptionsFromResponseFile : responseFilePath : string -> FSharpProjectOptions

@@ -149,7 +149,14 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
 
     match checkFileAnswer with
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
-        TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
+        let firstErrorDiag =
+            checkFileResults.Diagnostics
+            |> Array.tryFind (fun diag -> diag.Severity = FSharpDiagnosticSeverity.Error)
+
+        match firstErrorDiag with
+        | Some diag ->
+            failwithf $"Type-checking %s{projectOptions.ProjectFileName} lead to errors. The first one being %A{diag}"
+        | None -> TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
 
 let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =

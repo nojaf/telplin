@@ -69,7 +69,9 @@ let main args =
     let projectOptions =
         if input.EndsWith ".fsproj" then
             let additionalArgs = String.concat " " additionalArgs
+
             TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
+            |> Async.RunSynchronously
         else
             TypedTree.Options.mkOptionsFromResponseFile input
 

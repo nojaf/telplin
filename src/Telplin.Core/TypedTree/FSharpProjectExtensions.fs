@@ -1,6 +1,12 @@
 ﻿module Telplin.Core.TypedTree.FSharpProjectExtensions
 
+open System
+open System.IO
 open FSharp.Compiler.CodeAnalysis
+
+module Option =
+    let orFailWith (message : string) (o : 't option) =
+        if o.IsNone then failwith message else o.Value
 
 type FSharpProjectOptions with
 
@@ -13,3 +19,17 @@ type FSharpProjectOptions with
                 None
         )
         |> Seq.toList
+
+    /// Find the output as full path, throws an exception if the argument was not found in the OtherOptions.
+    member x.Output =
+        x.OtherOptions
+        |> Array.tryPick (fun option ->
+            if option.StartsWith ("-o:", StringComparison.Ordinal) then
+                Some (option.Substring 3)
+            elif option.StartsWith ("--out:", StringComparison.Ordinal) then
+                Some (option.Substring 6)
+            else
+                None
+        )
+        |> Option.map (fun output -> Path.Combine (Path.GetDirectoryName x.ProjectFileName, output))
+        |> Option.orFailWith $"%s{x.ProjectFileName} does not have the output argument"
