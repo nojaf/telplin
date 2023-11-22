@@ -177,8 +177,7 @@ let rec collectProjectReferences
                     if projects.HasProject referencedFullPath then
                         return projects
                     else
-                        let! refProjectInfo = findFSharpProjectReferences referencedFullPath
-                        return projects.Add refProjectInfo
+                        return! collectProjectReferences referencedFullPath projects
                 }
             )
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.1 - 22-11-23
+
+### Fixed
+* Recursively find project references.
+
 ## 0.9.0 - 22-11-23
 
 ### Changed
