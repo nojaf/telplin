@@ -498,6 +498,7 @@ tmp/
 # Tool
 tool/client/*.js
 tool/client/dist
+tool/client/fable_modules
 
 # Local compiler
 .fsharp/
