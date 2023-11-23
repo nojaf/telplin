@@ -55,8 +55,7 @@ let infra () =
             Iam.RoleArgs (
                 AssumeRolePolicy =
                     input
-                        """
-{
+                        """{
     "Version": "2012-10-17",
     "Statement": [{
         "Action": "sts:AssumeRole",
