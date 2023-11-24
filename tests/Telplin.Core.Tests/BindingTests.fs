@@ -1311,7 +1311,6 @@ type T =
 """
 
 [<Test>]
-[<Ignore "Needs https://github.com/dotnet/fsharp/pull/15827">]
 let ``inline keyword in property, 90`` () =
     assertSignature
         """
