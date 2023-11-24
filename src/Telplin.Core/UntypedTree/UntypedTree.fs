@@ -91,7 +91,7 @@ let rec sanitizeReturnType (untypedParameters : Pattern list) (t : Type) : Type 
 type MemberDefnResult =
     | None
     | SingleMember of MemberDefn
-    | GetAndSetMember of get:MemberDefn * set:MemberDefn
+    | GetAndSetMember of get : MemberDefn * set : MemberDefn
     | Error of TelplinError
 
 let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnResult =
