@@ -6,7 +6,9 @@ open FSharp.Compiler.CodeAnalysis
 
 module Option =
     let orFailWith (message : string) (o : 't option) =
-        if o.IsNone then failwith message else o.Value
+        match o with
+        | Some v -> v
+        | None -> failwith message
 
 type FSharpProjectOptions with
 

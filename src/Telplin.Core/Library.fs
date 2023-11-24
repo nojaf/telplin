@@ -11,7 +11,7 @@ type SignatureVerificationResult =
     | FailedToCreateSignatureFile of error : string
     | InvalidImplementationFile of diagnostics : FSharpDiagnostic array
     | InvalidSignatureFile of signature : string * diagnostics : FSharpDiagnostic array
-    | PartialSignatureFile of signature : string * TelplinError list
+    | PartialSignatureFile of signature : string * errors: TelplinError list
 
 type MkSignature = FSharpProjectOptions -> string -> string * TelplinError list
 
