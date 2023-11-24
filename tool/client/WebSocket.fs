@@ -1,5 +1,6 @@
 module WebSocketClient
 
+open System
 open Fable.Core.JsInterop
 open Browser.Types
 open Browser.WebSocket
@@ -15,7 +16,7 @@ ws.onmessage <-
 
         if data = "full" then
             window.location.reload ()
-        elif data.EndsWith ".css" then
+        elif data.EndsWith (".css", StringComparison.Ordinal) then
             let linkTag = document.querySelector $"link[href*='{data}']" :?> HTMLLinkElement
 
             if not (isNullOrUndefined linkTag) then

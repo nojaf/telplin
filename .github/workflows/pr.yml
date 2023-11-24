@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  id-token: write
+  security-events: write
+
 jobs:
   build:
 
@@ -17,11 +21,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
 
-      - name: List SDKs
-        run: dotnet --list-sdks
-
-      - name: Explicit tool restore
-        run: dotnet tool restore
-
       - name: Build
         run: dotnet fsi ./build.fsx
+
+      - name: Run Analyzers
+        run: dotnet msbuild /t:AnalyzeFSharpProject /p:Configuration=Release
+        continue-on-error: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ./reports

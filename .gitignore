@@ -505,3 +505,6 @@ tool/client/fable_modules
 
 # dotnet sdk in gitpod
 .sdk/
+
+# Analyzers
+reports/
