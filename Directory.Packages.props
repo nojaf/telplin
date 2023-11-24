@@ -36,7 +36,7 @@
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.0" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.0" />
     <PackageVersion Include="Microsoft.Net.Http.Headers" Version="2.2.8" />
-    <PackageVersion Include="Thoth.Json.Net" Version="8.0.0" />
+    <PackageVersion Include="Thoth.Json.Net" Version="11.0.0" />
     <PackageVersion Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 </Project>
