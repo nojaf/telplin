@@ -29,13 +29,10 @@ pipeline "Build" {
         run "dotnet tool restore"
         run "dotnet fantomas . --check"
     }
-    stage "restore" { run "dotnet restore" }
-    stage "build" {
-        run "dotnet restore ./telplin.sln"
-        run "dotnet build --no-restore -c Release ./telplin.sln"
-    }
-    stage "test" { run "dotnet test --no-restore --no-build -c Release" }
-    stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin" }
+    stage "restore" { run "dotnet restore -tl" }
+    stage "build" { run "dotnet build --no-restore -c Release ./telplin.sln -tl" }
+    stage "test" { run "dotnet test --no-restore --no-build -c Release -tl" }
+    stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin -tl" }
     stage "docs" {
         run "dotnet fsi ./tool/client/dev-server.fsx build"
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)

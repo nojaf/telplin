@@ -17,12 +17,6 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
 
-      - name: List SDKs
-        run: dotnet --list-sdks
-
-      - name: Explicit tool restore
-        run: dotnet tool restore
-
       - name: Build
         run: dotnet fsi ./build.fsx
 
