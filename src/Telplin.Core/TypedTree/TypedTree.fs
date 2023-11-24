@@ -249,4 +249,4 @@ let FCSSignature options implementation =
     | FSharpCheckFileAnswer.Succeeded checkFileResults ->
         match checkFileResults.GenerateSignature (pageWidth = 120) with
         | None -> Choice1Of2 ()
-        | Some signature -> Choice2Of2 (string signature)
+        | Some signature -> Choice2Of2 (string<ISourceText> signature)

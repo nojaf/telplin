@@ -67,7 +67,7 @@ let main args =
         exit 1
 
     let projectOptions =
-        if input.EndsWith ".fsproj" then
+        if input.EndsWith (".fsproj", StringComparison.Ordinal) then
             let additionalArgs = String.concat " " additionalArgs
 
             TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
@@ -95,7 +95,7 @@ let main args =
                 | Some files -> List.map Path.GetFullPath files |> List.toArray
 
             sourceFiles
-            |> Array.filter (fun file -> file.EndsWith ".fs")
+            |> Array.filter (fun file -> file.EndsWith (".fs", StringComparison.Ordinal))
             |> Array.choose (fun sourceFile ->
                 printfn "process: %s" sourceFile
 

@@ -10,7 +10,7 @@ open Telplin.Core.TypedTree.FSharpProjectExtensions
 let fsharpFiles = set [| ".fs" ; ".fsi" ; ".fsx" |]
 
 let isFSharpFile (file : string) =
-    Set.exists (fun (ext : string) -> file.EndsWith ext) fsharpFiles
+    Set.exists (fun (ext : string) -> file.EndsWith (ext, StringComparison.Ordinal)) fsharpFiles
 
 let mkOptions (projectFile : FileInfo) (compilerArgs : string array) =
     let sourceFiles =
@@ -170,7 +170,7 @@ let rec collectProjectReferences
 
         let! combined =
             (async { return nextProjects }, highLevelFSharpProjectInfo.FSharpProjectReferences)
-            ||> Seq.fold (fun (projectsAsync : Async<HighLevelFSharpProjects>) referencedFullPath ->
+            ||> Set.fold (fun (projectsAsync : Async<HighLevelFSharpProjects>) referencedFullPath ->
                 async {
                     let! projects = projectsAsync
 

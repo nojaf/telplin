@@ -30,6 +30,18 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FSharp.Core" />
+        <PackageReference Include="FSharp.Analyzers.Build">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>build</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="G-Research.FSharp.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Ionide.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>analyzers</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <PropertyGroup>
         <FsDocsLicenseLink>https://github.com/nojaf/telplin/blob/main/LICENSE.md</FsDocsLicenseLink>
