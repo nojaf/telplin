@@ -70,7 +70,10 @@ let main args =
         if input.EndsWith (".fsproj", StringComparison.Ordinal) then
             let additionalArgs = String.concat " " additionalArgs
 
-            TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
+            if onlyRecord then
+                TypedTree.Options.mkOptionsFromDesignTimeBuildWithoutReferences input additionalArgs
+            else
+                TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
             |> Async.RunSynchronously
         else
             TypedTree.Options.mkOptionsFromResponseFile input

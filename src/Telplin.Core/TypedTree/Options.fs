@@ -272,6 +272,20 @@ let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string
         return currentProject
     }
 
+let mkOptionsFromDesignTimeBuildWithoutReferences
+    (fsproj : string)
+    (additionalArguments : string)
+    : Async<FSharpProjectOptions>
+    =
+    async {
+        let fsproj = FileInfo fsproj
+
+        if not fsproj.Exists then
+            invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
+
+        return! mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
+    }
+
 let mkOptionsFromResponseFile responseFilePath =
     let compilerArgs = File.ReadAllLines responseFilePath
     mkOptions (FileInfo responseFilePath) compilerArgs
