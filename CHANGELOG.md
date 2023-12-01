@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2 - 01-12-23
+
+### Fixed
+* Allow project cracking when dotnet sdk (via global.json) is lowered than 8.
+
 ## 0.9.1 - 22-11-23
 
 ### Fixed

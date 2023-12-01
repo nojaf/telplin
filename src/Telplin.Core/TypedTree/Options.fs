@@ -3,6 +3,7 @@
 open System
 open System.Diagnostics
 open System.IO
+open System.Reflection
 open System.Text.Json
 open FSharp.Compiler.CodeAnalysis
 open Telplin.Core.TypedTree.FSharpProjectExtensions
@@ -41,18 +42,27 @@ let mkOptions (projectFile : FileInfo) (compilerArgs : string array) =
         Stamp = None
     }
 
-let dotnet (pwd : string) (args : string) : Async<string> =
+type FullPath = string
+
+let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
     backgroundTask {
         let psi = ProcessStartInfo "dotnet"
+        let pwd = Assembly.GetEntryAssembly().Location |> Path.GetDirectoryName
         psi.WorkingDirectory <- pwd
-        psi.Arguments <- args
+        psi.Arguments <- $"msbuild \"%s{fsproj}\" %s{args}"
         psi.RedirectStandardOutput <- true
+        psi.RedirectStandardError <- true
         psi.UseShellExecute <- false
         use ps = new Process ()
         ps.StartInfo <- psi
         ps.Start () |> ignore
         let output = ps.StandardOutput.ReadToEnd ()
+        let error = ps.StandardError.ReadToEnd ()
         do! ps.WaitForExitAsync ()
+
+        if not (String.IsNullOrWhiteSpace error) then
+            failwithf $"In %s{pwd}:\ndotnet %s{args} failed with\n%s{error}"
+
         return output.Trim ()
     }
     |> Async.AwaitTask
@@ -62,11 +72,39 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
         let targets =
             "Restore,ResolveAssemblyReferencesDesignTime,ResolveProjectReferencesDesignTime,ResolvePackageDependenciesDesignTime,FindReferenceAssembliesForReferences,_GenerateCompileDependencyCache,_ComputeNonExistentFileProperty,BeforeBuild,BeforeCompile,CoreCompile"
 
-        let! json =
-            dotnet
-                fsproj.DirectoryName
-                $"msbuild /t:%s{targets} /p:DesignTimeBuild=True /p:SkipCompilerExecution=True /p:ProvideCommandLineArgs=True --getItem:FscCommandLineArgs %s{additionalArguments}"
+        let! targetFrameworkJson =
+            dotnet_msbuild fsproj.FullName "--getProperty:TargetFrameworks --getProperty:TargetFramework"
 
+        let targetFramework =
+            let tf, tfs =
+                JsonDocument.Parse targetFrameworkJson
+                |> fun json -> json.RootElement.GetProperty "Properties"
+                |> fun properties ->
+                    properties.GetProperty("TargetFramework").GetString (),
+                    properties.GetProperty("TargetFrameworks").GetString ()
+
+            if not (String.IsNullOrWhiteSpace tf) then
+                tf
+            else
+                tfs.Split ';' |> Array.head
+
+        let properties =
+            [
+                "/p:Telplin=True"
+                $"/p:TargetFramework=%s{targetFramework}"
+                "/p:DesignTimeBuild=True"
+                "/p:SkipCompilerExecution=True"
+                "/p:ProvideCommandLineArgs=True"
+                // See https://github.com/NuGet/Home/issues/13046
+                "/p:RestoreUseStaticGraphEvaluation=False"
+            ]
+            |> List.filter (String.IsNullOrWhiteSpace >> not)
+            |> String.concat " "
+
+        let arguments =
+            $"/t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
+
+        let! json = dotnet_msbuild fsproj.FullName arguments
         let jsonDocument = JsonDocument.Parse json
 
         let options =
@@ -77,25 +115,13 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
             |> Seq.map (fun arg -> arg.GetProperty("Identity").GetString ())
             |> Seq.toArray
 
-        return mkOptions fsproj options
+        if Array.isEmpty options then
+            return
+                failwithf
+                    $"Design time build for %s{fsproj.FullName} failed. CoreCompile was most likely skipped. `dotnet clean` might help here."
+        else
+            return mkOptions fsproj options
     }
-
-let verifyDotnetEightSDKIsPresent () =
-    async {
-        let tmp = Path.GetTempPath ()
-
-        let! sdkList = dotnet tmp "--list-sdks"
-        let sdkList = sdkList.Split ('\n', StringSplitOptions.RemoveEmptyEntries)
-
-        let hasEight =
-            sdkList
-            |> Array.exists (fun line -> line.StartsWith ("8", StringComparison.Ordinal))
-
-        if not hasEight then
-            failwith "Telplin requires the dotnet 8 SDK to be installed on the machine. Got"
-    }
-
-type FullPath = string
 
 type HighLevelFSharpProjectInfo =
     {
@@ -104,7 +130,7 @@ type HighLevelFSharpProjectInfo =
         FSharpProjectReferences : Set<string>
     }
 
-type HighLevelFSharpProjects private (projects : Set<HighLevelFSharpProjectInfo>) =
+type HighLevelFSharpProjects(projects : Set<HighLevelFSharpProjectInfo>) =
     static member Empty = HighLevelFSharpProjects Set.empty
 
     member x.Add (project : HighLevelFSharpProjectInfo) =
@@ -120,8 +146,7 @@ type HighLevelFSharpProjects private (projects : Set<HighLevelFSharpProjectInfo>
 
 let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProjectInfo> =
     async {
-        let pwd = Path.GetDirectoryName fsproj
-        let! json = dotnet pwd "msbuild --getItem:ProjectReference"
+        let! json = dotnet_msbuild fsproj "--getItem:ProjectReference"
         let jsonDocument = JsonDocument.Parse json
 
         let references =
@@ -139,7 +164,7 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
             )
             |> Set.ofSeq
 
-        let! produceReferenceAssembly = dotnet pwd "msbuild --getProperty:ProduceReferenceAssembly"
+        let! produceReferenceAssembly = dotnet_msbuild fsproj "--getProperty:ProduceReferenceAssembly"
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
@@ -210,10 +235,8 @@ let mkFSharpReferencedProjects
     )
     |> Seq.toArray
 
-let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string) =
+let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string) : Async<FSharpProjectOptions> =
     async {
-        do! verifyDotnetEightSDKIsPresent ()
-
         let fsproj = FileInfo fsproj
 
         if not fsproj.Exists then
@@ -247,6 +270,20 @@ let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string
             getFSharpOptionsByFullPath allProjectOptionWithReferences fsproj.FullName
 
         return currentProject
+    }
+
+let mkOptionsFromDesignTimeBuildWithoutReferences
+    (fsproj : string)
+    (additionalArguments : string)
+    : Async<FSharpProjectOptions>
+    =
+    async {
+        let fsproj = FileInfo fsproj
+
+        if not fsproj.Exists then
+            invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
+
+        return! mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
     }
 
 let mkOptionsFromResponseFile responseFilePath =
