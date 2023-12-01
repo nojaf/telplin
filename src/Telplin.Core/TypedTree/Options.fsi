@@ -8,8 +8,7 @@ open FSharp.Compiler.CodeAnalysis
 /// </summary>
 /// <param name="fsproj">Input FSharp project</param>
 /// <param name="additionalArguments">Additional MSBuild parameters append to each cli invocation.</param>
-val mkOptionsFromDesignTimeBuild :
-    fsproj : string -> additionalArguments : string -> Async<FSharpProjectOptions>
+val mkOptionsFromDesignTimeBuild : fsproj : string -> additionalArguments : string -> Async<FSharpProjectOptions>
 
 /// <summary>
 /// Does the same as `mkOptionsFromDesignTimeBuild` but won't collect any F# project references.
@@ -17,7 +16,7 @@ val mkOptionsFromDesignTimeBuild :
 /// <see cref="mkOptionsFromDesignTimeBuild"/>
 /// <param name="fsproj"></param>
 /// <param name="additionalArguments"></param>
-val mkOptionsFromDesignTimeBuildWithoutReferences:
+val mkOptionsFromDesignTimeBuildWithoutReferences :
     fsproj : string -> additionalArguments : string -> Async<FSharpProjectOptions>
 
 val mkOptionsFromResponseFile : responseFilePath : string -> FSharpProjectOptions
