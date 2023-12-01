@@ -3,74 +3,10 @@
 open System
 open System.Diagnostics
 open System.IO
-open System.Runtime.InteropServices
+open System.Reflection
 open System.Text.Json
-open System.Text.RegularExpressions
 open FSharp.Compiler.CodeAnalysis
 open Telplin.Core.TypedTree.FSharpProjectExtensions
-
-/// Stolen from https://github.com/ionide/proj-info/blob/62e15bb4ab5ac534423942012e623171601e4f95/src/Ionide.ProjInfo/Utils.fs#L7-L105
-module Paths =
-    let isWindows = RuntimeInformation.IsOSPlatform (OSPlatform.Windows)
-    let isMac = RuntimeInformation.IsOSPlatform (OSPlatform.OSX)
-    let isLinux = RuntimeInformation.IsOSPlatform (OSPlatform.Linux)
-
-    let isUnix = isLinux || isMac
-
-    let dotnetBinaryName = if isUnix then "dotnet" else "dotnet.exe"
-
-    let potentialDotnetHostEnvVars =
-        [
-            "DOTNET_HOST_PATH", id // is a full path to dotnet binary
-            "DOTNET_ROOT", (fun s -> Path.Combine (s, dotnetBinaryName)) // needs dotnet binary appended
-            "DOTNET_ROOT(x86)", (fun s -> Path.Combine (s, dotnetBinaryName))
-        ] // needs dotnet binary appended
-
-    let existingEnvVarValue envVarValue =
-        match envVarValue with
-        | null
-        | "" -> None
-        | other -> Some other
-
-    let checkExistence (f : FileInfo) = if f.Exists then Some f else None
-
-    let tryFindFromEnvVar () =
-        potentialDotnetHostEnvVars
-        |> List.tryPick (fun (envVar, transformer) ->
-            match Environment.GetEnvironmentVariable envVar |> existingEnvVarValue with
-            | Some varValue -> transformer varValue |> FileInfo |> checkExistence
-            | None -> None
-        )
-
-    let PATHSeparator = if isUnix then ':' else ';'
-
-    let tryFindFromPATH () =
-        System.Environment
-            .GetEnvironmentVariable("PATH")
-            .Split (PATHSeparator, StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
-        |> Array.tryPick (fun d -> Path.Combine (d, dotnetBinaryName) |> FileInfo |> checkExistence)
-
-    let tryFindFromDefaultDirs () =
-        let windowsPath = $"C:\\Program Files\\dotnet\\{dotnetBinaryName}"
-        let macosPath = $"/usr/local/share/dotnet/{dotnetBinaryName}"
-        let linuxPath = $"/usr/share/dotnet/{dotnetBinaryName}"
-
-        let tryFindFile p = FileInfo p |> checkExistence
-
-        if isWindows then tryFindFile windowsPath
-        else if isMac then tryFindFile macosPath
-        else if isLinux then tryFindFile linuxPath
-        else None
-
-    /// <summary>
-    /// provides the path to the `dotnet` binary running this library, respecting various dotnet <see href="https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_root-dotnet_rootx86%5D">environment variables</see>.
-    /// Also probes the PATH and checks the default installation locations
-    /// </summary>
-    let dotnetRoot =
-        lazy
-            (tryFindFromEnvVar ()
-             |> Option.orElseWith tryFindFromPATH
-             |> Option.orElseWith tryFindFromDefaultDirs)
 
 let fsharpFiles = set [| ".fs" ; ".fsi" ; ".fsx" |]
 
@@ -106,11 +42,14 @@ let mkOptions (projectFile : FileInfo) (compilerArgs : string array) =
         Stamp = None
     }
 
-let dotnet (pwd : string) (args : string) : Async<string> =
+type FullPath = string
+
+let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
     backgroundTask {
         let psi = ProcessStartInfo "dotnet"
+        let pwd = Assembly.GetEntryAssembly().Location |> Path.GetDirectoryName
         psi.WorkingDirectory <- pwd
-        psi.Arguments <- args
+        psi.Arguments <- $"msbuild \"%s{fsproj}\" %s{args}"
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
         psi.UseShellExecute <- false
@@ -128,20 +67,18 @@ let dotnet (pwd : string) (args : string) : Async<string> =
     }
     |> Async.AwaitTask
 
-let mkOptionsFromDesignTimeBuildAux (msbuildBinary : string) (fsproj : FileInfo) (additionalArguments : string) =
+let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : string) =
     async {
         let targets =
             "Restore,ResolveAssemblyReferencesDesignTime,ResolveProjectReferencesDesignTime,ResolvePackageDependenciesDesignTime,FindReferenceAssembliesForReferences,_GenerateCompileDependencyCache,_ComputeNonExistentFileProperty,BeforeBuild,BeforeCompile,CoreCompile"
 
         let! targetFrameworkJson =
-            dotnet
-                fsproj.DirectoryName
-                $"\"%s{msbuildBinary}\" --getProperty:TargetFrameworks --getProperty:TargetFramework"
+            dotnet_msbuild fsproj.FullName "--getProperty:TargetFrameworks --getProperty:TargetFramework"
 
         let targetFramework =
             let tf, tfs =
                 JsonDocument.Parse targetFrameworkJson
-                |> fun json -> json.RootElement.GetProperty ("Properties")
+                |> fun json -> json.RootElement.GetProperty "Properties"
                 |> fun properties ->
                     properties.GetProperty("TargetFramework").GetString (),
                     properties.GetProperty("TargetFrameworks").GetString ()
@@ -151,34 +88,23 @@ let mkOptionsFromDesignTimeBuildAux (msbuildBinary : string) (fsproj : FileInfo)
             else
                 tfs.Split ';' |> Array.head
 
-        let fscToolPath =
-            Paths.dotnetRoot.Value
-            |> Option.map (fun f -> $"/p:FscToolPath=\"%s{f.DirectoryName}\"")
-            |> Option.defaultValue String.Empty
-
-        let fscToolExe =
-            Paths.dotnetRoot.Value
-            |> Option.map (fun f -> $"/p:FscToolExe=\"%s{f.Name}\"")
-            |> Option.defaultValue String.Empty
-
         let properties =
             [
+                "/p:Telplin=True"
                 $"/p:TargetFramework=%s{targetFramework}"
                 "/p:DesignTimeBuild=True"
                 "/p:SkipCompilerExecution=True"
                 "/p:ProvideCommandLineArgs=True"
                 // See https://github.com/NuGet/Home/issues/13046
                 "/p:RestoreUseStaticGraphEvaluation=False"
-                fscToolPath
-                fscToolExe
             ]
             |> List.filter (String.IsNullOrWhiteSpace >> not)
             |> String.concat " "
 
         let arguments =
-            $"\"%s{msbuildBinary}\" /t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments} -bl"
+            $"/t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
 
-        let! json = dotnet fsproj.DirectoryName arguments
+        let! json = dotnet_msbuild fsproj.FullName arguments
         let jsonDocument = JsonDocument.Parse json
 
         let options =
@@ -189,46 +115,13 @@ let mkOptionsFromDesignTimeBuildAux (msbuildBinary : string) (fsproj : FileInfo)
             |> Seq.map (fun arg -> arg.GetProperty("Identity").GetString ())
             |> Seq.toArray
 
-        return mkOptions fsproj options
+        if Array.isEmpty options then
+            return
+                failwithf
+                    $"Design time build for %s{fsproj.FullName} failed. CoreCompile was most likely skipped. `dotnet clean` might help here."
+        else
+            return mkOptions fsproj options
     }
-
-// 8.0.100 [C:\Program Files\dotnet\sdk]
-let sdkListItemPattern = "^(\d+\.\d+\.\d+)\s+\[(.*?)\]$"
-
-let tryFindDotnetEightSDKMSBuildBinary () =
-    async {
-        let tmp = Path.GetTempPath ()
-
-        let! sdkList = dotnet tmp "--list-sdks"
-        let sdkList = sdkList.Split ('\n', StringSplitOptions.RemoveEmptyEntries)
-
-        return
-            sdkList
-            |> Array.tryPick (fun line ->
-                let hasEight = line.StartsWith ("8", StringComparison.Ordinal)
-
-                if not hasEight then
-                    None
-                else
-
-                let m = Regex.Match (line, sdkListItemPattern)
-
-                if not m.Success then
-                    None
-                else
-
-                let version = m.Groups.[1].Value
-                let path = m.Groups.[2].Value
-                let binaryPath = Path.Combine (path, version, "MSBuild.dll")
-
-                if not (File.Exists binaryPath) then
-                    None
-                else
-                    Some binaryPath
-            )
-    }
-
-type FullPath = string
 
 type HighLevelFSharpProjectInfo =
     {
@@ -251,10 +144,9 @@ type HighLevelFSharpProjects(projects : Set<HighLevelFSharpProjectInfo>) =
     member x.TryFind (fullPath : FullPath) : HighLevelFSharpProjectInfo option =
         projects |> Seq.tryFind (fun hp -> hp.FullPath = fullPath)
 
-let findFSharpProjectReferences (msbuildBinary : string) (fsproj : FullPath) : Async<HighLevelFSharpProjectInfo> =
+let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProjectInfo> =
     async {
-        let pwd = Path.GetDirectoryName fsproj
-        let! json = dotnet pwd $"\"%s{msbuildBinary}\" --getItem:ProjectReference"
+        let! json = dotnet_msbuild fsproj "--getItem:ProjectReference"
         let jsonDocument = JsonDocument.Parse json
 
         let references =
@@ -272,7 +164,7 @@ let findFSharpProjectReferences (msbuildBinary : string) (fsproj : FullPath) : A
             )
             |> Set.ofSeq
 
-        let! produceReferenceAssembly = dotnet pwd $"\"%s{msbuildBinary}\" --getProperty:ProduceReferenceAssembly"
+        let! produceReferenceAssembly = dotnet_msbuild fsproj "--getProperty:ProduceReferenceAssembly"
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
@@ -289,7 +181,6 @@ let findFSharpProjectReferences (msbuildBinary : string) (fsproj : FullPath) : A
     }
 
 let rec collectProjectReferences
-    (msbuildBinary : string)
     (fsproj : FullPath)
     (projects : HighLevelFSharpProjects)
     : Async<HighLevelFSharpProjects>
@@ -299,7 +190,7 @@ let rec collectProjectReferences
             return projects
         else
 
-        let! highLevelFSharpProjectInfo = findFSharpProjectReferences msbuildBinary fsproj
+        let! highLevelFSharpProjectInfo = findFSharpProjectReferences fsproj
         let nextProjects = projects.Add highLevelFSharpProjectInfo
 
         let! combined =
@@ -311,7 +202,7 @@ let rec collectProjectReferences
                     if projects.HasProject referencedFullPath then
                         return projects
                     else
-                        return! collectProjectReferences msbuildBinary referencedFullPath projects
+                        return! collectProjectReferences referencedFullPath projects
                 }
             )
 
@@ -346,24 +237,18 @@ let mkFSharpReferencedProjects
 
 let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string) : Async<FSharpProjectOptions> =
     async {
-        let! msbuildBinary = tryFindDotnetEightSDKMSBuildBinary ()
-
-        match msbuildBinary with
-        | None -> return failwith "Telplin requires the dotnet 8 SDK to be installed on the machine. Could not find it!"
-        | Some msbuildBinary ->
-
         let fsproj = FileInfo fsproj
 
         if not fsproj.Exists then
             invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
 
-        let! allProjects = collectProjectReferences msbuildBinary fsproj.FullName HighLevelFSharpProjects.Empty
+        let! allProjects = collectProjectReferences fsproj.FullName HighLevelFSharpProjects.Empty
 
         let! allProjectOptions =
             allProjects.AllProjectPaths
             |> Seq.map (fun fullPath ->
                 let fsproj = FileInfo fullPath
-                mkOptionsFromDesignTimeBuildAux msbuildBinary fsproj additionalArguments
+                mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
             )
             |> Async.Parallel
 

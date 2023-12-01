@@ -24,12 +24,14 @@
     <PropertyGroup>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-        <WarningsAsErrors>FS0025</WarningsAsErrors>
+        <WarnOn>$(WarnOn);1182</WarnOn> <!-- Unused variables,https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/compiler-options#opt-in-warnings -->
+        <WarnOn>$(WarnOn);3390</WarnOn><!-- Malformed XML doc comments -->
         <NoWarn>NU5104;FS0075</NoWarn>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <OtherFlags>$(OtherFlags) --test:GraphBasedChecking --test:ParallelOptimization --test:ParallelIlxGen --parallelreferenceresolution</OtherFlags>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="FSharp.Core" />
+        <PackageReference Include="FSharp.Core"/>
         <PackageReference Include="FSharp.Analyzers.Build">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>build</IncludeAssets>
@@ -51,8 +53,8 @@
     </PropertyGroup>
 
     <ItemGroup Condition="'$(IsPackable)' == 'true'">
-        <None Include="$(MSBuildThisFileDirectory)icon.png" Visible="false" Pack="true" PackagePath="" />
-        <None Include="$(MSBuildThisFileDirectory)README.md" Visible="false" Pack="true" PackagePath="" />
-        <PackageReference Include="Ionide.KeepAChangelog.Tasks" PrivateAssets="all" />
+        <None Include="$(MSBuildThisFileDirectory)icon.png" Visible="false" Pack="true" PackagePath=""/>
+        <None Include="$(MSBuildThisFileDirectory)README.md" Visible="false" Pack="true" PackagePath=""/>
+        <PackageReference Include="Ionide.KeepAChangelog.Tasks" PrivateAssets="all"/>
     </ItemGroup>
 </Project>
