@@ -8,10 +8,10 @@ open CliWrap.Buffered
 open NUnit.Framework
 open Telplin.Core
 
-let private shouldEqualWithPrepend (other : string) (this : string) =
-    let this = String.Concat ("\n", this.Replace ("\r", ""))
-    let other = other.Replace ("\r", "")
-    Assert.AreEqual (other, this)
+let private shouldEqualWithPrepend (expected : string) (actual : string) =
+    let actual = String.Concat ("\n", actual.Replace ("\r", ""))
+    let expected = expected.Replace ("\r", "")
+    Assert.That (actual, Is.EqualTo expected)
 
 let options : FSharpProjectOptions =
     let resolvedAssemblies =
