@@ -88,6 +88,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
             else
                 tfs.Split ';' |> Array.head
 
+        let version = DateTime.UtcNow.Ticks % 3600L
+
         let properties =
             [
                 "/p:Telplin=True"
@@ -97,6 +99,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 "/p:ProvideCommandLineArgs=True"
                 // See https://github.com/NuGet/Home/issues/13046
                 "/p:RestoreUseStaticGraphEvaluation=False"
+                // Pass in a fake version to avoid skipping the CoreCompile target
+                $"/p:Version=%i{version}"
             ]
             |> List.filter (String.IsNullOrWhiteSpace >> not)
             |> String.concat " "
