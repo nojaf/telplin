@@ -79,7 +79,7 @@ let mkMemberSigFromString (memberText : string) : Result<MemberDefnSigMemberNode
         $"""
 type A =
     new: unit -> A
-    {memberText}
+    %s{memberText}
 """
 
     try
@@ -105,7 +105,7 @@ let mkPropertySigFromString (memberText : string) : Result<MemberDefnSigMemberNo
         $"""
 type A =
     new: unit -> A
-    {lines}
+    %s{lines}
 """
 
     try
@@ -127,7 +127,7 @@ let mkPrimaryConstructorFromString (primaryCtorText : string) : Result<MemberDef
     let pseudoSignature =
         $"""
             type A =
-                {primaryCtorText}
+                %s{primaryCtorText}
             """
 
     try

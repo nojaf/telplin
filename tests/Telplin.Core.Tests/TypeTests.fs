@@ -1202,7 +1202,7 @@ let ``override of C# abstract member`` () =
         assertSignatureWith
             (fun options ->
                 { options with
-                    OtherOptions = [| yield! options.OtherOptions ; yield $"-r:{newtonsoftJson}" |]
+                    OtherOptions = [| yield! options.OtherOptions ; yield $"-r:%s{newtonsoftJson}" |]
                 }
             )
             true

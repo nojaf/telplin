@@ -30,19 +30,19 @@ let zipPath =
     </> "server.zip"
 
 let infra () =
-    let bucket = BucketV2 $"{loweredProjectName}-bucket"
+    let bucket = BucketV2 $"%s{loweredProjectName}-bucket"
 
     let bucketAcl =
         BucketAclV2 (
-            $"{loweredProjectName}-bucket-acl",
+            $"%s{loweredProjectName}-bucket-acl",
             args = BucketAclV2Args (Acl = input "private", Bucket = io bucket.Id)
         )
 
     let bucketObject =
         BucketObjectv2 (
-            $"{loweredProjectName}-lambda-archive",
+            $"%s{loweredProjectName}-lambda-archive",
             BucketObjectv2Args (
-                Key = input $"{loweredProjectName}-lambda-archive.zip",
+                Key = input $"%s{loweredProjectName}-lambda-archive.zip",
                 Bucket = io bucket.Id,
                 Acl = bucketAcl.Acl,
                 Source = input (FileArchive zipPath)
@@ -51,7 +51,7 @@ let infra () =
 
     let lambdaRole =
         Iam.Role (
-            $"{projectName}LambdaRole",
+            $"%s{projectName}LambdaRole",
             Iam.RoleArgs (
                 AssumeRolePolicy =
                     input
@@ -90,7 +90,7 @@ let infra () =
                 Role = io lambdaRole.Id
             )
 
-        Iam.RolePolicy ($"{loweredProjectName}-log-policy", args)
+        Iam.RolePolicy ($"%s{loweredProjectName}-log-policy", args)
 
     let gateway =
         let cors =
@@ -109,12 +109,12 @@ let infra () =
         let args =
             ApiGatewayV2.ApiArgs (ProtocolType = input "HTTP", CorsConfiguration = input cors)
 
-        ApiGatewayV2.Api ($"{loweredProjectName}-gateway", args)
+        ApiGatewayV2.Api ($"%s{loweredProjectName}-gateway", args)
 
     let _mainStage =
         let args = ApiGatewayV2.StageArgs (ApiId = io gateway.Id, AutoDeploy = input true)
 
-        ApiGatewayV2.Stage ($"{loweredProjectName}-main-stage", args)
+        ApiGatewayV2.Stage ($"%s{loweredProjectName}-main-stage", args)
 
     let lambda =
         let args =
@@ -133,16 +133,16 @@ let infra () =
 
     let _log =
         CloudWatch.LogGroup (
-            $"{loweredProjectName}-log-group",
+            $"%s{loweredProjectName}-log-group",
             CloudWatch.LogGroupArgs (
                 RetentionInDays = input 30,
-                Name = io (lambda.Id.Apply (fun id -> $"/aws/lambda/{id}"))
+                Name = io (lambda.Id.Apply (fun id -> $"/aws/lambda/%s{id}"))
             )
         )
 
     let _lambdaPermission =
         Permission (
-            $"{loweredProjectName}-lambda-permissions",
+            $"%s{loweredProjectName}-lambda-permissions",
             PermissionArgs (
                 Function = io lambda.Name,
                 Principal = input "apigateway.amazonaws.com",
@@ -160,17 +160,17 @@ let infra () =
                 IntegrationUri = io lambda.Arn
             )
 
-        ApiGatewayV2.Integration ($"{loweredProjectName}-integration", args)
+        ApiGatewayV2.Integration ($"%s{loweredProjectName}-integration", args)
 
     let _apiRoute =
         let args =
             ApiGatewayV2.RouteArgs (
                 ApiId = io gateway.Id,
-                RouteKey = input $"POST /{loweredProjectName}/signature",
-                Target = io (lambdaIntegration.Id.Apply (fun id -> $"integrations/{id}"))
+                RouteKey = input $"POST /%s{loweredProjectName}/signature",
+                Target = io (lambdaIntegration.Id.Apply (fun id -> $"integrations/%s{id}"))
             )
 
-        ApiGatewayV2.Route ($"{loweredProjectName}-route", args)
+        ApiGatewayV2.Route ($"%s{loweredProjectName}-route", args)
 
     dict [ ("lambdaId", lambda.Id :> obj) ]
 

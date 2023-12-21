@@ -125,7 +125,7 @@ let main args =
 
         for fileName, (signature, errors) in signatureResults do
             if not errors.IsEmpty then
-                ColorPrint.printRedn $"Errors in {fileName}:"
+                ColorPrint.printRedn $"Errors in %s{fileName}:"
 
                 for TelplinError (m, error) in errors do
                     ColorPrint.printRedn $"%A{m}: %s{error}"

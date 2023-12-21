@@ -87,7 +87,7 @@ let assertSignatureWith
     | SignatureVerificationResult.ImplementationFileAborted ->
         failwith "The implementation file could not be type checked."
     | SignatureVerificationResult.FailedToCreateSignatureFile error ->
-        failwith $"Internal error when creating signature:\n{error}"
+        failwith $"Internal error when creating signature:\n%s{error}"
     | SignatureVerificationResult.InvalidImplementationFile diagnosticInfos ->
         Array.iter (fun d -> printfn "%A" d) diagnosticInfos
         failwith "Could not compile source implementation file"
@@ -109,7 +109,7 @@ let assertSignature implementation expectedSignature =
 let downloadNugetPackage packageName version targetFramework =
     task {
         let tempDir =
-            Path.Combine (Path.GetTempPath (), Guid.NewGuid().ToString ("N"))
+            Path.Combine (Path.GetTempPath (), Guid.NewGuid().ToString "N")
             |> DirectoryInfo
 
         try
@@ -132,7 +132,7 @@ let downloadNugetPackage packageName version targetFramework =
             let! caches = Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync ()
 
             let caches =
-                caches.StandardOutput.Split ('\n')
+                caches.StandardOutput.Split '\n'
                 |> Array.choose (fun line ->
                     if not (line.Contains ": ") then
                         None
@@ -162,10 +162,10 @@ let downloadNugetPackage packageName version targetFramework =
                 else
 
                 match Directory.EnumerateFiles (assemblyFolder, "*.dll") |> Seq.tryHead with
-                | None -> return failwith $"No assembly found in {assemblyFolder}"
+                | None -> return failwith $"No assembly found in %s{assemblyFolder}"
                 | Some dll -> return dll
 
         finally
             if tempDir.Exists then
-                tempDir.Delete (true)
+                tempDir.Delete true
     }
