@@ -12,7 +12,7 @@ let setGetParam (encodedJson : string) : unit =
         ``params``.set ("data", encodedJson)
 
         let newUrl =
-            $"{window.location.protocol}//{window.location.host}{window.location.pathname}#{``params``.ToString ()}"
+            $"%s{window.location.protocol}//%s{window.location.host}%s{window.location.pathname}#%s{``params``.ToString ()}"
 
         history.pushState ({| path = newUrl |}, "", newUrl)
 

@@ -174,7 +174,7 @@ let mkProcessRequest<'t>
         | SignatureVerificationResult.ImplementationFileAborted ->
             onInternalError "Could not type check the implementation file. Type checking was aborted."
         | SignatureVerificationResult.FailedToCreateSignatureFile error ->
-            onInternalError $"Internal error when creating signature file:\n{error}"
+            onInternalError $"Internal error when creating signature file:\n%s{error}"
         | SignatureVerificationResult.PartialSignatureFile (signature, errors) ->
             onInvalidSignatureFile (Encoding.encodePartialSignatureFile errors signature)
     with ex ->

@@ -116,7 +116,7 @@ let decodeBadResult =
             let signature = get.Required.Field "signature" Decode.string
             let errors = get.Required.Field "errors" (Decode.array decodeTelplinError)
             FetchSignatureResponse.PartialSignature (signature, errors)
-        | other -> FetchSignatureResponse.InternalError $"Unexpected type name \"{other}\""
+        | other -> FetchSignatureResponse.InternalError $"Unexpected type name \"%s{other}\""
     )
 
 type UrlModel = { Implementation : string }
@@ -165,10 +165,10 @@ let fetchSignature (mode : Mode) (implementation : string) dispatch =
             | 200 -> FetchSignatureResponse.OK content
             | 400 ->
                 match Decode.fromString decodeBadResult content with
-                | Error error -> FetchSignatureResponse.InternalError $"Could not decode the response json: {error}"
+                | Error error -> FetchSignatureResponse.InternalError $"Could not decode the response json: %s{error}"
                 | Ok result -> result
             | 500 -> FetchSignatureResponse.InternalError content
-            | _ -> FetchSignatureResponse.InternalError $"weird response {status}:, {content}"
+            | _ -> FetchSignatureResponse.InternalError $"weird response %i{status}:, %s{content}"
 
         dispatch (SignatureReceived response)
     )
@@ -277,16 +277,16 @@ let telplinIssueLink model =
     let location = Browser.Dom.window.location
 
     let codeTemplate header code =
-        $"#### {header}\n\n```fsharp\n{code}\n```"
+        $"#### %s{header}\n\n```fsharp\n%s{code}\n```"
 
     let hasDiagnostics = if Array.isEmpty model.Diagnostics then " " else "X"
 
     let issueTemplate =
         $"""
-Issue created from [telplin-online]({location.href})
+Issue created from [telplin-online](%s{location.href})
 
-{codeTemplate "Implementation" model.Implementation}
-{codeTemplate "Signature" model.Signature}
+%s{codeTemplate "Implementation" model.Implementation}
+%s{codeTemplate "Signature" model.Signature}
 
 #### Problem description
 
@@ -294,7 +294,7 @@ Issue created from [telplin-online]({location.href})
 
 #### Extra information
 
-- [{hasDiagnostics}] The proposed signature has problems.
+- [%s{hasDiagnostics}] The proposed signature has problems.
 - [ ] I or my company would be willing to help fix this.
 """
         |> Uri.EscapeDataString
@@ -337,12 +337,12 @@ FCS: FSharpCheckFileResults.GenerateSignature
 let badge key range severity errorNumber message =
     div [ Key key ] [
         strong [] [
-            str $"({range.StartLine}, {range.StartColumn}) ({range.EndLine},{range.EndColumn})"
+            str $"(%i{range.StartLine}, %i{range.StartColumn}) (%i{range.EndLine},%i{range.EndColumn})"
         ]
-        span [ ClassName $"{Style.Badge} {severity}" ] [ str severity ]
+        span [ ClassName $"%s{Style.Badge} %s{severity}" ] [ str severity ]
         match errorNumber with
         | None -> ()
-        | Some errorNumber -> span [ ClassName $"{Style.Badge}" ] [ ofInt errorNumber ]
+        | Some errorNumber -> span [ ClassName $"%s{Style.Badge}" ] [ ofInt errorNumber ]
         p [] [ str message ]
     ]
 
@@ -369,11 +369,11 @@ let App () =
                     yield!
                         model.Diagnostics
                         |> Array.mapi (fun idx diag ->
-                            badge $"diag_{idx}" diag.Range diag.Severity (Some diag.ErrorNumber) diag.Message
+                            badge $"diag_%i{idx}" diag.Range diag.Severity (Some diag.ErrorNumber) diag.Message
                         )
                     yield!
                         model.Errors
-                        |> Array.mapi (fun idx error -> badge $"error_{idx}" error.Range "error" None error.Error)
+                        |> Array.mapi (fun idx error -> badge $"error_%i{idx}" error.Range "error" None error.Error)
                 |]
 
             div [ Id "error-panel" ] [ ofOption mainError ; ofArray errors ] |> Some

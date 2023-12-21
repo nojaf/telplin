@@ -7,7 +7,7 @@ open Browser.WebSocket
 open Browser.Dom
 open Browser.Url
 
-let private ws = WebSocket.Create $"ws://{window.location.host}/ws"
+let private ws = WebSocket.Create $"ws://%s{window.location.host}/ws"
 
 ws.onmessage <-
     fun (ev : MessageEvent) ->
@@ -17,7 +17,7 @@ ws.onmessage <-
         if data = "full" then
             window.location.reload ()
         elif data.EndsWith (".css", StringComparison.Ordinal) then
-            let linkTag = document.querySelector $"link[href*='{data}']" :?> HTMLLinkElement
+            let linkTag = document.querySelector $"link[href*='%s{data}']" :?> HTMLLinkElement
 
             if not (isNullOrUndefined linkTag) then
                 let href = URL.Create linkTag.href

@@ -157,7 +157,7 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
         | Some diag ->
             failwithf $"Type-checking %s{projectOptions.ProjectFileName} lead to errors. The first one being %A{diag}"
         | None -> TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
-    | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for {sourceFileName}"
+    | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for %s{sourceFileName}"
 
 let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =
     let sourceFileName = "A.fs"
@@ -197,8 +197,8 @@ let typeCheckForImplementation projectOptions sourceCode =
 
 let typeCheckForPair projectOptions implementation signature =
     let fileName = System.Guid.NewGuid().ToString "N"
-    let signatureName = $"{fileName}.fsi"
-    let implementationName = $"{fileName}.fs"
+    let signatureName = $"%s{fileName}.fsi"
+    let implementationName = $"%s{fileName}.fs"
 
     fileCache.TryAdd (signatureName, SourceText.ofString signature) |> ignore
 
