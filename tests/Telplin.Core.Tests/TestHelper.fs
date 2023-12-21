@@ -109,8 +109,7 @@ let assertSignature implementation expectedSignature =
 let downloadNugetPackage packageName version targetFramework =
     task {
         let tempDir =
-            Path.Combine (Path.GetTempPath (), Guid.NewGuid().ToString "N")
-            |> DirectoryInfo
+            Path.Combine (Path.GetTempPath (), Guid.NewGuid().ToString "N") |> DirectoryInfo
 
         try
             tempDir.Create ()
