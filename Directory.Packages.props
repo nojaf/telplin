@@ -5,7 +5,7 @@
   <ItemGroup>
     <!-- Common -->
     <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" />
-    <PackageVersion Include="FSharp.Core" Version="8.0.200-beta.23618.1" />
+    <PackageVersion Include="FSharp.Core" Version="8.0.200-beta.24055.2" />
     <PackageVersion Include="FSharp.Compiler.Service" Version="43.8.200-preview.23618.1" />
     <PackageVersion Include="Fantomas.Core" Version="6.3.0-alpha-003" />
     <!-- Console application -->
