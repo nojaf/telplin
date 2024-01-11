@@ -41,6 +41,6 @@
     <!-- Analyzers -->
     <PackageVersion Include="FSharp.Analyzers.Build" Version="0.3.0" />
     <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.6.0" />
-    <PackageVersion Include="Ionide.Analyzers" Version="0.6.1" />
+    <PackageVersion Include="Ionide.Analyzers" Version="0.7.0" />
   </ItemGroup>
 </Project>
