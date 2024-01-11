@@ -5,8 +5,8 @@
   <ItemGroup>
     <!-- Common -->
     <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" />
-    <PackageVersion Include="FSharp.Core" Version="8.0.200-beta.23618.1" />
-    <PackageVersion Include="FSharp.Compiler.Service" Version="43.8.200-preview.23618.1" />
+    <PackageVersion Include="FSharp.Core" Version="8.0.200-beta.24055.2" />
+    <PackageVersion Include="FSharp.Compiler.Service" Version="43.8.200-preview.24055.2" />
     <PackageVersion Include="Fantomas.Core" Version="6.3.0-alpha-003" />
     <!-- Console application -->
     <PackageVersion Include="Argu" Version="6.1.1" />
@@ -14,7 +14,7 @@
     <!-- Deploy -->
     <PackageVersion Include="Pulumi" Version="3.59.0" />
     <PackageVersion Include="Pulumi.FSharp" Version="3.59.0" />
-    <PackageVersion Include="Pulumi.Aws" Version="6.17.0" />
+    <PackageVersion Include="Pulumi.Aws" Version="6.18.0" />
     <!-- Test -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="NUnit" Version="4.0.1" />
@@ -35,7 +35,7 @@
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="1.10.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.0" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.0" />
-    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="8.0.1" />
     <PackageVersion Include="Thoth.Json.Net" Version="11.0.0" />
     <PackageVersion Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
     <!-- Analyzers -->
