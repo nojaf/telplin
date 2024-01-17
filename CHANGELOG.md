@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+* `[<Class>]` attribute is missing when constructor is private. [#177](https://github.com/nojaf/telplin/issues/177)
+
 ## 0.9.3 - 2023-12-12
 
 ### Fixed

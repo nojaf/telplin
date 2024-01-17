@@ -105,6 +105,9 @@ let assertSignatureWith
 let assertSignature implementation expectedSignature =
     assertSignatureWith id true implementation expectedSignature
 
+let assertSignatureWithoutPrivate implementation expectedSignature =
+    assertSignatureWith id false implementation expectedSignature
+
 /// Downloads a nuget package and returns the dll for the selected target framework.
 let downloadNugetPackage packageName version targetFramework =
     task {
