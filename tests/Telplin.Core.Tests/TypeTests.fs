@@ -1255,3 +1255,20 @@ type X =
     /// Good stuff
     member Foo: string with get, set
 """
+
+[<Test>]
+let ``private constructor on class`` () =
+    assertSignatureWithoutPrivate
+        """
+module Telplin
+
+type A private () = 
+    member a.Foo () = ()
+"""
+        """
+module Telplin
+
+[<Class>]
+type A =
+    member Foo: unit -> unit
+"""

@@ -366,11 +366,13 @@ let mkTypeDefn
 
             match typeDefn with
             | TypeDefn.Regular _ ->
-                if
-                    tdn.TypeName.ImplicitConstructor.IsSome
-                    || hasExistingAttribute
-                    || allMembersAreAbstractOrInherit
-                then
+                let hasConstructor =
+                    match tdn.TypeName.ImplicitConstructor with
+                    | None -> false
+                    | Some PrivateConstructor -> resolver.IncludePrivateBindings
+                    | Some _ -> true
+
+                if hasConstructor || hasExistingAttribute || allMembersAreAbstractOrInherit then
                     tdn.TypeName.Attributes
                 else
                     addAttribute "Class" tdn.TypeName.Attributes
