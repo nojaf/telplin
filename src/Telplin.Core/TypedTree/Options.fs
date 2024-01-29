@@ -61,7 +61,7 @@ let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
         do! ps.WaitForExitAsync ()
 
         if not (String.IsNullOrWhiteSpace error) then
-            failwithf $"In %s{pwd}:\ndotnet %s{args} failed with\n%s{error}"
+            failwithf $"dotnet msbuild %s{args} \n in %s{pwd} failed with\n%s{error}"
 
         return output.Trim ()
     }
@@ -69,9 +69,6 @@ let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
 
 let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : string) =
     async {
-        let targets =
-            "Restore,ResolveAssemblyReferencesDesignTime,ResolveProjectReferencesDesignTime,ResolvePackageDependenciesDesignTime,FindReferenceAssembliesForReferences,_GenerateCompileDependencyCache,_ComputeNonExistentFileProperty,BeforeBuild,BeforeCompile,CoreCompile"
-
         let! targetFrameworkJson =
             dotnet_msbuild fsproj.FullName "--getProperty:TargetFrameworks --getProperty:TargetFramework"
 
@@ -99,14 +96,22 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 "/p:ProvideCommandLineArgs=True"
                 // See https://github.com/NuGet/Home/issues/13046
                 "/p:RestoreUseStaticGraphEvaluation=False"
+                // Avoid restoring with an existing lock file
+                "/p:RestoreLockedMode=false"
+                "/p:RestorePackagesWithLockFile=false"
+                // We trick NuGet into believing there is no lock file create, if it does exist it will try and create it.
+                " /p:NuGetLockFilePath=Telplin.lock"
                 // Pass in a fake version to avoid skipping the CoreCompile target
                 $"/p:Version=%i{version}"
             ]
             |> List.filter (String.IsNullOrWhiteSpace >> not)
             |> String.concat " "
 
+        let targets =
+            "ResolveAssemblyReferencesDesignTime,ResolveProjectReferencesDesignTime,ResolvePackageDependenciesDesignTime,FindReferenceAssembliesForReferences,_GenerateCompileDependencyCache,_ComputeNonExistentFileProperty,BeforeBuild,BeforeCompile,CoreCompile"
+
         let arguments =
-            $"/t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
+            $"/restore /t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
 
         let! json = dotnet_msbuild fsproj.FullName arguments
         let jsonDocument = JsonDocument.Parse json

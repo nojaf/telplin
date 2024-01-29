@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.9.4 - 2024-01-29
 
 ### Fixed
 * `[<Class>]` attribute is missing when constructor is private. [#177](https://github.com/nojaf/telplin/issues/177)
+* Use /restore for design time build. [#187](https://github.com/nojaf/telplin/pull/187)
 
 ## 0.9.3 - 2023-12-12
 
