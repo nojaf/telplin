@@ -103,6 +103,7 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 " /p:NuGetLockFilePath=Telplin.lock"
                 // Pass in a fake version to avoid skipping the CoreCompile target
                 $"/p:Version=%i{version}"
+                // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1608
                 "-warnAsMessage:NU1608"
             ]
             |> List.filter (String.IsNullOrWhiteSpace >> not)
