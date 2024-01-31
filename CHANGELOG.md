@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.5 - 2024-01-31
+
+### Fixed
+* Very minor tweaks in the `dotnet msbuild` command execution.
+
 ## 0.9.4 - 2024-01-29
 
 ### Fixed
