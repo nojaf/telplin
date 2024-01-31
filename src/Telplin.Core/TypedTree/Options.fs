@@ -21,7 +21,7 @@ let mkOptions (projectFile : FileInfo) (compilerArgs : string array) =
                 None
             else
 
-            let fullPath = Path.Combine (projectFile.DirectoryName, line)
+            let fullPath = Path.Combine (projectFile.DirectoryName, line) |> Path.GetFullPath
             if File.Exists fullPath then Some fullPath else None
         )
 
