@@ -10,7 +10,7 @@ index: 1
 ### References assemblies
 
 In `dotnet` 7, F# supports [references assemblies](https://learn.microsoft.com/en-us/dotnet/standard/assembly/reference-assemblies).  
-These can produced by adding `<ProduceReferenceAssembly>true</ProduceReferenceAssembly>` to your `fsproj`.
+These can be produced by adding `<ProduceReferenceAssembly>true</ProduceReferenceAssembly>` to your `fsproj`.
 
 An important part of a reference assembly is the generated [mvid](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.module.moduleversionid?view=net-7.0).  
 This `mvid` should only change when the public API changes. Alas, this doesn't always work in F# code. Adding a new `let private` binding could potentially influence the `mvid`, even though the public API didn't change.  
