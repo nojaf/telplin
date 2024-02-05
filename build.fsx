@@ -36,6 +36,7 @@ pipeline "Build" {
     stage "docs" {
         stage "client" {
             workingDir "tool/client"
+            run "bun i --frozen-lockfile"
             run "bunx --bun vite build"
         }
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
@@ -62,6 +63,7 @@ pipeline "Watch" {
         stage "client" {
             envVars [ "VITE_API_ROOT", "http://localhost:8906" ]
             workingDir "tool/client"
+            run "bun i --frozen-lockfile"
             run "bunx --bun vite"
         }
         stage "server" {
