@@ -20,6 +20,8 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v4
 
+      - uses: oven-sh/setup-bun@v1
+
       - name: Build / Release
         run: dotnet fsi ./build.fsx --push
         env:
