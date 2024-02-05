@@ -494,9 +494,9 @@ docs/fable_modules
 output/
 tmp/
 .fsdocs/
+docs/assets/
 
 # Tool
-tool/client/*.js
 tool/client/dist
 tool/client/fable_modules
 
