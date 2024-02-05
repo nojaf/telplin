@@ -23,7 +23,7 @@ jobs:
       - name: Build / Release
         run: dotnet fsi ./build.fsx --push
         env:
-          API_ROOT: ${{ secrets.API_ROOT }}
+          VITE_API_ROOT: ${{ secrets.API_ROOT }}
           TELPLIN_NUGET_KEY: ${{ secrets.TELPLIN_NUGET_KEY }}
 
       - name: Upload artifact

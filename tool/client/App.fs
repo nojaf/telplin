@@ -34,11 +34,11 @@ type Mode =
     | FCS
 
 let getUrl (mode : Mode) =
-    let  url = emitJsExpr () "import.meta.env.VITE_API_ROOT"
+    let url = emitJsExpr () "import.meta.env.VITE_API_ROOT"
+
     match mode with
     | Mode.Telplin -> $"%s{url}/telplin/signature"
     | Mode.FCS -> $"%s{url}/telplin/signature?fcs"
-    
 
 [<RequireQualifiedAccess>]
 type FetchSignatureResponse =
@@ -151,6 +151,7 @@ let fetchSignature (mode : Mode) (implementation : string) dispatch =
         ]
 
     let url = getUrl mode
+
     GlobalFetch.fetch (RequestInfo.Url url, options)
     |> Promise.bind (fun response -> response.text () |> Promise.map (fun content -> response.Status, content))
     |> Promise.iter (fun (status, content) ->

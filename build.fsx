@@ -34,7 +34,10 @@ pipeline "Build" {
     stage "test" { run "dotnet test --no-restore --no-build -c Release -tl" }
     stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin -tl" }
     stage "docs" {
-        run "dotnet fsi ./tool/client/dev-server.fsx build"
+        stage "client" {
+            workingDir "tool/client"
+            run "bunx --bun vite build"
+        }
         run (fun _ -> Shell.copyRecursive "./tool/client/dist" "./docs" true |> ignore)
         run "dotnet fsdocs build --noapidocs"
     }
@@ -56,12 +59,12 @@ pipeline "Watch" {
     stage "main" {
         run "dotnet tool restore"
         paralle
-        stage "vite" {
+        stage "client" {
             envVars [ "VITE_API_ROOT", "http://localhost:8906" ]
             workingDir "tool/client"
             run "bunx --bun vite"
         }
-        stage "lambda" {
+        stage "server" {
             workingDir "tool/server"
             run "dotnet watch"
         }
