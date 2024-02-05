@@ -56,7 +56,15 @@ pipeline "Watch" {
     stage "main" {
         run "dotnet tool restore"
         paralle
-        run "dotnet fsi ./tool/client/dev-server.fsx"
+        stage "vite" {
+            envVars [ "VITE_API_ROOT", "http://localhost:8906" ]
+            workingDir "tool/client"
+            run "bunx --bun vite"
+        }
+        stage "lambda" {
+            workingDir "tool/server"
+            run "dotnet watch"
+        }
         run "dotnet fsdocs watch --port 7890 --noapidocs"
     }
     runIfOnlySpecified true

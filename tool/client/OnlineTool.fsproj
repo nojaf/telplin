@@ -6,8 +6,6 @@
 
   <ItemGroup>
     <None Include="index.html" />
-    <None Include="dev-server.fsx" />
-    <Compile Include="WebSocket.fs" Condition="'$(Configuration)'=='Debug'" />
     <Compile Include="UrlTools.fsi" />
     <Compile Include="UrlTools.fs" />
     <Compile Include="App.fs" />

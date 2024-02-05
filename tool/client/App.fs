@@ -12,10 +12,6 @@ open Feliz.UseElmish
 open Fetch.Types
 open Zanaptak.TypedCssClasses
 
-#if DEBUG
-importSideEffects "./WebSocket.js"
-#endif
-
 [<Literal>]
 let StyleSheet = "./online-tool.css"
 
@@ -38,13 +34,11 @@ type Mode =
     | FCS
 
 let getUrl (mode : Mode) =
-    JsInterop.importDynamic "./env.js"
-    |> Promise.map (fun env -> env?API_ROOT)
-    |> Promise.map (fun url ->
-        match mode with
-        | Mode.Telplin -> $"%s{url}/telplin/signature"
-        | Mode.FCS -> $"%s{url}/telplin/signature?fcs"
-    )
+    let  url = emitJsExpr () "import.meta.env.VITE_API_ROOT"
+    match mode with
+    | Mode.Telplin -> $"%s{url}/telplin/signature"
+    | Mode.FCS -> $"%s{url}/telplin/signature?fcs"
+    
 
 [<RequireQualifiedAccess>]
 type FetchSignatureResponse =
@@ -156,8 +150,8 @@ let fetchSignature (mode : Mode) (implementation : string) dispatch =
             Body !^implementation
         ]
 
-    getUrl mode
-    |> Promise.bind (fun url -> GlobalFetch.fetch (RequestInfo.Url url, options))
+    let url = getUrl mode
+    GlobalFetch.fetch (RequestInfo.Url url, options)
     |> Promise.bind (fun response -> response.text () |> Promise.map (fun content -> response.Status, content))
     |> Promise.iter (fun (status, content) ->
         let response =
