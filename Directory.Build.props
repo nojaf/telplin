@@ -19,6 +19,7 @@
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://nojaf.com/telplin/</PackageProjectUrl>
+        <UseArtifactsOutput>true</UseArtifactsOutput>
     </PropertyGroup>
 
     <PropertyGroup>

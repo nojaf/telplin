@@ -20,7 +20,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.0.12",
-    "vite-plugin-fable": "0.0.5"
+    "vite-plugin-fable": "0.0.7"
   },
   "trustedDependencies": [ "vite-plugin-fable" ]
 }
