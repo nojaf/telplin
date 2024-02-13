@@ -8,6 +8,7 @@ open Fake.IO.FileSystemOperators
 open Fun.Build
 
 let apiKey = Environment.GetEnvironmentVariable "TELPLIN_NUGET_KEY"
+let packageOutput = __SOURCE_DIRECTORY__ </> "artifacts" </> "package" </> "release"
 
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
@@ -18,7 +19,7 @@ pipeline "Build" {
                     if Directory.Exists folder then
                         Directory.Delete (folder, true)
 
-                deleteIfExists (__SOURCE_DIRECTORY__ </> "bin")
+                deleteIfExists packageOutput
                 deleteIfExists (__SOURCE_DIRECTORY__ </> "output")
                 deleteIfExists (__SOURCE_DIRECTORY__ </> "docs" </> ".tool" </> "dist")
                 return 0
@@ -32,7 +33,7 @@ pipeline "Build" {
     stage "restore" { run "dotnet restore -tl" }
     stage "build" { run "dotnet build --no-restore -c Release ./telplin.sln -tl" }
     stage "test" { run "dotnet test --no-restore --no-build -c Release -tl" }
-    stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -o bin -tl" }
+    stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -tl" }
     stage "docs" {
         stage "client" {
             workingDir "tool/client"
@@ -48,7 +49,7 @@ pipeline "Build" {
     }
     stage "push" {
         whenCmdArg "--push"
-        workingDir (__SOURCE_DIRECTORY__ </> "bin")
+        workingDir packageOutput
         run
             $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key {apiKey} --skip-duplicate"
     }
@@ -68,7 +69,8 @@ pipeline "Watch" {
         }
         stage "server" {
             workingDir "tool/server"
-            run "dotnet watch"
+            run "dotnet publish /p:ReadyToRun  --nologo -c Debug --ucr -p:PublishReadyToRun=true -o ./publish"
+            run "dotnet ./publish/bootstrap.dll"
         }
         run "dotnet fsdocs watch --port 7890 --noapidocs"
     }

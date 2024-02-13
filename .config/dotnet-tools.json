@@ -14,12 +14,6 @@
         "dotnet-lambda"
       ]
     },
-    "fable": {
-      "version": "4.9.0",
-      "commands": [
-        "fable"
-      ]
-    },
     "fsdocs-tool": {
       "version": "20.0.0-beta-002",
       "commands": [
