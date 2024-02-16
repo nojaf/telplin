@@ -40,7 +40,7 @@
     <PackageVersion Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
     <!-- Analyzers -->
     <PackageVersion Include="FSharp.Analyzers.Build" Version="0.3.0" />
-    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.8.0" />
-    <PackageVersion Include="Ionide.Analyzers" Version="0.8.0" />
+    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.9.1" />
+    <PackageVersion Include="Ionide.Analyzers" Version="0.9.0" />
   </ItemGroup>
 </Project>
