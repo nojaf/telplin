@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.6 - 2024-02-22
+
+### Fixed
+* Use `__NonExistentSubDir__` to force design time build.
+
 ## 0.9.5 - 2024-01-31
 
 ### Fixed

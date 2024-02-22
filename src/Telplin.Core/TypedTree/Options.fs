@@ -85,7 +85,9 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
             else
                 tfs.Split ';' |> Array.head
 
-        let version = DateTime.UtcNow.Ticks % 3600L
+        // When CoreCompile does not need a rebuild, MSBuild will skip that target and thus will not populate the FscCommandLineArgs items.
+        // To overcome this we want to force a design time build, using the NonExistentFile property helps prevent a cache hit.
+        let nonExistentFile = Path.Combine ("__NonExistentSubDir__", "__NonExistentFile__")
 
         let properties =
             [
@@ -101,8 +103,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 "/p:RestorePackagesWithLockFile=false"
                 // We trick NuGet into believing there is no lock file create, if it does exist it will try and create it.
                 " /p:NuGetLockFilePath=Telplin.lock"
-                // Pass in a fake version to avoid skipping the CoreCompile target
-                $"/p:Version=%i{version}"
+                // Avoid skipping the CoreCompile target via this property.
+                $"/p:NonExistentFile=\"%s{nonExistentFile}\""
                 // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1608
                 "-warnAsMessage:NU1608"
             ]
