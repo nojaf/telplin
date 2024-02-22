@@ -72,7 +72,7 @@ pipeline "Watch" {
             run "dotnet publish /p:ReadyToRun  --nologo -c Debug --ucr -p:PublishReadyToRun=true -o ./publish"
             run "dotnet ./publish/bootstrap.dll"
         }
-        run "dotnet fsdocs watch --port 7890 --noapidocs"
+        run "dotnet fsdocs watch --port 7890 --noapidocs --nolaunch"
     }
     runIfOnlySpecified true
 }
