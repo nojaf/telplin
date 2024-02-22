@@ -10,3 +10,11 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      compiler:
+        patterns:
+          - "FSharp.Core"
+          - "FSharp.Compiler.Service"
+        update-types:
+          - "minor"
+          - "patch"
