@@ -56,7 +56,7 @@ let main args =
         parser.PrintUsage (
             programName = "telplin",
             message =
-                "Telplin is a tool to generate signature files in F#.\n\nFind out more information at https://nojaf.com/telplin/docs/index.html\n"
+                "Telplin is a tool to generate signature files in F#.\n\nFind out more information at https://nojaf.com/telplin/docs/\n"
         )
         |> printfn "%s"
 

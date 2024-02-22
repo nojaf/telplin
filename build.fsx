@@ -77,4 +77,12 @@ pipeline "Watch" {
     runIfOnlySpecified true
 }
 
+pipeline "Publish" {
+    workingDir __SOURCE_DIRECTORY__
+    stage "publish" {
+        run "dotnet publish --nologo -c Release --ucr -p:PublishReadyToRun=true ./src/Telplin/Telplin.fsproj"
+    }
+    runIfOnlySpecified true
+}
+
 tryPrintPipelineCommandHelp ()
