@@ -27,8 +27,8 @@ type CliArguments =
             match this with
             | Input _ ->
                 """FSharp project file (.fsproj) or response file (.rsp) to process. An fsproj will be (design time) build first by Telplin.
-Additional build arguments for the .fsproj can be passed after the --.
-Example: telplin MyProject.fsproj -- -c Release
+Additional msbuild arguments for the design time build .fsproj can be passed after the --.
+Example: telplin MyProject.fsproj -- /p:Configuration=Release
 """
             | Files _ -> "Process a subset of files in the current project."
             | Dry_Run -> "Don't write signature files to disk. Only print the signatures to the console."
@@ -53,7 +53,13 @@ let main args =
     let arguments = parser.Parse (arguArgs, raiseOnUsage = false)
 
     if arguments.IsUsageRequested then
-        parser.PrintUsage (programName = "Telplin") |> printfn "%s"
+        parser.PrintUsage (
+            programName = "telplin",
+            message =
+                "Telplin is a tool to generate signature files in F#.\n\nFind out more information at https://nojaf.com/telplin/docs/index.html\n"
+        )
+        |> printfn "%s"
+
         exit 0
     else
 
