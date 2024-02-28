@@ -14,7 +14,7 @@
     <!-- Deploy -->
     <PackageVersion Include="Pulumi" Version="3.59.0" />
     <PackageVersion Include="Pulumi.FSharp" Version="3.59.0" />
-    <PackageVersion Include="Pulumi.Aws" Version="6.23.0" />
+    <PackageVersion Include="Pulumi.Aws" Version="6.24.0" />
     <!-- Test -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
     <PackageVersion Include="NUnit" Version="4.1.0" />
