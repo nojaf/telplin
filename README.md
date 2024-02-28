@@ -11,7 +11,7 @@ Checkout our [documentation](https://nojaf.com/telplin/docs/) for more informati
 ### Run online tool
 
 ```bash
-dotnet fsi ./tool/client/dev-server.fsx
+dotnet fsi build.fsx -- -p Watch
 ```
 
 ### Format code
