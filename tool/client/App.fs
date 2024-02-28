@@ -447,5 +447,9 @@ let App () =
         ]
     ]
 
-let mainElement = Browser.Dom.document.querySelector "main"
-ReactDom.render (App (), mainElement)
+Browser.Dom.window.addEventListener (
+    "DOMContentLoaded",
+    fun _ ->
+        let mainElement = Browser.Dom.document.querySelector "main"
+        ReactDomClient.createRoot(mainElement).render (App ())
+)

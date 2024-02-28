@@ -8,6 +8,7 @@
     <None Include="index.html" />
     <Compile Include="UrlTools.fsi" />
     <Compile Include="UrlTools.fs" />
+    <Compile Include="App.fsi" />
     <Compile Include="App.fs" />
   </ItemGroup>
 
