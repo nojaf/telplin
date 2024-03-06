@@ -12,7 +12,7 @@
     <PackageVersion Include="Argu" Version="6.1.4" />
     <PackageVersion Include="CliWrap" Version="3.6.6" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.59.0" />
+    <PackageVersion Include="Pulumi" Version="3.60.0" />
     <PackageVersion Include="Pulumi.FSharp" Version="3.59.0" />
     <PackageVersion Include="Pulumi.Aws" Version="6.25.0" />
     <!-- Test -->
