@@ -29,6 +29,7 @@ let inline private MonacoEditor (props : MonacoEditorProp list) : ReactElement =
     ofImport "default" "@monaco-editor/react" (keyValueList CaseRules.LowerFirst props) []
 
 [<RequireQualifiedAccess>]
+[<Struct>]
 type Mode =
     | Telplin
     | FCS

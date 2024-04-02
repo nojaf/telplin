@@ -2,6 +2,12 @@
 
 open Fantomas.Core.SyntaxOak
 
+let toVOption =
+    function
+    | None -> ValueNone
+    | Some x -> ValueSome x
+
+[<return : Struct>]
 let (|PropertyGetSetThatNeedSplit|_|) (md : MemberDefn) =
     match md with
     | MemberDefn.PropertyGetSet node ->
@@ -15,36 +21,42 @@ let (|PropertyGetSetThatNeedSplit|_|) (md : MemberDefn) =
             else
                 Some node
         )
-    | _ -> None
+        |> toVOption
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|Private|_|) (stn : SingleTextNode) =
-    if stn.Text = "private" then Some () else None
+    if stn.Text = "private" then ValueSome () else ValueNone
 
+[<return : Struct>]
 let (|PrivateTopLevelBinding|_|) (mdl : ModuleDecl) =
     match mdl with
     | ModuleDecl.TopLevelBinding binding ->
         match binding.Accessibility with
-        | Some Private -> Some ()
-        | _ -> None
-    | _ -> None
+        | Some Private -> ValueSome ()
+        | _ -> ValueNone
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|PrivateConstructor|_|) (implicitCtor : ImplicitConstructorNode) =
     match implicitCtor.Accessibility with
-    | Some Private -> Some ()
-    | _ -> None
+    | Some Private -> ValueSome ()
+    | _ -> ValueNone
 
-let (|PrivateMemberDefn|_|) =
-    function
+[<return : Struct>]
+let (|PrivateMemberDefn|_|) md =
+    match md with
     | MemberDefn.ExplicitCtor node ->
         match node.Accessibility with
-        | Some Private -> Some ()
-        | _ -> None
+        | Some Private -> ValueSome ()
+        | _ -> ValueNone
     | MemberDefn.Member node ->
         match node.Accessibility with
-        | Some Private -> Some ()
-        | _ -> None
-    | _ -> None
+        | Some Private -> ValueSome ()
+        | _ -> ValueNone
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|PrivateTypeDefnAugmentation|_|) typeDefn =
     match typeDefn with
     | TypeDefn.Augmentation _ ->
@@ -58,23 +70,26 @@ let (|PrivateTypeDefnAugmentation|_|) typeDefn =
                 | _ -> false
             )
 
-        if allMembersArePrivate then Some () else None
-    | _ -> None
+        if allMembersArePrivate then ValueSome () else ValueNone
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|PatParen|_|) p =
     match p with
-    | Pattern.Paren parenNode -> Some parenNode.Pattern
-    | _ -> None
+    | Pattern.Paren parenNode -> ValueSome parenNode.Pattern
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|SingleIdentType|_|) t =
     match t with
     | Type.LongIdent node ->
         match node.Content with
-        | [ IdentifierOrDot.Ident ident ] -> Some ident.Text
-        | _ -> None
-    | _ -> None
+        | [ IdentifierOrDot.Ident ident ] -> ValueSome ident.Text
+        | _ -> ValueNone
+    | _ -> ValueNone
 
+[<return : Struct>]
 let (|NameOfPat|_|) p =
     match p with
-    | Pattern.Named name -> Some name.Name
-    | _ -> None
+    | Pattern.Named name -> ValueSome name.Name
+    | _ -> ValueNone
