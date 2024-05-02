@@ -33,7 +33,7 @@
     <!-- Lambda -->
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.2.0" />
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="1.10.0" />
-    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.2" />
+    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.3" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.0" />
     <PackageVersion Include="Microsoft.Net.Http.Headers" Version="8.0.4" />
     <PackageVersion Include="Thoth.Json.Net" Version="11.0.0" />
