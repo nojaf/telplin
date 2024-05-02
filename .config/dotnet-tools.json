@@ -9,7 +9,7 @@
       ]
     },
     "amazon.lambda.tools": {
-      "version": "5.10.4",
+      "version": "5.10.5",
       "commands": [
         "dotnet-lambda"
       ]
