@@ -9,8 +9,4 @@
         <FSharpAnalyzersOtherFlags>$(FSharpAnalyzersOtherFlags) --report &quot;$(SarifOutput)$(MSBuildProjectName)-$(TargetFramework).sarif&quot;</FSharpAnalyzersOtherFlags>
         <FSharpAnalyzersOtherFlags>$(FSharpAnalyzersOtherFlags) --exclude-analyzers PartialAppAnalyzer</FSharpAnalyzersOtherFlags>
     </PropertyGroup>
-    
-    <Target Name="Foo">
-        <Message Importance="high" Text="$(CodeRoot)" />
-    </Target>
 </Project>
