@@ -12,9 +12,9 @@
     <PackageVersion Include="Argu" Version="6.1.4" />
     <PackageVersion Include="CliWrap" Version="3.6.7" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.66.2" />
+    <PackageVersion Include="Pulumi" Version="3.67.1" />
     <PackageVersion Include="Pulumi.FSharp" Version="3.59.0" />
-    <PackageVersion Include="Pulumi.Aws" Version="6.50.1" />
+    <PackageVersion Include="Pulumi.Aws" Version="6.57.0" />
     <!-- Test -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
