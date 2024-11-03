@@ -10,7 +10,7 @@
     <PackageVersion Include="Fantomas.Core" Version="6.3.16" />
     <!-- Console application -->
     <PackageVersion Include="Argu" Version="6.1.4" />
-    <PackageVersion Include="CliWrap" Version="3.6.6" />
+    <PackageVersion Include="CliWrap" Version="3.6.7" />
     <!-- Deploy -->
     <PackageVersion Include="Pulumi" Version="3.66.2" />
     <PackageVersion Include="Pulumi.FSharp" Version="3.59.0" />
