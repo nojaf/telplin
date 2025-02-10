@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0 - 2025-02-10
+
+### Changed
+* Update to FCS 43.9.101
+
 ## 0.9.6 - 2024-02-22
 
 ### Fixed
