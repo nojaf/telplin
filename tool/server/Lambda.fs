@@ -86,11 +86,7 @@ module Encoding =
 let resolvedAssemblies =
     let dir =
 #if RELEASE
-        Path.Combine (
-            FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)
-                .Directory.FullName,
-            "ref"
-        )
+        Path.Combine (FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location).Directory.FullName, "ref")
 #else
         Path.Combine (__SOURCE_DIRECTORY__, "..", "..", "reference")
 #endif

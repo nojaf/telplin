@@ -526,7 +526,9 @@ open System
 [<Sealed>]
 type AsyncMaybeBuilder =
     new: unit -> AsyncMaybeBuilder
-    member Using: resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
+
+    member Using:
+        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: not struct
 """
 
 [<Test>]
@@ -1000,7 +1002,7 @@ namespace Telplin
 type Foo =
     member _.X
             with get (y: int) : string = ""
-            and set (a: int) (b: float) = ()
+            and set (a: int) (b: string) = ()
 """
         """
 namespace Telplin
@@ -1008,7 +1010,7 @@ namespace Telplin
 [<Class>]
 type Foo =
     member X: y: int -> string with get
-    member X: a: int -> float with set
+    member X: a: int -> string with set
 """
 
 [<Test>]

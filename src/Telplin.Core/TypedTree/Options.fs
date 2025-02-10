@@ -121,10 +121,7 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
         let jsonDocument = JsonDocument.Parse json
 
         let options =
-            jsonDocument.RootElement
-                .GetProperty("Items")
-                .GetProperty("FscCommandLineArgs")
-                .EnumerateArray ()
+            jsonDocument.RootElement.GetProperty("Items").GetProperty("FscCommandLineArgs").EnumerateArray ()
             |> Seq.map (fun arg -> arg.GetProperty("Identity").GetString ())
             |> Seq.toArray
 
@@ -163,10 +160,7 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
         let jsonDocument = JsonDocument.Parse json
 
         let references =
-            jsonDocument.RootElement
-                .GetProperty("Items")
-                .GetProperty("ProjectReference")
-                .EnumerateArray ()
+            jsonDocument.RootElement.GetProperty("Items").GetProperty("ProjectReference").EnumerateArray ()
             |> Seq.choose (fun projectItem ->
                 let fullPath = projectItem.GetProperty("FullPath").GetString ()
 
@@ -181,9 +175,7 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
-            && produceReferenceAssembly
-                .Trim()
-                .Equals ("true", StringComparison.OrdinalIgnoreCase)
+            && produceReferenceAssembly.Trim().Equals ("true", StringComparison.OrdinalIgnoreCase)
 
         return
             {
