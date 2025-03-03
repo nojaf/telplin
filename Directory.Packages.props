@@ -9,7 +9,7 @@
     <PackageVersion Include="FSharp.Compiler.Service" Version="[43.9.201]" />
     <PackageVersion Include="Fantomas.Core" Version="7.0.0" />
     <!-- Console application -->
-    <PackageVersion Include="Argu" Version="6.1.4" />
+    <PackageVersion Include="Argu" Version="6.2.5" />
     <PackageVersion Include="CliWrap" Version="3.7.1" />
     <!-- Deploy -->
     <PackageVersion Include="Pulumi" Version="3.67.1" />
