@@ -873,7 +873,9 @@ let ``basic enum`` () =
         """
 module Telplin
 
-[<RequireQualifiedAccess>]
+open System
+
+[<Obsolete>]
 type ErrorCodes =
     | GenericError = 1
     | ProjectNotRestored = 100
@@ -883,7 +885,9 @@ type ErrorCodes =
         """
 module Telplin
 
-[<RequireQualifiedAccess>]
+open System
+
+[<Obsolete>]
 type ErrorCodes =
     | GenericError = 1
     | ProjectNotRestored = 100
