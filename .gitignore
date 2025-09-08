@@ -507,4 +507,4 @@ tool/client/fable_modules
 .sdk/
 
 # Analyzers
-reports/
+analysis.sarif
