@@ -27,10 +27,10 @@ jobs:
         run: dotnet fsi ./build.fsx
 
       - name: Run Analyzers
-        run: dotnet msbuild /t:AnalyzeFSharpProject /p:Configuration=Release
+        run: dotnet msbuild /t:AnalyzeSolution /p:Configuration=Release
         continue-on-error: true
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ./reports
+          sarif_file: ./analysis.sarif
