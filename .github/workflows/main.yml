@@ -29,7 +29,7 @@ jobs:
           TELPLIN_NUGET_KEY: ${{ secrets.TELPLIN_NUGET_KEY }}
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./output
 
