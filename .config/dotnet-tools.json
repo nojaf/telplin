@@ -10,7 +10,7 @@
       "rollForward": false
     },
     "amazon.lambda.tools": {
-      "version": "5.13.0",
+      "version": "6.0.4",
       "commands": [
         "dotnet-lambda"
       ],
