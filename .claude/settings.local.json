@@ -7,7 +7,8 @@
       "Bash(gh issue:*)",
       "Bash(git checkout:*)",
       "Bash(dotnet package:*)",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['searchResult'][0]['packages'][0]['latestVersion']\\)\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['searchResult'][0]['packages'][0]['latestVersion']\\)\")",
+      "Bash(gh pr:*)"
     ]
   }
 }
