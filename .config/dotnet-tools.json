@@ -3,31 +3,23 @@
   "isRoot": true,
   "tools": {
     "fantomas": {
-      "version": "7.0.0",
-      "commands": [
-        "fantomas"
-      ],
+      "version": "8.0.0-alpha-009",
+      "commands": ["fantomas"],
       "rollForward": false
     },
     "amazon.lambda.tools": {
       "version": "5.13.0",
-      "commands": [
-        "dotnet-lambda"
-      ],
+      "commands": ["dotnet-lambda"],
       "rollForward": false
     },
     "fsdocs-tool": {
-      "version": "20.0.1",
-      "commands": [
-        "fsdocs"
-      ],
+      "version": "22.0.0",
+      "commands": ["fsdocs"],
       "rollForward": false
     },
     "fsharp-analyzers": {
-      "version": "0.32.1",
-      "commands": [
-        "fsharp-analyzers"
-      ],
+      "version": "0.36.0",
+      "commands": ["fsharp-analyzers"],
       "rollForward": false
     }
   }

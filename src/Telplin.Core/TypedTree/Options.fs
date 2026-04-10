@@ -171,7 +171,8 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
             )
             |> Set.ofSeq
 
-        let! produceReferenceAssembly = dotnet_msbuild fsproj "--getProperty:ProduceReferenceAssembly"
+        let! produceReferenceAssembly =
+            dotnet_msbuild fsproj "--getProperty:ProduceReferenceAssembly"
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
@@ -247,7 +248,8 @@ let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string
         if not fsproj.Exists then
             invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
 
-        let! allProjects = collectProjectReferences fsproj.FullName HighLevelFSharpProjects.Empty
+        let! allProjects =
+            collectProjectReferences fsproj.FullName HighLevelFSharpProjects.Empty
 
         let! allProjectOptions =
             allProjects.AllProjectPaths

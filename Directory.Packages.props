@@ -12,9 +12,9 @@
     <PackageVersion Include="Argu" Version="6.2.5" />
     <PackageVersion Include="CliWrap" Version="3.10.0" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.87.0" />
-    <PackageVersion Include="Pulumi.FSharp" Version="3.87.0" />
-    <PackageVersion Include="Pulumi.Aws" Version="6.57.0" />
+    <PackageVersion Include="Pulumi" Version="3.102.1" />
+    <PackageVersion Include="Pulumi.FSharp" Version="3.102.1" />
+    <PackageVersion Include="Pulumi.Aws" Version="7.24.0" />
     <!-- Test -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
@@ -31,15 +31,15 @@
     <PackageVersion Include="Thoth.Json" Version="10.2.0" />
     <PackageVersion Include="Zanaptak.TypedCssClasses" Version="1.0.0" />
     <!-- Lambda -->
-    <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.0" />
-    <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="1.14.1" />
-    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
-    <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.1" />
-    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="8.0.12" />
+    <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.1" />
+    <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="1.14.2" />
+    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
+    <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.3" />
+    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="10.0.0" />
     <PackageVersion Include="Thoth.Json.Net" Version="12.0.0" />
     <PackageVersion Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
     <!-- Analyzers -->
-    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.18.0" />
-    <PackageVersion Include="Ionide.Analyzers" Version="0.14.7" />
+    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.22.0" />
+    <PackageVersion Include="Ionide.Analyzers" Version="0.15.0" />
   </ItemGroup>
 </Project>
