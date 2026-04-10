@@ -30,12 +30,12 @@ let zipPath =
     </> "server.zip"
 
 let infra () =
-    let bucket = BucketV2 $"%s{loweredProjectName}-bucket"
+    let bucket = Bucket $"%s{loweredProjectName}-bucket"
 
     let bucketAcl =
-        BucketAclV2 (
+        BucketAcl (
             $"%s{loweredProjectName}-bucket-acl",
-            args = BucketAclV2Args (Acl = input "private", Bucket = io bucket.Id)
+            args = BucketAclArgs (Acl = input "private", Bucket = io bucket.Id)
         )
 
     let bucketObject =
@@ -54,7 +54,7 @@ let infra () =
             $"%s{projectName}LambdaRole",
             Iam.RoleArgs (
                 AssumeRolePolicy =
-                    input
+                    inputUnion1Of2
                         """{
     "Version": "2012-10-17",
     "Statement": [{
@@ -74,7 +74,7 @@ let infra () =
         let args =
             Iam.RolePolicyArgs (
                 Policy =
-                    input
+                    inputUnion1Of2
                         """{
 	                                "Version": "2012-10-17",
 	                                "Statement": [{

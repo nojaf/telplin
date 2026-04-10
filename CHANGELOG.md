@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.0 - 2026-04-10
+
+### Changed
+* Update tfm to `net10.0`
+
 ## 0.10.0 - 2025-02-10
 
 ### Changed
