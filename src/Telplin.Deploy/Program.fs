@@ -32,19 +32,12 @@ let zipPath =
 let infra () =
     let bucket = Bucket $"%s{loweredProjectName}-bucket"
 
-    let bucketAcl =
-        BucketAcl (
-            $"%s{loweredProjectName}-bucket-acl",
-            args = BucketAclArgs (Acl = input "private", Bucket = io bucket.Id)
-        )
-
     let bucketObject =
         BucketObjectv2 (
             $"%s{loweredProjectName}-lambda-archive",
             BucketObjectv2Args (
                 Key = input $"%s{loweredProjectName}-lambda-archive.zip",
                 Bucket = io bucket.Id,
-                Acl = bucketAcl.Acl,
                 Source = input (FileArchive zipPath)
             )
         )

@@ -508,3 +508,5 @@ tool/client/fable_modules
 
 # Analyzers
 analysis.sarif
+
+.claude/settings.local.json
