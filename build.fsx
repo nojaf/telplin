@@ -7,7 +7,7 @@ open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fun.Build
 
-let apiKey = Environment.GetEnvironmentVariable "TELPLIN_NUGET_KEY"
+let apiKey = Environment.GetEnvironmentVariable "NUGET_KEY"
 let packageOutput = __SOURCE_DIRECTORY__ </> "artifacts" </> "package" </> "release"
 
 pipeline "Build" {
