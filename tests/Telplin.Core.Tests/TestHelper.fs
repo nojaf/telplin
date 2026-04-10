@@ -131,7 +131,8 @@ let downloadNugetPackage packageName version targetFramework =
                     .WithWorkingDirectory(tempDir.FullName)
                     .ExecuteAsync ()
 
-            let! caches = Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync ()
+            let! caches =
+                Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync ()
 
             let caches =
                 caches.StandardOutput.Split '\n'

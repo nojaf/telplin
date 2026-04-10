@@ -1203,7 +1203,8 @@ type Point3D =
 [<Test>]
 let ``override of C# abstract member`` () =
     task {
-        let! newtonsoftJson = downloadNugetPackage "Newtonsoft.Json" "13.0.3" "netstandard2.0"
+        let! newtonsoftJson =
+            downloadNugetPackage "Newtonsoft.Json" "13.0.3" "netstandard2.0"
 
         assertSignatureWith
             (fun options ->
