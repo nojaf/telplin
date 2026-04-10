@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(gh release:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}

@@ -4,30 +4,22 @@
   "tools": {
     "fantomas": {
       "version": "7.0.0",
-      "commands": [
-        "fantomas"
-      ],
+      "commands": ["fantomas"],
       "rollForward": false
     },
     "amazon.lambda.tools": {
       "version": "5.13.0",
-      "commands": [
-        "dotnet-lambda"
-      ],
+      "commands": ["dotnet-lambda"],
       "rollForward": false
     },
     "fsdocs-tool": {
-      "version": "20.0.1",
-      "commands": [
-        "fsdocs"
-      ],
+      "version": "22.0.0",
+      "commands": ["fsdocs"],
       "rollForward": false
     },
     "fsharp-analyzers": {
       "version": "0.32.1",
-      "commands": [
-        "fsharp-analyzers"
-      ],
+      "commands": ["fsharp-analyzers"],
       "rollForward": false
     }
   }

@@ -8,7 +8,7 @@ open System
 
 let setGetParam (encodedJson : string) : unit =
     if not (isNullOrUndefined history.pushState) then
-        let ``params`` = URLSearchParams.Create ()
+        let ``params`` = URLSearchParams.Create null
         ``params``.set ("data", encodedJson)
 
         let newUrl =

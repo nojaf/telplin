@@ -26,7 +26,7 @@ let zipPath =
     </> "server"
     </> "bin"
     </> "Release"
-    </> "net8.0"
+    </> "net10.0"
     </> "server.zip"
 
 let infra () =
@@ -123,7 +123,7 @@ let infra () =
                 S3Bucket = io bucket.Id,
                 S3Key = io bucketObject.Key,
                 SourceCodeHash = input (sha256 zipPath),
-                Runtime = inputUnion2Of2 Runtime.CustomAL2,
+                Runtime = inputUnion2Of2 Runtime.CustomAL2023,
                 Role = io lambdaRole.Arn,
                 Timeout = input 30,
                 MemorySize = input 512

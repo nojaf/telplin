@@ -1,22 +1,64 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,400;0,500;0,600;1,300&display=swap');
 
 :root {
-    --primary: #ffdd59;
-    --secondary: #6d7276;
-    --background: #fdfdfd;
-    --header-background: var(--primary);
+    --primary: light-dark(#b8922e, #d4ad42);
+    --secondary: light-dark(#6e7a86, #8a95a1);
+    --background: light-dark(#faf8f5, #1c1b19);
+    --header-background: light-dark(#2a2621, #2a2621);
+    --header-link-color: light-dark(#e8dcc6, #e8dcc6);
+    --header-border: light-dark(#3d3730, #3d3730);
+    --text-color: light-dark(#2c2a26, #e8e4dc);
+    --heading-color: light-dark(#2a2621, #ede9e0);
+    --menu-color: light-dark(#3d3730, #d4cfc5);
+    --menu-item-hover-background: light-dark(#f0ece4, #33302a);
+    --link-color: light-dark(#8a6d1e, #d4ad42);
+    --link-hover: light-dark(#b8922e, #e8c864);
+    --nav-category: light-dark(#8a8279, #9e978e);
+    --code-background: light-dark(#f0ece4, #24221d);
+    --code-color: light-dark(#3d3730, #d4cfc5);
+    --code-fence-border-color: light-dark(#3d3730, #3d3730);
+    --blockquote-bacground-color: light-dark(#f0ece4, #33302a);
+    --blockquote-color: var(--text-color);
+    --aside-background: light-dark(#f5f2ec, #24221d);
+    --page-menu-background-color: light-dark(#f5f2ec, #24221d);
+    --page-menu-background-border-color: light-dark(#e0dbd1, #3d3730);
+    --page-menu-background-hover-border-color: var(--primary);
+    --on-this-page-color: light-dark(#6e6658, #9e978e);
+    --nav-item-border-color: light-dark(#e0dbd1, #3d3730);
+    --nav-item-active-border-color: var(--primary);
+    --code-strings-color: light-dark(#7a6020, #c8a84e);
+    --code-printf-color: light-dark(#8a6d1e, #d4ad42);
+    --code-escaped-color: light-dark(#a07040, #d4a070);
+    --code-identifiers-color: light-dark(#5a4a30, #c8bfa0);
+    --code-module-color: light-dark(#6e7a86, #8a95a1);
+    --code-reference-color: light-dark(#6e7a86, #a0aab4);
+    --code-value-color: light-dark(#5a6a3a, #a0b880);
+    --code-interface-color: light-dark(#6e7a86, #8a95a1);
+    --code-typearg-color: light-dark(#6e7a86, #8a95a1);
+    --code-disposable-color: light-dark(#6e7a86, #8a95a1);
+    --code-property-color: light-dark(#6e7a86, #a0aab4);
+    --code-punctuation-color: light-dark(#8a8279, #9e978e);
+    --code-punctuation2-color: var(--text-color);
+    --code-function-color: light-dark(#8a6d1e, #d4ad42);
+    --code-function2-color: light-dark(#8a6d1e, #c8a84e);
+    --code-activepattern-color: light-dark(#6a8a50, #a0c480);
+    --code-unioncase-color: light-dark(#6a8a50, #a0c480);
+    --code-enumeration-color: light-dark(#8C6C41, #b89060);
+    --code-keywords-color: light-dark(#7a5a10, #d4ad42);
+    --code-comment-color: light-dark(#8a8279, #7a7568);
+    --code-operators-color: light-dark(#6e6658, #9e978e);
+    --code-numbers-color: light-dark(#7a6020, #c8a84e);
+    --code-linenumbers-color: light-dark(#8a8279, #6e6658);
+    --code-mutable-color: light-dark(#a07040, #d4a070);
+    --code-inactive-color: #808080;
+    --code-preprocessor-color: light-dark(#8a6d1e, #c8a84e);
+    --code-fsioutput-color: #808080;
+    --code-tooltip-color: #d1d1d1;
     --system-font: 'Raleway', sans-serif;
     --header-brand-text-transform: capitalize;
-    --aside-width:270px;
-    --code-background: rgba(210, 222, 222, 0.15);
-    --dialog-link-color: #38393a;
+    --aside-width: 270px;
+    --dialog-link-color: light-dark(#3d3730, #e8dcc6);
     --dialog-link-hover-background-color: var(--secondary);
-}
-
-[data-theme=dark] {
-    --header-background: var(--secondary);
-    --background: #38393a;
-    --menu-item-hover-background: #38393a;
 }
 
 header .start strong {
@@ -32,13 +74,24 @@ header .start strong {
     font-weight: 500;
 }
 
+.copy-code-button {
+    background-color: light-dark(#e0dbd1, #3d3730);
+    color: light-dark(#3d3730, #e8dcc6);
+    border-color: light-dark(#c8c1b4, #4a443c);
+
+    &:hover {
+        background-color: light-dark(#d4cfc5, #4a443c);
+    }
+}
+
 .fancy {
     quotes: "\201C" "\201D" "\2018" "\2019";
-    background-color: #6d7276;
-    color: #ffdd59;
+    background-color: light-dark(#2a2621, #33302a);
+    color: light-dark(#e8dcc6, #e8dcc6);
     margin: var(--spacing-300) 0;
     padding: var(--spacing-200);
-    border-left: var(--spacing-100) solid #ffdd59;
+    border-left: var(--spacing-100) solid var(--primary);
+    border-radius: var(--radius);
     
     &:before {
         color: var(--primary);
