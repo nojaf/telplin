@@ -41,7 +41,7 @@ jobs:
           NUGET_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./output
 
