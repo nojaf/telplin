@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.1] - 2026-08-30
+
+### Fixed
+* The verify step no longer fails on a binding the new signature hides when the project promotes the unused-value warning (FS1182) to an error, as Fantomas does with `<WarningsAsErrors>FS1182</WarningsAsErrors>`. The code compiled before the signature was added, so that warning stays a warning for the check.
+
 ## [0.16.0] - 2026-08-30
 
 ### Added

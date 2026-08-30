@@ -410,9 +410,14 @@ let typeCheckProjectWithSignatures (projectOptions : FSharpProjectOptions) (sign
                 | None -> [| file |]
         )
 
+    // A signature hides bindings the implementation no longer exposes, and the compiler then reports
+    // them as unused (FS1182). A project that promotes that warning to an error would fail the check
+    // over a binding that compiled fine a moment ago, so the promotion is undone for this check only.
+    // The flag goes last so it wins over whatever the project passed.
     let projectOptions =
         { projectOptions with
             SourceFiles = sourceFiles
+            OtherOptions = Array.append projectOptions.OtherOptions [| "--warnaserror-:1182" |]
         }
 
     let result =
