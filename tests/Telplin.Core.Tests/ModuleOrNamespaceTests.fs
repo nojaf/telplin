@@ -125,3 +125,43 @@ module Telplin =
     module Inner =
         val lst: V list * V
 """
+
+[<Test>]
+let ``nested module with nothing left in it is left out`` () =
+    assertSignatureWithoutPrivate
+        """
+module Telplin
+
+module Helpers =
+    let private a = 1
+    let private b = 2
+
+module Outer =
+    module Inner =
+        let private c = 3
+
+let x = 1
+"""
+        """
+module Telplin
+
+val x: int
+"""
+
+[<Test>]
+let ``private nested module is left out even when it has bindings`` () =
+    assertSignatureWithoutPrivate
+        """
+module Telplin
+
+module private Helpers =
+    let a = 1
+    let b = 2
+
+let x = Helpers.a
+"""
+        """
+module Telplin
+
+val x: int
+"""

@@ -12,6 +12,9 @@ val (|PrivateTopLevelBinding|_|) : ModuleDecl -> unit voption
 val (|PrivateConstructor|_|) : ImplicitConstructorNode -> unit voption
 
 [<return : Struct>]
+val (|PrivateNestedModule|_|) : ModuleDecl -> unit voption
+
+[<return : Struct>]
 val (|PrivateMemberDefn|_|) : MemberDefn -> unit voption
 
 /// Augmentation with a private member.

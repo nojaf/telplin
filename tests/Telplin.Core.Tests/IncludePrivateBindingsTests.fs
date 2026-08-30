@@ -146,3 +146,23 @@ type System.String with
         """
 module Telplin
 """
+
+[<Test>]
+let ``private nested module is kept`` () =
+    assertSignature
+        """
+module Telplin
+
+module private Helpers =
+    let a = 1
+
+let x = Helpers.a
+"""
+        """
+module Telplin
+
+module private Helpers =
+    val a: int
+
+val x: int
+"""

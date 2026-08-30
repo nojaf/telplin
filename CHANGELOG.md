@@ -2,6 +2,9 @@
 
 ## [0.16.1] - 2026-08-30
 
+### Changed
+* A nested module with nothing left in its signature, and a `private` nested module, are left out of the signature file. `--include-private-bindings` keeps the private module. [#376](https://github.com/nojaf/telplin/issues/376)
+
 ### Fixed
 * The verify step no longer fails on a binding the new signature hides when the project promotes the unused-value warning (FS1182) to an error, as Fantomas does with `<WarningsAsErrors>FS1182</WarningsAsErrors>`. The code compiled before the signature was added, so that warning stays a warning for the check.
 

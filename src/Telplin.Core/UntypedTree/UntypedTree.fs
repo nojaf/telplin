@@ -560,6 +560,8 @@ type ModuleDeclResult =
     | SingleModuleDecl of ModuleDecl
     | Error of TelplinError
     | Nested of parent : ModuleDecl * childErrors : TelplinError list
+    /// Nothing goes into the signature, but the children may still have reported errors.
+    | LeftOut of childErrors : TelplinError list
 
 let toItemResult (result : ModuleDeclResult) : ItemResult<ModuleDecl> =
     match result with
@@ -567,6 +569,7 @@ let toItemResult (result : ModuleDeclResult) : ItemResult<ModuleDecl> =
     | ModuleDeclResult.SingleModuleDecl sigDecl -> Ok ([ sigDecl ], [])
     | ModuleDeclResult.Error error -> Error error
     | ModuleDeclResult.Nested (sigDecl, childErrors) -> Ok ([ sigDecl ], childErrors)
+    | ModuleDeclResult.LeftOut childErrors -> Ok ([], childErrors)
 
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDeclResult =
     let mdlRange = (ModuleDecl.Node mdl).Range
@@ -630,6 +633,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         | None -> ModuleDeclResult.None
         | Some sigTypeDefn -> ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, memberErrors)
 
+    | PrivateNestedModule when not resolver.IncludePrivateBindings -> ModuleDeclResult.None
     | ModuleDecl.NestedModule nestedModule ->
         let sigs, errors =
             if not nestedModule.IsRecursive then
@@ -660,6 +664,12 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                         result
                     )
                     nestedModule.Declarations
+
+        // A module with nothing left in it says nothing about the API: the compiler accepts the
+        // implementation without it, and its bindings are then private to the file.
+        if List.isEmpty sigs then
+            ModuleDeclResult.LeftOut errors
+        else
 
         let sigNestedModule =
             NestedModuleNode (
