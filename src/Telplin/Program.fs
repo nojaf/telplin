@@ -48,7 +48,7 @@ let main args =
         | Some idx -> args.[0 .. (idx - 1)], args.[(idx + 1) ..]
 
     let parser =
-        ArgumentParser.Create<CliArguments> (programName = "Telplin", errorHandler = ProcessExiter ())
+        ArgumentParser.Create<CliArguments>(programName = "Telplin", errorHandler = ProcessExiter ())
 
     let arguments = parser.Parse (arguArgs, raiseOnUsage = false)
 

@@ -175,7 +175,7 @@ let fallbackImplementation =
 let v (a:int) b = a - b
 """
 
-let init _ =
+let init () =
     let urlInfo =
         OnlineTool.UrlTools.restoreModelFromUrl
             decodeUrlModel
@@ -344,7 +344,7 @@ let badge key range severity errorNumber message =
 
 [<ReactComponent>]
 let App () =
-    let model, dispatch = React.useElmish (init, update, Array.empty)
+    let model, dispatch = React.useElmish (init, update)
 
     let errorPanel =
         if
@@ -452,5 +452,5 @@ Browser.Dom.window.addEventListener (
     "DOMContentLoaded",
     fun _ ->
         let mainElement = Browser.Dom.document.querySelector "main"
-        ReactDomClient.createRoot(mainElement).render (App ())
+        ReactDomClient.createRoot(mainElement).render(App ())
 )

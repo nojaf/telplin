@@ -42,7 +42,7 @@
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" />
     <PackageReference Include="Amazon.Lambda.APIGatewayEvents" />
     <PackageReference Include="Microsoft.Net.Http.Headers" />
-    <PackageReference Include="Thoth.Json.Net" />
+    <PackageReference Include="Thoth.Json.System.Text.Json" />
     <PackageReference Include="Suave" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
   <ItemGroup>

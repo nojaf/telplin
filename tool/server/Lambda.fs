@@ -8,7 +8,8 @@ open FSharp.Compiler.Text
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.CodeAnalysis
 open Microsoft.Net.Http.Headers
-open Thoth.Json.Net
+open Thoth.Json.Core
+open Thoth.Json.System.Text.Json
 open Amazon.Lambda.APIGatewayEvents
 open Amazon.Lambda.Core
 open Telplin.Core
@@ -182,7 +183,7 @@ let createHeaders headers =
             acc.[key] <- value
             acc
         )
-        (Dictionary<string, string> ())
+        (Dictionary<string, string>())
         headers
 
 let mkAPIGatewayProxyResponse (statusCode : HttpStatusCode, contentTypeHeaderValue : string, body : string) =

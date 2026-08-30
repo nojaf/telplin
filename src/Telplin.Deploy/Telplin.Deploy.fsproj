@@ -14,6 +14,8 @@
     <PackageReference Include="Pulumi" />
     <PackageReference Include="Pulumi.FSharp" />
     <PackageReference Include="Pulumi.Aws" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
   </ItemGroup>
 
 </Project>

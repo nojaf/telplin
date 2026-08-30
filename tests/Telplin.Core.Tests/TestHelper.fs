@@ -122,17 +122,17 @@ let downloadNugetPackage packageName version targetFramework =
                     .Wrap("dotnet")
                     .WithArguments("new classlib -f netstandard2.0")
                     .WithWorkingDirectory(tempDir.FullName)
-                    .ExecuteAsync ()
+                    .ExecuteAsync()
 
             let! _ =
                 Cli
                     .Wrap("dotnet")
                     .WithArguments($"add package %s{packageName} --version %s{version}")
                     .WithWorkingDirectory(tempDir.FullName)
-                    .ExecuteAsync ()
+                    .ExecuteAsync()
 
             let! caches =
-                Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync ()
+                Cli.Wrap("dotnet").WithArguments("nuget locals all -l").ExecuteBufferedAsync()
 
             let caches =
                 caches.StandardOutput.Split '\n'
@@ -140,7 +140,7 @@ let downloadNugetPackage packageName version targetFramework =
                     if not (line.Contains ": ") then
                         None
                     else
-                        line.Split(": ").[1].Trim () |> Some
+                        line.Split(": ").[1].Trim() |> Some
                 )
 
             let nugetFolder =

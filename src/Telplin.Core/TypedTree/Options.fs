@@ -77,8 +77,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 JsonDocument.Parse targetFrameworkJson
                 |> fun json -> json.RootElement.GetProperty "Properties"
                 |> fun properties ->
-                    properties.GetProperty("TargetFramework").GetString (),
-                    properties.GetProperty("TargetFrameworks").GetString ()
+                    properties.GetProperty("TargetFramework").GetString(),
+                    properties.GetProperty("TargetFrameworks").GetString()
 
             if not (String.IsNullOrWhiteSpace tf) then
                 tf
@@ -121,8 +121,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
         let jsonDocument = JsonDocument.Parse json
 
         let options =
-            jsonDocument.RootElement.GetProperty("Items").GetProperty("FscCommandLineArgs").EnumerateArray ()
-            |> Seq.map (fun arg -> arg.GetProperty("Identity").GetString ())
+            jsonDocument.RootElement.GetProperty("Items").GetProperty("FscCommandLineArgs").EnumerateArray()
+            |> Seq.map (fun arg -> arg.GetProperty("Identity").GetString())
             |> Seq.toArray
 
         if Array.isEmpty options then
@@ -160,9 +160,9 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
         let jsonDocument = JsonDocument.Parse json
 
         let references =
-            jsonDocument.RootElement.GetProperty("Items").GetProperty("ProjectReference").EnumerateArray ()
+            jsonDocument.RootElement.GetProperty("Items").GetProperty("ProjectReference").EnumerateArray()
             |> Seq.choose (fun projectItem ->
-                let fullPath = projectItem.GetProperty("FullPath").GetString ()
+                let fullPath = projectItem.GetProperty("FullPath").GetString()
 
                 if fullPath.EndsWith (".fsproj", StringComparison.Ordinal) then
                     Some fullPath
@@ -176,7 +176,7 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
-            && produceReferenceAssembly.Trim().Equals ("true", StringComparison.OrdinalIgnoreCase)
+            && produceReferenceAssembly.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
 
         return
             {
