@@ -23,6 +23,7 @@ Run `telplin --help` for the full list of flags.
 3. The whole project is type checked again with the new signatures in front of their implementations. When that fails, the diagnostics are printed and nothing is written.
 4. The signature files are written next to their implementation files, and each one is listed in the project file directly before its implementation.
 5. The `private` keyword is removed from the let bindings the signature leaves out. With a signature file in place, a binding it does not mention is private whether or not it says so.
+6. The XML doc comments of the declarations the signature has are removed from the implementation file. Tooling reads the docs from the signature file, and a second copy in the implementation only drifts apart from it. Docs on declarations the signature leaves out stay.
 
 The input can also be a folder that holds exactly one project file, or a response file (see below).
 
@@ -43,6 +44,7 @@ Anything after `--` is passed to the design time build:
 | `--no-verify` | Skip the check that the project still compiles with the new signatures in place. |
 | `--no-project` | Do not list the signature files in the project file. |
 | `--keep-private` | Leave the `private` keyword on let bindings in the implementation file. |
+| `--keep-xml-docs` | Leave the XML doc comments in the implementation file. |
 | `--force` | Write the signatures even when the check fails. For debugging purposes only. |
 | `--version` | Print the version and exit. |
 | `-h`, `--help` | Display the help page and exit. |

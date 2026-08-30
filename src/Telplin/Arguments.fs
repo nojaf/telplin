@@ -16,6 +16,7 @@ type Arguments =
         UpdateProject : bool
         OnlyUsed : bool
         KeepPrivate : bool
+        KeepXmlDocs : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
@@ -34,6 +35,7 @@ let empty : Arguments =
         UpdateProject = true
         OnlyUsed = true
         KeepPrivate = false
+        KeepXmlDocs = false
         Help = false
         Version = false
         MsBuildArguments = []
@@ -103,6 +105,15 @@ let flags : (string * string * string * string list) list =
              "leaves out, since the signature is what makes them private."
          ])
         ("",
+         "--keep-xml-docs",
+         "",
+         [
+             "Leave the XML doc comments in the implementation file. By"
+             "default they are removed from the declarations the signature"
+             "has, since tooling reads the docs from the signature and two"
+             "copies drift apart."
+         ])
+        ("",
          "--force",
          "",
          [
@@ -165,6 +176,7 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--only-used" :: _ ->
             Error "--only-used is the default now and the flag is gone. Pass --keep-unused to keep every binding."
         | "--keep-private" :: rest -> go { arguments with KeepPrivate = true } rest
+        | "--keep-xml-docs" :: rest -> go { arguments with KeepXmlDocs = true } rest
         | "--include-private-bindings" :: rest ->
             go
                 { arguments with

@@ -16,6 +16,7 @@ type Arguments =
         UpdateProject : bool
         OnlyUsed : bool
         KeepPrivate : bool
+        KeepXmlDocs : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
