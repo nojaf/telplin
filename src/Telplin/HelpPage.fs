@@ -33,7 +33,7 @@ let examples : (string * string) list =
         ("src/App", "Write a signature file next to every source file of the project in that folder")
         ("App.fsproj --dry-run", "Print the signatures and write nothing")
         ("App.fsproj --files Api.fs", "Process one file of the project")
-        ("src/App/Api.fs --only-used", "Find the project of that file and process just it")
+        ("src/App/Api.fs", "Find the project of that file and process just it")
         ("App.fsproj --record", "Also save the compiler arguments to App.rsp")
         ("App.rsp", "Reuse recorded arguments and skip the build")
         ("App.fsproj -- -p:Configuration=Release", "Pass arguments to the design time build")

@@ -32,7 +32,7 @@ let empty : Arguments =
         Verify = true
         Force = false
         UpdateProject = true
-        OnlyUsed = false
+        OnlyUsed = true
         KeepPrivate = false
         Help = false
         Version = false
@@ -68,15 +68,16 @@ let flags : (string * string * string * string list) list =
          ])
         ("", "--include-private-bindings", "", [ "Include private bindings in the signature file." ])
         ("",
-         "--only-used",
+         "--keep-unused",
          "",
          [
-             "Leave out let bindings that no other file of this project"
-             "uses. Only this project is looked at: a binding used by"
-             "another project, by tests, through reflection or by consumers"
-             "of a published library is not seen, so this is for files"
-             "internal to a project, not for a public API. Types, members"
-             "and bindings with an attribute are kept in full."
+             "Keep let bindings that no other file of this project uses."
+             "By default they are left out of the signature, which makes"
+             "them private. Only this project is looked at: a binding used"
+             "by another project, by tests, through reflection or by"
+             "consumers of a published library is not seen, so use this"
+             "for a public API. Types, members and bindings with an"
+             "attribute are always kept."
          ])
         ("",
          "--no-verify",
@@ -160,7 +161,9 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--no-verify" :: rest -> go { arguments with Verify = false } rest
         | "--force" :: rest -> go { arguments with Force = true } rest
         | "--no-project" :: rest -> go { arguments with UpdateProject = false } rest
-        | "--only-used" :: rest -> go { arguments with OnlyUsed = true } rest
+        | "--keep-unused" :: rest -> go { arguments with OnlyUsed = false } rest
+        | "--only-used" :: _ ->
+            Error "--only-used is the default now and the flag is gone. Pass --keep-unused to keep every binding."
         | "--keep-private" :: rest -> go { arguments with KeepPrivate = true } rest
         | "--include-private-bindings" :: rest ->
             go
@@ -196,10 +199,11 @@ let parse (args : string array) : Result<Arguments, string> =
             MsBuildArguments = msbuild
         }
         own
-    |> Result.bind (fun arguments ->
-        if arguments.OnlyUsed && arguments.IncludePrivateBindings then
-            Error
-                "--only-used and --include-private-bindings contradict each other: one leaves bindings out, the other puts more in."
+    // Private bindings are by definition used by no other file. Asking for them is asking for
+    // the unused ones too.
+    |> Result.map (fun arguments ->
+        if arguments.IncludePrivateBindings then
+            { arguments with OnlyUsed = false }
         else
-            Ok arguments
+            arguments
     )
