@@ -17,15 +17,17 @@ let private escapeSequence : Regex =
 
 let plain : Theme = { Palette = Palette.NoColour }
 
-/// Colour only when the stream is a terminal that can show it. NO_COLOR is honoured
+/// Colour only when both streams are a terminal that can show it. NO_COLOR is honoured
 /// (https://no-color.org), and a redirected stream is being read by a file, a pager or a script,
-/// none of which want escape codes.
+/// none of which want escape codes. One theme serves stdout and stderr, so either being redirected
+/// turns colour off for both.
 let forOutput () : Theme =
     let noColor = Environment.GetEnvironmentVariable "NO_COLOR"
     let term = Environment.GetEnvironmentVariable "TERM"
 
     if
         Console.IsOutputRedirected
+        || Console.IsErrorRedirected
         || not (String.IsNullOrEmpty noColor)
         || String.Equals (term, "dumb", StringComparison.OrdinalIgnoreCase)
     then

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.15.0] - 2026-08-30
+
+### Changed
+* An exception while converting one declaration no longer stops the whole run: the declaration is left out and the rest of the file is still produced. The CLI reports every declaration it left out as `file(line,col): error: message`, followed by the source around it with the declaration underlined. Progress lines and warnings go to stderr, so stdout holds only results. [#72](https://github.com/nojaf/telplin/issues/72)
+
+### Fixed
+* A member with a `[<DefaultParameterValue>]` whose value is the default of a struct, such as `Nullable<TimeSpan>()`, no longer fails to parse. [#348](https://github.com/nojaf/telplin/issues/348)
+* A type declared in a module with `ModuleSuffix` (explicit, or implicit when a type shares the module's name) is no longer qualified with the module name inside that module. [#71](https://github.com/nojaf/telplin/issues/71)
+* A backtick inside a backticked name, such as ```` ```a` b`` ````, is escaped correctly. Fixed by the FCS update, now covered by a test. [#88](https://github.com/nojaf/telplin/issues/88)
+
 ## [0.14.0] - 2026-08-30
 
 ### Changed

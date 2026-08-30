@@ -75,10 +75,10 @@ let generateSignatures
             None
         else
 
-        printfn "process: %s" sourceFile
+        eprintfn "process: %s" sourceFile
 
         if not (File.Exists sourceFile) then
-            printfn $"File \"%s{sourceFile}\" was skipped because it doesn't exist on disk."
+            eprintfn $"File \"%s{sourceFile}\" was skipped because it doesn't exist on disk."
             None
         else
 
@@ -271,12 +271,15 @@ let run (arguments : Arguments.Arguments) : int =
     let signatures =
         generateSignatures checker projectOptions projectResults arguments sourceFiles
 
+    // Every declaration Telplin left out of a signature, with the source it could not convert
+    // underlined. The signature is still produced without it.
     for fileName, _, errors in signatures do
         if not errors.IsEmpty then
-            eprintfn "%s" (negative theme $"Errors in %s{fileName}:")
+            let lines = File.ReadAllLines fileName
 
             for TelplinError (m, error) in errors do
-                eprintfn "%s" (negative theme $"%A{m}: %s{error}")
+                for line in Diagnostics.report theme fileName lines m error do
+                    eprintfn "%s" line
 
     // The whole project is checked once, with every new signature in front of its implementation.
     // Checking a file on its own is not enough: a signature hides what later files could see.
@@ -358,15 +361,15 @@ let run (arguments : Arguments.Arguments) : int =
                     printfn "%s" (positive theme $"Listed %s{Path.GetFileName path} in %s{projectName}")
                 | ProjectFile.Outcome.AlreadyListed _ -> ()
                 | ProjectFile.Outcome.NotFound path ->
-                    printfn
+                    eprintfn
                         "%s"
                         (attention
                             theme
                             $"%s{Path.GetFileName path} is not listed in %s{projectName}: its implementation file is not a literal <Compile> item. Add it before the implementation file yourself.")
         else
-            printfn "%s" (attention theme "The signature files are not listed in the project.")
+            eprintfn "%s" (attention theme "The signature files are not listed in the project.")
 
-            printfn
+            eprintfn
                 "%s"
                 (attention
                     theme

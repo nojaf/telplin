@@ -172,3 +172,21 @@ let downloadNugetPackage packageName version targetFramework =
             if tempDir.Exists then
                 tempDir.Delete true
     }
+
+/// The signature is expected to be partial: `expectedErrors` declarations could not be converted.
+/// The signature still has to compile together with the implementation.
+let assertPartialSignature (expectedErrors : int) implementation expectedSignature =
+    let verificationResult =
+        TelplinInternalApi.VerifySignatureWithImplementation (implementation, options, SignatureCreation.telplin true)
+
+    match verificationResult with
+    | SignatureVerificationResult.PartialSignatureFile (signature, errors) ->
+        shouldEqualWithPrepend expectedSignature signature
+        Assert.That (errors.Length, Is.EqualTo expectedErrors)
+
+        match TypedTree.Resolver.typeCheckForPair options implementation signature with
+        | [||] -> ()
+        | diagnostics ->
+            Array.iter (fun d -> printfn "%A" d) diagnostics
+            failwith "The partial signature does not compile with the implementation"
+    | other -> failwith $"Expected a partial signature file, got %A{other}"

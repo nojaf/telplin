@@ -1353,3 +1353,17 @@ type 'a Foo =
 
     static member Make<'a> : array: 'a array -> 'a Foo
 """
+
+[<Test>]
+let ``backtick inside a backticked name, 88`` () =
+    assertSignature
+        """
+module Telplin
+
+let ```a` b`` (a:int) (b:int) = ()
+"""
+        """
+module Telplin
+
+val ```a` b``: a: int -> b: int -> unit
+"""
