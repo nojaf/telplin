@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0] - 2026-08-30
+
+### Changed
+* Let bindings that no other file of the project uses are left out by default. `--keep-unused` keeps them, and `--include-private-bindings` implies it. The `--only-used` flag is gone.
+
+### Added
+* The input can be a source file (.fs). The nearest project above it that has the file as a Compile item is used, and only that file is processed. [#372](https://github.com/nojaf/telplin/pull/372)
+
 ## [0.13.0] - 2026-08-30
 
 ### Added

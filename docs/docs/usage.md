@@ -39,7 +39,7 @@ Anything after `--` is passed to the design time build:
 | `--record` | Also save the compiler arguments of the design time build next to the project, as a `.rsp` file. Passing that file as the input later skips the build. |
 | `--only-record` | Save the compiler arguments as with `--record`, and stop there. |
 | `--include-private-bindings` | Include private bindings in the signature file. |
-| `--only-used` | Leave out let bindings that no other file of this project uses. See below. |
+| `--keep-unused` | Keep let bindings that no other file of this project uses. See below. |
 | `--no-verify` | Skip the check that the project still compiles with the new signatures in place. |
 | `--no-project` | Do not list the signature files in the project file. |
 | `--keep-private` | Leave the `private` keyword on let bindings in the implementation file. |
@@ -50,11 +50,11 @@ Anything after `--` is passed to the design time build:
 ## Keeping only what is used
 
 A signature file is more effective when it exposes only what the rest of the code base needs.  
-With `--only-used`, a module-level `let` binding is left out of the signature when no other file of the project uses it, which makes it private. Types, members and bindings that carry an attribute (an entry point, a test, a literal) are always kept.
+By default, a module-level `let` binding is left out of the signature when no other file of the project uses it, which makes it private. Types, members and bindings that carry an attribute (an entry point, a test, a literal) are always kept.
 
-> telplin src/App/App.fsproj --files App/Api.fs --only-used
+> telplin src/App/App.fsproj --files App/Api.fs
 
-Be aware of what "used" means here: **only this project is looked at**. A binding used by another project, by a test project, through reflection, or by consumers of a published library is not seen, and would be made private. This flag is for files that are internal to a project, not for a public API, which is why it is opt-in.
+Be aware of what "used" means here: **only this project is looked at**. A binding used by another project, by a test project, through reflection, or by consumers of a published library is not seen, and would be made private. The default is for files that are internal to a project. For a public API, pass `--keep-unused` to keep every binding; `--include-private-bindings` implies it.
 
 ## Response files
 

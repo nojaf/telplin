@@ -19,4 +19,8 @@ val mkOptionsFromDesignTimeBuild : fsproj : string -> additionalArguments : stri
 val mkOptionsFromDesignTimeBuildWithoutReferences :
     fsproj : string -> additionalArguments : string -> Async<FSharpProjectOptions>
 
+/// The full paths of the `Compile` items of a project, as MSBuild evaluates them. Globs and
+/// imports are expanded; no target runs, so this is cheaper than a design time build.
+val compileItems : fsproj : string -> additionalArguments : string -> Async<string array>
+
 val mkOptionsFromResponseFile : responseFilePath : string -> FSharpProjectOptions

@@ -125,14 +125,53 @@ let removePrivateKeywords (code : string) (ranges : FSharp.Compiler.Text.range l
 
     String.Join (newline, lines), ranges.Length
 
-/// The project or response file a run is about. A folder stands for the one project file in it;
-/// with none or several there is nothing to pick, and the run says so rather than guess.
-let resolveInput (input : string) : Result<string, string> =
+/// The project a source file belongs to. The folders above the file are walked upwards; in each
+/// one that holds project files, MSBuild is asked for their Compile items, so a file brought in
+/// by a glob or an import counts too. The first folder with a project that has the file wins.
+/// Two such projects is a tie, and the run says so rather than guess.
+let findProjectOf (file : string) (additionalArguments : string) : Result<string, string> =
+    let file = Path.GetFullPath file
+
+    let rec walk (directory : string) : Result<string, string> =
+        if isNull directory then
+            Error $"No project file (.fsproj) above \"%s{file}\" has it as a Compile item."
+        else
+
+        let owners =
+            Directory.GetFiles (directory, "*.fsproj")
+            |> Array.sort
+            |> Array.filter (fun project ->
+                TypedTree.Options.compileItems project additionalArguments
+                |> Async.RunSynchronously
+                |> Array.contains file
+            )
+
+        match owners with
+        | [||] -> walk (Path.GetDirectoryName directory)
+        | [| project |] -> Ok project
+        | candidates ->
+
+        let listed = candidates |> Array.map (sprintf "  %s") |> String.concat "\n"
+
+        Error
+            $"\"%s{file}\" is a Compile item of more than one project, pass the project and --files instead:\n%s{listed}"
+
+    walk (Path.GetDirectoryName file)
+
+/// The project or response file a run is about, and the files it was asked for by way of the
+/// input. A folder stands for the one project file in it; with none or several there is nothing
+/// to pick, and the run says so rather than guess. A source file (.fs) stands for its project,
+/// and is the one file to process.
+let resolveInput (input : string) (additionalArguments : string) : Result<string * string list, string> =
     if File.Exists input then
-        Ok input
+        if input.EndsWith (".fs", StringComparison.OrdinalIgnoreCase) then
+            findProjectOf input additionalArguments
+            |> Result.map (fun project -> project, [ Path.GetFullPath input ])
+        else
+            Ok (input, [])
     elif Directory.Exists input then
         match Directory.GetFiles (input, "*.fsproj") |> Array.sort with
-        | [| project |] -> Ok project
+        | [| project |] -> Ok (project, [])
         | [||] -> Error $"There is no project file (.fsproj) in \"%s{input}\"."
         | projects ->
             let listed = projects |> Array.map (sprintf "  %s") |> String.concat "\n"
@@ -141,18 +180,25 @@ let resolveInput (input : string) : Result<string, string> =
         Error $"Input \"%s{input}\" does not exist."
 
 let run (arguments : Arguments.Arguments) : int =
-    match Option.map resolveInput arguments.Input with
-    | None -> fail "No input was given. Pass a project file (.fsproj), its folder, or a response file (.rsp)."
+    let additionalArgs = String.concat " " arguments.MsBuildArguments
+
+    match Option.map (fun input -> resolveInput input additionalArgs) arguments.Input with
+    | None ->
+        fail
+            "No input was given. Pass a project file (.fsproj), its folder, a source file (.fs) of a project, or a response file (.rsp)."
     | Some (Error message) -> fail message
-    | Some (Ok input) ->
+    | Some (Ok (input, inputFiles)) ->
+
+    let arguments =
+        { arguments with
+            Files = inputFiles @ arguments.Files
+        }
 
     let checker = FSharpChecker.Create ()
     let theme = forOutput ()
 
     let projectOptions =
         if input.EndsWith (".fsproj", StringComparison.Ordinal) then
-            let additionalArgs = String.concat " " arguments.MsBuildArguments
-
             if arguments.OnlyRecord then
                 TypedTree.Options.mkOptionsFromDesignTimeBuildWithoutReferences input additionalArgs
             else
