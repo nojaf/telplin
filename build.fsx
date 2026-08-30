@@ -12,6 +12,95 @@ open Fun.Build
 let apiKey = Environment.GetEnvironmentVariable "NUGET_KEY"
 let packageOutput = __SOURCE_DIRECTORY__ </> "artifacts" </> "package" </> "release"
 
+/// The newest entry of CHANGELOG.md: its version, its date and its body, the sections as written.
+/// The release on GitHub is that entry, so the two cannot come to say different things.
+let latestChangelogEntry () : string * DateTime * string =
+    let lines = File.ReadAllLines (__SOURCE_DIRECTORY__ </> "CHANGELOG.md")
+
+    let heading =
+        Text.RegularExpressions.Regex @"^## \[(?<version>[^\]]+)\] - (?<date>\d{4}-\d{2}-\d{2})"
+
+    let headings =
+        lines
+        |> Array.indexed
+        |> Array.choose (fun (index, line) ->
+            let m = heading.Match line
+            if m.Success then
+                Some (index, m.Groups.["version"].Value, DateTime.Parse m.Groups.["date"].Value)
+            else
+                None
+        )
+
+    match Array.toList headings with
+    | [] -> failwith "CHANGELOG.md has no release entry."
+    | (start, version, date) :: rest ->
+        let stop =
+            match rest with
+            | (next, _, _) :: _ -> next
+            | [] -> lines.Length
+
+        let body =
+            lines.[start + 1 .. stop - 1] |> String.concat "\n" |> fun body -> body.Trim ()
+        version, date, body
+
+/// "August 30th Release", the title fantomas gives its releases as well.
+let releaseTitle (date : DateTime) : string =
+    let ordinal =
+        match date.Day with
+        | 11
+        | 12
+        | 13 -> "th"
+        | day when day % 10 = 1 -> "st"
+        | day when day % 10 = 2 -> "nd"
+        | day when day % 10 = 3 -> "rd"
+        | _ -> "th"
+
+    let month = date.ToString "MMMM"
+    $"%s{month} %d{date.Day}%s{ordinal} Release"
+
+/// Create the GitHub release for the newest changelog entry, unless it exists already. A rerun of
+/// the workflow, or a push that touches nothing in the changelog, then changes nothing.
+let createGithubRelease (ctx : Internal.StageContext) : Async<int> =
+    async {
+        let version, date, body = latestChangelogEntry ()
+        let tag = $"v%s{version}"
+
+        let! existing = ctx.RunCommandCaptureOutput $"gh release view %s{tag} --json tagName"
+
+        match existing with
+        | Ok _ ->
+            printfn $"Release %s{tag} already exists on GitHub, nothing to do."
+            return 0
+        | Error _ ->
+
+        let notes =
+            $"""# %s{version}
+
+%s{body}
+
+[https://www.nuget.org/packages/telplin/%s{version}](https://www.nuget.org/packages/telplin/%s{version})
+"""
+
+        let notesFile = Path.GetTempFileName ()
+        File.WriteAllText (notesFile, notes)
+        let package = packageOutput </> $"telplin.%s{version}.nupkg"
+        let prerelease = if version.Contains '-' then " --prerelease" else ""
+
+        let! result =
+            ctx.RunCommand
+                $"gh release create %s{tag} \"%s{package}\"%s{prerelease} --title \"%s{releaseTitle date}\" --notes-file \"%s{notesFile}\""
+
+        File.Delete notesFile
+
+        match result with
+        | Ok () ->
+            printfn $"Created GitHub release %s{tag}."
+            return 0
+        | Error error ->
+            eprintfn $"Could not create GitHub release %s{tag}: %s{error}"
+            return 1
+    }
+
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
     stage "clean" {
@@ -54,6 +143,10 @@ pipeline "Build" {
         workingDir packageOutput
         run
             $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key {apiKey} --skip-duplicate"
+    }
+    stage "release" {
+        whenCmdArg "--push"
+        run createGithubRelease
     }
     runIfOnlySpecified false
 }
