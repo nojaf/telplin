@@ -293,6 +293,17 @@ let mkOptionsFromDesignTimeBuildWithoutReferences
         return! mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
     }
 
+let compileItems (fsproj : string) (additionalArguments : string) : Async<string array> =
+    async {
+        let! json = dotnet_msbuild fsproj $"--getItem:Compile %s{additionalArguments}"
+        let jsonDocument = JsonDocument.Parse json
+
+        return
+            jsonDocument.RootElement.GetProperty("Items").GetProperty("Compile").EnumerateArray()
+            |> Seq.map (fun item -> Path.GetFullPath (item.GetProperty("FullPath").GetString()))
+            |> Seq.toArray
+    }
+
 let mkOptionsFromResponseFile responseFilePath =
     let compilerArgs = File.ReadAllLines responseFilePath
     mkOptions (FileInfo responseFilePath) compilerArgs

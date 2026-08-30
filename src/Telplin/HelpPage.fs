@@ -33,6 +33,7 @@ let examples : (string * string) list =
         ("src/App", "Write a signature file next to every source file of the project in that folder")
         ("App.fsproj --dry-run", "Print the signatures and write nothing")
         ("App.fsproj --files Api.fs", "Process one file of the project")
+        ("src/App/Api.fs --only-used", "Find the project of that file and process just it")
         ("App.fsproj --record", "Also save the compiler arguments to App.rsp")
         ("App.rsp", "Reuse recorded arguments and skip the build")
         ("App.fsproj -- -p:Configuration=Release", "Pass arguments to the design time build")
@@ -128,11 +129,13 @@ let render (theme : Theme) (invocation : string) : string list =
     List.iter (writeFlag write theme) flags
     blank ()
     write (heading theme "Input:")
-    write "  A project file (.fsproj), a folder holding exactly one, or a response file (.rsp)."
-    write "  A project is built first, a design time build that asks MSBuild for the compiler"
-    write "  arguments; anything after -- is passed to that build. A response file holds those"
-    write "  arguments as saved by --record and skips the build. Signature files are written"
-    write "  next to the source files, as .fsi."
+    write "  A project file (.fsproj), a folder holding exactly one, a source file (.fs), or a"
+    write "  response file (.rsp). A source file stands for the nearest project above it that"
+    write "  has it as a Compile item, and is the one file processed. A project is built first,"
+    write "  a design time build that asks MSBuild for the compiler arguments; anything after"
+    write "  -- is passed to that build. A response file holds those arguments as saved by"
+    write "  --record and skips the build. Signature files are written next to the source"
+    write "  files, as .fsi."
     blank ()
 
     for label, url in links do
