@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0] - 2026-08-30
+
+### Added
+* The XML doc comments of the declarations the signature has are removed from the implementation file, so the docs live in the signature only. `--keep-xml-docs` opts out. [#374](https://github.com/nojaf/telplin/pull/374)
+
+### Fixed
+* A file that already has a signature file no longer loses every let binding: uses of its bindings were attributed to the signature and so counted as unused. [#374](https://github.com/nojaf/telplin/pull/374)
+
 ## [0.15.0] - 2026-08-30
 
 ### Changed

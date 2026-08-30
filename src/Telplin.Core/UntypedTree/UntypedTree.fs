@@ -734,7 +734,20 @@ let mkModuleOrNamespace
 
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange), errors
 
-let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string * TelplinError list =
+type Signature =
+    {
+        Code : string
+        Errors : TelplinError list
+        XmlDocRanges : FSharp.Compiler.Text.range list
+    }
+
+/// The XML doc comments a tree holds, as their ranges in the file they were parsed from.
+let rec private xmlDocRanges (node : Node) : FSharp.Compiler.Text.range list =
+    match node with
+    | :? XmlDocNode as xmlDoc -> [ xmlDoc.Range.FCSRange ]
+    | _ -> node.Children |> Array.toList |> List.collect xmlDocRanges
+
+let mkSignature (resolver : TypedTreeInfoResolver) (code : string) : Signature =
     let ast, _diagnostics =
         Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) resolver.Defines
 
@@ -747,8 +760,24 @@ let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string 
 
         Oak (implementationOak.ParsedHashDirectives, mdns, zeroRange), List.concat errors
 
+    // The doc nodes are handed over from the implementation tree as they are, so their ranges
+    // still point into the implementation. Only declarations the signature has are found this way.
+    let xmlDocRanges =
+        xmlDocRanges signatureOak
+        |> List.filter (fun r -> r.StartLine > 0 && not (r.StartLine = r.EndLine && r.StartColumn = r.EndColumn))
+        |> List.distinct
+
     let code = CodeFormatter.FormatOakAsync signatureOak |> Async.RunSynchronously
-    code, errors
+
+    {
+        Code = code
+        Errors = errors
+        XmlDocRanges = xmlDocRanges
+    }
+
+let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string * TelplinError list =
+    let signature = mkSignature resolver code
+    signature.Code, signature.Errors
 
 /// The `private` keywords on module-level let bindings, as ranges in the implementation file.
 /// With a signature file next to it, a binding the signature leaves out is private whether or not

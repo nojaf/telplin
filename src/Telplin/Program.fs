@@ -51,6 +51,16 @@ let resolveFile (projectOptions : FSharpProjectOptions) (file : string) : Result
         let listed = many |> Array.map (sprintf "  %s") |> String.concat "\n"
         Error $"\"%s{file}\" matches more than one file of the project, give more of the path:\n%s{listed}"
 
+/// A signature for one source file, with what its generation found out about the file.
+type Generated =
+    {
+        File : string
+        Signature : string
+        Errors : TelplinError list
+        /// The XML doc comments of the implementation that the signature took over.
+        XmlDocRanges : FSharp.Compiler.Text.range list
+    }
+
 /// The signatures that were asked for, generated in memory. Nothing is written yet.
 let generateSignatures
     (checker : FSharpChecker)
@@ -58,7 +68,7 @@ let generateSignatures
     (projectResults : FSharpCheckProjectResults)
     (arguments : Arguments.Arguments)
     (sourceFiles : string array)
-    : (string * string * TelplinError list) list
+    : Generated list
     =
     // MSBuild adds these to the compilation from the intermediate folder. Nobody wrote them and
     // nobody wants a signature for them.
@@ -100,8 +110,15 @@ let generateSignatures
                 arguments.IncludePrivateBindings
                 keepBinding
 
-        let signature, errors = UntypedTree.Writer.mkSignatureFile resolver code
-        Some (sourceFile, signature, errors)
+        let signature = UntypedTree.Writer.mkSignature resolver code
+
+        Some
+            {
+                File = sourceFile
+                Signature = signature.Code
+                Errors = signature.Errors
+                XmlDocRanges = signature.XmlDocRanges
+            }
     )
     |> Array.toList
 
@@ -122,6 +139,17 @@ let removePrivateKeywords (code : string) (ranges : FSharp.Compiler.Text.range l
                 after
 
         lines.[range.StartLine - 1] <- line.Substring (0, range.StartColumn) + line.Substring after
+
+    String.Join (newline, lines), ranges.Length
+
+/// The implementation without the given XML doc comments, and how many were removed. A range
+/// covers whole lines, from the first `///` to the end of the last, and those lines go.
+let removeXmlDocs (code : string) (ranges : FSharp.Compiler.Text.range list) : string * int =
+    let newline = if code.Contains "\r\n" then "\r\n" else "\n"
+    let lines = ResizeArray (code.Split newline)
+
+    for range in List.sortByDescending (fun (r : FSharp.Compiler.Text.range) -> r.StartLine) ranges do
+        lines.RemoveRange (range.StartLine - 1, range.EndLine - range.StartLine + 1)
 
     String.Join (newline, lines), ranges.Length
 
@@ -273,12 +301,12 @@ let run (arguments : Arguments.Arguments) : int =
 
     // Every declaration Telplin left out of a signature, with the source it could not convert
     // underlined. The signature is still produced without it.
-    for fileName, _, errors in signatures do
-        if not errors.IsEmpty then
-            let lines = File.ReadAllLines fileName
+    for generated in signatures do
+        if not generated.Errors.IsEmpty then
+            let lines = File.ReadAllLines generated.File
 
-            for TelplinError (m, error) in errors do
-                for line in Diagnostics.report theme fileName lines m error do
+            for TelplinError (m, error) in generated.Errors do
+                for line in Diagnostics.report theme generated.File lines m error do
                     eprintfn "%s" line
 
     // The whole project is checked once, with every new signature in front of its implementation.
@@ -287,7 +315,7 @@ let run (arguments : Arguments.Arguments) : int =
         if not arguments.Verify || signatures.IsEmpty then
             true
         else
-            let pairs = signatures |> List.map (fun (file, signature, _) -> file, signature)
+            let pairs = signatures |> List.map (fun g -> g.File, g.Signature)
 
             match TypedTree.Resolver.typeCheckProjectWithSignatures projectOptions pairs with
             | [||] ->
@@ -307,29 +335,50 @@ let run (arguments : Arguments.Arguments) : int =
                 false
 
     if arguments.DryRun then
-        for fileName, signature, _ in signatures do
-            let length = fileName.Length + 4
+        for generated in signatures do
+            let length = generated.File.Length + 4
             printfn "%s" (String.init length (fun _ -> "-"))
-            printfn $"| %s{fileName} |"
+            printfn $"| %s{generated.File} |"
             printfn "%s" (String.init length (fun _ -> "-"))
-            printfn "%s" signature
+            printfn "%s" generated.Signature
 
         if verified then 0 else 1
     elif verified || arguments.Force then
         let signaturePaths =
             signatures
-            |> List.map (fun (fileName, signature, _) ->
-                let signaturePath = Path.ChangeExtension (fileName, ".fsi")
-                File.WriteAllText (signaturePath, signature)
+            |> List.map (fun generated ->
+                let signaturePath = Path.ChangeExtension (generated.File, ".fsi")
+                File.WriteAllText (signaturePath, generated.Signature)
                 printfn "%s" (positive theme $"Wrote %s{signaturePath}")
                 signaturePath
             )
 
+        // The signature now holds the XML docs, and tooling reads them from there. A second copy
+        // in the implementation only drifts. Only after verification: an implementation is only
+        // edited when the pair is known to compile. This goes first, its ranges are those of the
+        // file as generated from; the private step below parses the file afresh.
+        if verified && not arguments.KeepXmlDocs then
+            for generated in signatures do
+                match generated.XmlDocRanges with
+                | [] -> ()
+                | ranges ->
+                    let code = File.ReadAllText generated.File
+                    let edited, count = removeXmlDocs code ranges
+                    File.WriteAllText (generated.File, edited)
+
+                    let comments =
+                        if count = 1 then
+                            "1 XML doc comment"
+                        else
+                            $"%d{count} XML doc comments"
+
+                    printfn "%s" (positive theme $"Removed %s{comments} from %s{generated.File}")
+
         // With the signature in place, `private` on a binding it leaves out says nothing the
-        // signature does not. Only after verification: an implementation is only edited when the
-        // pair is known to compile.
+        // signature does not.
         if verified && not arguments.KeepPrivate && not arguments.IncludePrivateBindings then
-            for fileName, _, _ in signatures do
+            for generated in signatures do
+                let fileName = generated.File
                 let code = File.ReadAllText fileName
 
                 match UntypedTree.Writer.redundantPrivateKeywords projectOptions.Defines code with

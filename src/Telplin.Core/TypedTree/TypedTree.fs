@@ -194,6 +194,14 @@ let bindingsUsedElsewhere (projectResults : FSharpCheckProjectResults) (sourceFi
     let sameFile (a : string) (b : string) =
         String.Equals (Path.GetFullPath a, Path.GetFullPath b, StringComparison.OrdinalIgnoreCase)
 
+    // Where a symbol is declared in this file, if it is. When the file already has a signature,
+    // the declaration location is in that signature; the implementation is where the name ranges
+    // being compared to come from.
+    let implementationLocation (symbol : FSharpSymbol) : range option =
+        symbol.ImplementationLocation
+        |> Option.orElse symbol.DeclarationLocation
+        |> Option.filter (fun location -> sameFile location.FileName sourceFile)
+
     let declarations =
         projectResults.GetAllUsesOfAllSymbols ()
         |> Array.choose (fun symbolUse ->
@@ -203,17 +211,14 @@ let bindingsUsedElsewhere (projectResults : FSharpCheckProjectResults) (sourceFi
                 && not mfv.IsMember
                 && not symbolUse.IsFromDefinition
                 && not (sameFile symbolUse.FileName sourceFile)
-                && sameFile mfv.DeclarationLocation.FileName sourceFile
                 ->
-                Some mfv.DeclarationLocation
+                implementationLocation mfv
             // A match on `A.Even` is a use of the case, not of the binding that defines it. The
             // case is declared inside the binding's name, `(|Even|Odd|)`, so it matches the same way.
             | :? FSharpActivePatternCase as case when
-                not symbolUse.IsFromDefinition
-                && not (sameFile symbolUse.FileName sourceFile)
-                && sameFile case.DeclarationLocation.FileName sourceFile
+                not symbolUse.IsFromDefinition && not (sameFile symbolUse.FileName sourceFile)
                 ->
-                Some case.DeclarationLocation
+                implementationLocation case
             | _ -> None
         )
 
@@ -281,7 +286,12 @@ let mkResolverForCodeOnlyUsed
     : TypedTreeInfoResolver
     =
     let sourceFileName = "A.fs"
-    let files = (sourceFileName, code) :: otherFiles
+
+    // An existing signature of the file, `A.fsi` among the other files, has to come before it.
+    let signature, otherFiles =
+        List.partition (fun (name : string, _) -> name = "A.fsi") otherFiles
+
+    let files = signature @ (sourceFileName, code) :: otherFiles
 
     for name, content in files do
         fileCache.[name] <- SourceText.ofString content

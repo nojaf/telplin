@@ -178,3 +178,44 @@ module A
 
 val viaOpen: unit -> int
 """
+
+[<Test>]
+let ``binding used by another file is kept when the file already has a signature`` () =
+    let verificationResult =
+        TelplinInternalApi.VerifySignatureWithImplementation (
+            """
+module A
+
+let used (x: int) = x + 1
+let unused (x: int) = x - 1
+""",
+            options,
+            SignatureCreation.telplinOnlyUsed
+                false
+                [
+                    "A.fsi",
+                    """
+module A
+
+val used: x: int -> int
+val unused: x: int -> int
+"""
+                    "B.fs",
+                    """
+module B
+
+let b () = A.used 1
+"""
+                ],
+            assertSignature =
+                shouldEqualWithPrepend
+                    """
+module A
+
+val used: x: int -> int
+"""
+        )
+
+    match verificationResult with
+    | SignatureVerificationResult.ValidSignature _ -> ()
+    | result -> failwithf $"Expected a valid signature, got %A{result}"
