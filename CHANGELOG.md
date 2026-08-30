@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.15.0] - 2026-08-30
 
 ### Changed
 * An exception while converting one declaration no longer stops the whole run: the declaration is left out and the rest of the file is still produced. The CLI reports every declaration it left out as `file(line,col): error: message`, followed by the source around it with the declaration underlined. Progress lines and warnings go to stderr, so stdout holds only results. [#72](https://github.com/nojaf/telplin/issues/72)
