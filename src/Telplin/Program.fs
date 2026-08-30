@@ -1,82 +1,32 @@
-﻿open System
+open System
 open System.IO
-open Argu
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Text
 open Telplin.Core
+open Telplin
+open Telplin.Theme
 
-module ColorPrint =
-    let inline private withColor color (text : string) =
-        let old = Console.ForegroundColor
-        Console.ForegroundColor <- color
-        Console.WriteLine text
-        Console.ForegroundColor <- old
+/// A complaint goes to standard error, with a pointer to the page that lists what is accepted.
+let fail (message : string) : int =
+    let theme = forOutput ()
+    eprintfn "%s" (negative theme message)
+    eprintfn "Run '%s --help' to see the flags Telplin accepts." (HelpPage.invocation ())
+    1
 
-    let inline printRedn (text : string) = withColor ConsoleColor.Red text
-
-type CliArguments =
-    | [<MainCommand>] Input of path : string
-    | Files of path : string list
-    | Dry_Run
-    | Record
-    | Only_Record
-    | Include_Private_Bindings
-
-    interface IArgParserTemplate with
-        member this.Usage =
-            match this with
-            | Input _ ->
-                """FSharp project file (.fsproj) or response file (.rsp) to process. An fsproj will be (design time) build first by Telplin.
-Additional msbuild arguments for the design time build .fsproj can be passed after the --.
-Example: telplin MyProject.fsproj -- /p:Configuration=Release
-"""
-            | Files _ -> "Process a subset of files in the current project."
-            | Dry_Run -> "Don't write signature files to disk. Only print the signatures to the console."
-            | Record ->
-                "Create a response file containing compiler arguments that can be used as an alternative input to the *.fsproj file, thus avoiding the need for a full project rebuild. The response file will be saved as a *.rsp file."
-            | Only_Record ->
-                "Alternative option for --record. Only create an *.rsp file without processing any of the files."
-            | Include_Private_Bindings -> "Include private bindings in the signature file."
-
-[<EntryPoint>]
-let main args =
-    let arguArgs, additionalArgs =
-        let dashDashIdx = Array.tryFindIndex (fun arg -> arg = "--") args
-
-        match dashDashIdx with
-        | None -> args, Array.empty
-        | Some idx -> args.[0 .. (idx - 1)], args.[(idx + 1) ..]
-
-    let parser =
-        ArgumentParser.Create<CliArguments> (programName = "Telplin", errorHandler = ProcessExiter ())
-
-    let arguments = parser.Parse (arguArgs, raiseOnUsage = false)
-
-    if arguments.IsUsageRequested then
-        parser.PrintUsage (
-            programName = "telplin",
-            message =
-                "Telplin is a tool to generate signature files in F#.\n\nFind out more information at https://nojaf.com/telplin/docs/\n"
-        )
-        |> printfn "%s"
-
-        exit 0
-    else
+let run (arguments : Arguments.Arguments) : int =
+    match arguments.Input with
+    | None -> fail "No input was given. Pass a project file (.fsproj) or a response file (.rsp)."
+    | Some input when not (File.Exists input) -> fail $"Input \"%s{input}\" does not exist."
+    | Some input ->
 
     let checker = FSharpChecker.Create ()
-    let record = arguments.Contains <@ Record @>
-    let onlyRecord = arguments.Contains <@ Only_Record @>
-    let input = arguments.GetResult <@ Input @>
-
-    if not (File.Exists input) then
-        printfn $"Input \"%s{input}\" does not exist."
-        exit 1
+    let theme = forOutput ()
 
     let projectOptions =
         if input.EndsWith (".fsproj", StringComparison.Ordinal) then
-            let additionalArgs = String.concat " " additionalArgs
+            let additionalArgs = String.concat " " arguments.MsBuildArguments
 
-            if onlyRecord then
+            if arguments.OnlyRecord then
                 TypedTree.Options.mkOptionsFromDesignTimeBuildWithoutReferences input additionalArgs
             else
                 TypedTree.Options.mkOptionsFromDesignTimeBuild input additionalArgs
@@ -84,7 +34,7 @@ let main args =
         else
             TypedTree.Options.mkOptionsFromResponseFile input
 
-    if record || onlyRecord then
+    if arguments.Record || arguments.OnlyRecord then
         let responseFile = Path.ChangeExtension (input, ".rsp")
 
         let args =
@@ -96,12 +46,12 @@ let main args =
         File.WriteAllLines (responseFile, args)
         printfn $"Wrote compiler arguments to %s{responseFile}"
 
-    if not onlyRecord then
+    if not arguments.OnlyRecord then
         let signatureResults =
             let sourceFiles =
-                match arguments.TryGetResult <@ Files @> with
-                | None -> projectOptions.SourceFiles
-                | Some files -> List.map Path.GetFullPath files |> List.toArray
+                match arguments.Files with
+                | [] -> projectOptions.SourceFiles
+                | files -> List.map Path.GetFullPath files |> List.toArray
 
             sourceFiles
             |> Array.filter (fun file -> file.EndsWith (".fs", StringComparison.Ordinal))
@@ -115,7 +65,6 @@ let main args =
 
                 let code = File.ReadAllText sourceFile
                 let sourceText = SourceText.ofString code
-                let includePrivateBindings = arguments.Contains <@ Include_Private_Bindings @>
 
                 let resolver =
                     TypedTree.Resolver.mkResolverFor
@@ -123,7 +72,7 @@ let main args =
                         sourceFile
                         sourceText
                         projectOptions
-                        includePrivateBindings
+                        arguments.IncludePrivateBindings
 
                 let signature = UntypedTree.Writer.mkSignatureFile resolver code
                 Some (sourceFile, signature)
@@ -131,12 +80,12 @@ let main args =
 
         for fileName, (signature, errors) in signatureResults do
             if not errors.IsEmpty then
-                ColorPrint.printRedn $"Errors in %s{fileName}:"
+                eprintfn "%s" (negative theme $"Errors in %s{fileName}:")
 
                 for TelplinError (m, error) in errors do
-                    ColorPrint.printRedn $"%A{m}: %s{error}"
+                    eprintfn "%s" (negative theme $"%A{m}: %s{error}")
 
-            if arguments.Contains <@ Dry_Run @> then
+            if arguments.DryRun then
                 let length = fileName.Length + 4
                 printfn "%s" (String.init length (fun _ -> "-"))
                 printfn $"| %s{fileName} |"
@@ -147,3 +96,15 @@ let main args =
                 File.WriteAllText (signaturePath, signature)
 
     0
+
+[<EntryPoint>]
+let main args =
+    match Arguments.parse args with
+    | Error message -> fail message
+    | Ok arguments when arguments.Help ->
+        HelpPage.print ()
+        0
+    | Ok arguments when arguments.Version ->
+        printfn "%s" (HelpPage.version ())
+        0
+    | Ok arguments -> run arguments

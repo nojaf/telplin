@@ -28,9 +28,9 @@ type ISourceText with
             sb.AppendLine (x.GetLineString lineNumber) |> ignore
 
         let lastLine = x.GetLineString (range.EndLine - 1)
-        sb.Append(lastLine.Substring (0, range.EndColumn)).ToString ()
+        sb.Append(lastLine.Substring (0, range.EndColumn)).ToString()
 
-let fileCache = ConcurrentDictionary<string, ISourceText> ()
+let fileCache = ConcurrentDictionary<string, ISourceText>()
 
 let documentSource fileName =
     async {

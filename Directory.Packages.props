@@ -4,42 +4,44 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Common -->
-    <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.1.8" />
-    <PackageVersion Include="FSharp.Core" Version="[9.0.303]" />
-    <PackageVersion Include="FSharp.Compiler.Service" Version="[43.9.303]" />
-    <PackageVersion Include="Fantomas.Core" Version="7.0.0" />
+    <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.3.3" />
+    <PackageVersion Include="FSharp.Core" Version="[10.1.400]" />
+    <PackageVersion Include="FSharp.Compiler.Service" Version="[43.12.400]" />
+    <PackageVersion Include="Fantomas.Core" Version="8.0.0-alpha-026" />
     <!-- Console application -->
-    <PackageVersion Include="Argu" Version="6.2.5" />
-    <PackageVersion Include="CliWrap" Version="3.10.0" />
+    <PackageVersion Include="CliWrap" Version="3.10.5" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.102.1" />
-    <PackageVersion Include="Pulumi.FSharp" Version="3.102.1" />
-    <PackageVersion Include="Pulumi.Aws" Version="7.24.0" />
+    <PackageVersion Include="Pulumi" Version="3.113.0" />
+    <PackageVersion Include="Pulumi.FSharp" Version="3.113.0" />
+    <PackageVersion Include="Pulumi.Aws" Version="7.44.0" />
+    <!-- Pulumi pins OpenTelemetry 1.9.0, which has known vulnerabilities (NU1902). -->
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
     <!-- Test -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageVersion Include="NUnit" Version="4.3.2" />
-    <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="NUnit" Version="4.6.1" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.0" />
     <!-- Online tool -->
-    <PackageVersion Include="Fable.Browser.Url" Version="1.3.2" />
+    <PackageVersion Include="Fable.Browser.Url" Version="1.4.0" />
     <PackageVersion Include="Fable.Browser.WebSocket" Version="1.4.0" />
-    <PackageVersion Include="Fable.Core" Version="4.3.0" />
-    <PackageVersion Include="Fable.Fetch" Version="2.6.0" />
-    <PackageVersion Include="Fable.React" Version="9.4.0" />
-    <PackageVersion Include="Feliz.CompilerPlugins" Version="2.2.0" />
-    <PackageVersion Include="Feliz" Version="2.9.0" />
-    <PackageVersion Include="Feliz.UseElmish" Version="2.5.0" />
-    <PackageVersion Include="Thoth.Json" Version="10.2.0" />
+    <PackageVersion Include="Fable.Core" Version="5.2.0" />
+    <PackageVersion Include="Fable.Fetch" Version="2.7.0" />
+    <PackageVersion Include="Fable.React" Version="10.0.0-alpha.1" />
+    <PackageVersion Include="Feliz.CompilerPlugins" Version="3.2.0" />
+    <PackageVersion Include="Feliz" Version="3.3.3" />
+    <PackageVersion Include="Feliz.UseElmish" Version="5.0.0" />
+    <PackageVersion Include="Thoth.Json" Version="10.5.1" />
     <PackageVersion Include="Zanaptak.TypedCssClasses" Version="1.0.0" />
     <!-- Lambda -->
-    <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.1" />
-    <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="1.14.2" />
-    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
-    <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.3" />
-    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="10.0.0" />
-    <PackageVersion Include="Thoth.Json.Net" Version="12.0.0" />
-    <PackageVersion Include="Suave" Version="2.6.2" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageVersion Include="Amazon.Lambda.Core" Version="3.3.0" />
+    <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="2.2.0" />
+    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="3.0.1" />
+    <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="3.0.1" />
+    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="10.0.11" />
+    <PackageVersion Include="Thoth.Json.System.Text.Json" Version="0.4.0" />
+    <PackageVersion Include="Suave" Version="3.4.6" Condition="'$(Configuration)' == 'Debug'" />
     <!-- Analyzers -->
-    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.22.0" />
-    <PackageVersion Include="Ionide.Analyzers" Version="0.15.0" />
+    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.23.0" />
+    <PackageVersion Include="Ionide.Analyzers" Version="0.17.0" />
   </ItemGroup>
 </Project>

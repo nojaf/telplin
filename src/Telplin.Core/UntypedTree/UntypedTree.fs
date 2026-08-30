@@ -256,11 +256,13 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
 
         match sigMembers with
         | Error error -> MemberDefnResult.Error (TelplinError (mdRange, error))
-        | Ok (getSig, setSig) ->
+        | Ok [ sigMember ] -> MemberDefnResult.SingleMember (MemberDefn.SigMember sigMember)
+        | Ok [ getSig ; setSig ] ->
             if Position.posGt getSig.Range.Start setSig.Range.Start then
                 MemberDefnResult.GetAndSetMember (MemberDefn.SigMember getSig, MemberDefn.SigMember setSig)
             else
                 MemberDefnResult.GetAndSetMember (MemberDefn.SigMember setSig, MemberDefn.SigMember getSig)
+        | Ok sigMembers -> MemberDefnResult.Error (TelplinError (mdRange, $"Unexpected members:%A{sigMembers}"))
 
     | MemberDefn.PropertyGetSet propertyNode ->
         let name =
@@ -382,7 +384,7 @@ let mkTypeDefn
         // Consider adding the 'NoComparison' attribute to the type to clarify that the type is not comparable
         let attributes =
             let isStructWithoutComparisonResult =
-                resolver.IsStructWithoutComparison tdn.TypeName.Identifier.Range.FCSRange
+                resolver.IsStructWithoutComparison (Type.Node tdn.TypeName.Identifier).Range.FCSRange
 
             match isStructWithoutComparisonResult with
             | Error _ -> attributes
@@ -419,12 +421,12 @@ let mkTypeDefn
 
     let mkImplicitCtor
         (resolver : TypedTreeInfoResolver)
-        (identifier : IdentListNode)
+        (identifier : Type)
         (implicitCtor : ImplicitConstructorNode)
         : Result<MemberDefn, TelplinError>
         =
         let sigMemberResult =
-            resolver.GetValTextForConstructor identifier.Range.FCSRange
+            resolver.GetValTextForConstructor (Type.Node identifier).Range.FCSRange
             |> Result.bind mkPrimaryConstructorFromString
 
         match sigMemberResult with

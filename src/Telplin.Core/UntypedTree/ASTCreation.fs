@@ -12,7 +12,7 @@ type Range with
             (FSharp.Compiler.Text.Position.mkPos this.StartLine this.StartColumn)
             (FSharp.Compiler.Text.Position.mkPos this.EndLine this.EndColumn)
 
-let zeroRange = Range.Zero
+let zeroRange = Range.range0
 
 /// Create a `SingleTextNode` based on the value string.
 let stn v = SingleTextNode (v, zeroRange)
@@ -97,7 +97,10 @@ type A =
     with ex ->
         Error $"Could not parse:\n%s{pseudoSignature}"
 
-let mkPropertySigFromString (memberText : string) : Result<MemberDefnSigMemberNode * MemberDefnSigMemberNode, string> =
+/// A property whose accessors differ in accessibility.
+/// FCS 43.12 prints it as one member with per-accessor accessibility (`with private get, set`),
+/// older versions printed a member per accessor.
+let mkPropertySigFromString (memberText : string) : Result<MemberDefnSigMemberNode list, string> =
     let lines =
         memberText.Split [| '\n' |] |> Seq.map (sprintf "    %s") |> String.concat "\n"
 
@@ -116,7 +119,8 @@ type A =
             let tdn = TypeDefn.TypeDefnNode typeDefn
 
             match tdn.Members with
-            | [ _ctor ; MemberDefn.SigMember getSig ; MemberDefn.SigMember setSig ] -> Ok (getSig, setSig)
+            | [ _ctor ; MemberDefn.SigMember sigMember ] -> Ok [ sigMember ]
+            | [ _ctor ; MemberDefn.SigMember getSig ; MemberDefn.SigMember setSig ] -> Ok [ getSig ; setSig ]
             | ms -> Error $"Unexpected members:%A{ms}"
 
         | decls -> Error $"Unexpected module decls:%A{decls}"

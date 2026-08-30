@@ -18,7 +18,7 @@ module Function =
             Func<APIGatewayProxyRequest, ILambdaContext, APIGatewayProxyResponse> Implementation.PostSignature
 
         use bootstrap =
-            LambdaBootstrapBuilder.Create(handler, new DefaultLambdaJsonSerializer ()).Build ()
+            LambdaBootstrapBuilder.Create(handler, new DefaultLambdaJsonSerializer ()).Build()
 
-        bootstrap.RunAsync().GetAwaiter().GetResult ()
+        bootstrap.RunAsync().GetAwaiter().GetResult()
         0

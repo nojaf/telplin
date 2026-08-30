@@ -207,7 +207,7 @@ let inline fmap (f: ^a -> ^b) (a: ^a list) = List.map f a
         """
 module Foo
 
-val inline fmap: f: (^a -> ^b) -> a: ^a list -> ^b list
+val inline fmap< ^a, ^b> : f: (^a -> ^b) -> a: ^a list -> ^b list
 """
 
 [<Test>]
@@ -607,6 +607,7 @@ val meh: unit -> unit
 val fn: x: int -> SynTypeDefnSig -> int
 """
 
+[<Ignore("https://github.com/dotnet/fsharp/issues/20397")>]
 [<Test>]
 let ``nested tuples should no longer be named`` () =
     assertSignature
@@ -846,7 +847,7 @@ let intersperse separator (sequence: #seq<'a>) =
         """
 module FA
 
-val intersperse: separator: 'a -> sequence: #('a seq) -> 'a seq
+val intersperse: separator: 'a -> sequence: #seq<'a> -> 'a seq
 """
 
 [<Test>]
@@ -916,7 +917,7 @@ let inline sum xs = List.sum xs
         """
 module Telplin
 
-val inline sum: xs: ^a list -> ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)
+val inline sum< ^a when ^a: (static member (+): ^a * ^a -> ^a) and ^a: (static member Zero: ^a)> : xs: ^a list -> ^a
 """
 
 [<Test>]
@@ -1151,7 +1152,7 @@ open System
 open System.Threading.Tasks
 
 val mapWithAdditionalDependencies:
-    mapping: ('a -> 'b * #('b1 seq)) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
+    mapping: ('a -> 'b * #seq<'b1>) -> value: Task<'a> -> Task<'b> when 'b1 :> IDisposable
 """
 
 [<Test>]
@@ -1280,10 +1281,8 @@ module Telplin
 type T =
     struct
         member private X: int with get, set
-        member private Y: int
-        member Y: int with set
-        member Z: int
-        member private Z: int with set
+        member Y: int with private get, set
+        member Z: int with get, private set
     end
 """
 
@@ -1347,8 +1346,10 @@ type 'a Foo =
 module Telplin
 
 type 'a Foo =
-    { Bar: 'a array
-      D: int }
+    {
+        Bar: 'a array
+        D: int
+    }
 
     static member Make<'a> : array: 'a array -> 'a Foo
 """
