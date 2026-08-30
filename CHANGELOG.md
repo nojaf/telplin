@@ -3,7 +3,7 @@
 ## [0.12.0] - 2026-08-30
 
 ### Changed
-* Update to FCS 43.12.400 and Fantomas.Core 8.0.0-alpha-026
+* Update to FCS 43.12.400 and Fantomas.Core 8.0.0-alpha-026. [#370](https://github.com/nojaf/telplin/pull/370)
 * A property whose accessors differ in accessibility is now a single member with per-accessor accessibility, `member Y: int with private get, set`, instead of one member per accessor.
 * Records in generated signatures follow the Fantomas 8 default bracket style, braces on their own lines.
 * New `--help` page and `--version` flag, Argu is no longer used. An unknown flag suggests the closest one, and errors go to standard error.
