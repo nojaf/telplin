@@ -10,13 +10,33 @@ open Telplin.Core.TypedTree.Resolver
 open Telplin.Core.UntypedTree.ASTCreation
 open Telplin.Core.UntypedTree.SourceParser
 
+/// What one item of the implementation becomes: the signature items and the errors of its children;
+/// or one error when the item itself could not be converted.
+type ItemResult<'TResult> = Result<'TResult list * TelplinError list, TelplinError>
+
+/// Convert every item and collect the signature items and all errors. An item that fails, by an
+/// error or by an exception, is left out; the others are still converted.
 let processResults<'T, 'TResult>
-    (foldFn : 'T -> 'TResult list -> TelplinError list -> 'TResult list * TelplinError list)
+    (toRange : 'T -> range)
+    (mkItem : 'T -> ItemResult<'TResult>)
     (items : 'T list)
     : 'TResult list * TelplinError list
     =
-    (items, (List.empty<'TResult>, List.empty<TelplinError>))
-    ||> List.foldBack (fun item (results : 'TResult list, errors : TelplinError list) -> foldFn item results errors)
+    let results =
+        items
+        |> List.map (fun item ->
+            try
+                mkItem item
+            with ex ->
+                Error (TelplinError (toRange item, ex.Message))
+        )
+
+    (results, ([], []))
+    ||> List.foldBack (fun result (sigs, errors) ->
+        match result with
+        | Ok (itemSigs, itemErrors) -> itemSigs @ sigs, itemErrors @ errors
+        | Error error -> sigs, error :: errors
+    )
 
 let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
     let hasDefault =
@@ -31,7 +51,7 @@ let mkLeadingKeywordForProperty (propertyNode : MemberDefnPropertyGetSetNode) =
 let getLastIdentFromList (identList : IdentListNode) =
     match identList.Content with
     | [ IdentifierOrDot.Ident name ] -> name
-    | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+    | _ -> failwith $"Unexpected identifier: %A{identList.Content}"
 
 /// Strip any generated argument names
 let rec sanitizeReturnType (untypedParameters : Pattern list) (t : Type) : Type =
@@ -129,7 +149,7 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
                     IdentifierOrDot.Ident name ]
                 // static member Foo
                 | [ IdentifierOrDot.Ident name ] -> name
-                | _ -> failwith "todo, 38A9012C-2C4D-4387-9558-F75F6578402A"
+                | _ -> failwith $"Unexpected member name: %A{name.Content}"
 
             let sigMemberResult =
                 resolver.GetValText (name.Text, name.Range.FCSRange)
@@ -321,12 +341,13 @@ let mkMember (resolver : TypedTreeInfoResolver) (md : MemberDefn) : MemberDefnRe
 
 let mkMembers (resolver : TypedTreeInfoResolver) (ms : MemberDefn list) : MemberDefn list * TelplinError list =
     processResults
-        (fun md (sigMembers : MemberDefn list) (errors : TelplinError list) ->
+        (fun md -> (MemberDefn.Node md).Range)
+        (fun md ->
             match mkMember resolver md with
-            | MemberDefnResult.None -> sigMembers, errors
-            | MemberDefnResult.Error error -> sigMembers, error :: errors
-            | MemberDefnResult.SingleMember md -> md :: sigMembers, errors
-            | MemberDefnResult.GetAndSetMember (g, s) -> s :: g :: sigMembers, errors
+            | MemberDefnResult.None -> Ok ([], [])
+            | MemberDefnResult.Error error -> Error error
+            | MemberDefnResult.SingleMember md -> Ok ([ md ], [])
+            | MemberDefnResult.GetAndSetMember (g, s) -> Ok ([ s ; g ], [])
         )
         ms
 
@@ -540,6 +561,13 @@ type ModuleDeclResult =
     | Error of TelplinError
     | Nested of parent : ModuleDecl * childErrors : TelplinError list
 
+let toItemResult (result : ModuleDeclResult) : ItemResult<ModuleDecl> =
+    match result with
+    | ModuleDeclResult.None -> Ok ([], [])
+    | ModuleDeclResult.SingleModuleDecl sigDecl -> Ok ([ sigDecl ], [])
+    | ModuleDeclResult.Error error -> Error error
+    | ModuleDeclResult.Nested (sigDecl, childErrors) -> Ok ([ sigDecl ], childErrors)
+
 let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleDeclResult =
     let mdlRange = (ModuleDecl.Node mdl).Range
 
@@ -606,52 +634,32 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
         let sigs, errors =
             if not nestedModule.IsRecursive then
                 processResults
-                    (fun decl sigs errors ->
-                        match mkModuleDecl resolver decl with
-                        | ModuleDeclResult.None -> sigs, errors
-                        | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
-                        | ModuleDeclResult.Error error -> sigs, error :: errors
-                        | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
-                    )
+                    (fun decl -> (ModuleDecl.Node decl).Range)
+                    (mkModuleDecl resolver >> toItemResult)
                     nestedModule.Declarations
             else
                 // A nested module cannot be recursive in a signature file.
                 // Any subsequent types (SynModuleDecl.Types) should be transformed to use the `and` keyword.
-                let rec visit
-                    (lastItemIsType : bool)
-                    (decls : ModuleDecl list)
-                    (continuation : ModuleDecl list * TelplinError list -> ModuleDecl list * TelplinError list)
-                    : ModuleDecl list * TelplinError list
-                    =
-                    match decls with
-                    | [] -> continuation ([], [])
-                    | currentDecl :: nextDecls ->
+                let mkDecl (lastItemIsType : bool) (decl : ModuleDecl) : ItemResult<ModuleDecl> * bool =
+                    match decl with
+                    | ModuleDecl.TypeDefn typeDefnNode ->
+                        let sigTypeDefn, errors = mkTypeDefn resolver lastItemIsType typeDefnNode
 
-                    let isType, declResult =
-                        match currentDecl with
-                        | ModuleDecl.TypeDefn typeDefnNode ->
-                            let sigTypeDefn, errors = mkTypeDefn resolver lastItemIsType typeDefnNode
+                        match sigTypeDefn with
+                        | None -> Ok ([], errors), true
+                        | Some sigTypeDefn -> Ok ([ ModuleDecl.TypeDefn sigTypeDefn ], errors), true
+                    | decl -> toItemResult (mkModuleDecl resolver decl), false
 
-                            match sigTypeDefn with
-                            | None -> true, ModuleDeclResult.None
-                            | Some sigTypeDefn ->
+                let mutable lastItemIsType = false
 
-                            true, ModuleDeclResult.Nested (ModuleDecl.TypeDefn sigTypeDefn, errors)
-                        | decl -> false, mkModuleDecl resolver decl
-
-                    visit
-                        isType
-                        nextDecls
-                        (fun (sigs, errors) ->
-                            match declResult with
-                            | ModuleDeclResult.None -> sigs, errors
-                            | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
-                            | ModuleDeclResult.Error error -> sigs, error :: errors
-                            | ModuleDeclResult.Nested (sigDecl, nestedErrors) -> sigDecl :: sigs, nestedErrors @ errors
-                            |> continuation
-                        )
-
-                visit false nestedModule.Declarations id
+                processResults
+                    (fun decl -> (ModuleDecl.Node decl).Range)
+                    (fun decl ->
+                        let result, isType = mkDecl lastItemIsType decl
+                        lastItemIsType <- isType
+                        result
+                    )
+                    nestedModule.Declarations
 
         let sigNestedModule =
             NestedModuleNode (
@@ -720,13 +728,8 @@ let mkModuleOrNamespace
     =
     let decls, errors =
         processResults
-            (fun mdl sigs errors ->
-                match mkModuleDecl resolver mdl with
-                | ModuleDeclResult.None -> sigs, errors
-                | ModuleDeclResult.SingleModuleDecl sigDecl -> sigDecl :: sigs, errors
-                | ModuleDeclResult.Error error -> sigs, error :: errors
-                | ModuleDeclResult.Nested (sigDecl, childErrors) -> sigDecl :: sigs, childErrors @ errors
-            )
+            (fun mdl -> (ModuleDecl.Node mdl).Range)
+            (mkModuleDecl resolver >> toItemResult)
             moduleNode.Declarations
 
     ModuleOrNamespaceNode (moduleNode.Header, decls, zeroRange), errors

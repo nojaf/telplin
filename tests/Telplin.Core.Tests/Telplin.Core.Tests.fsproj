@@ -17,6 +17,7 @@
     <Compile Include="IncludePrivateBindingsTests.fs" />
     <Compile Include="OnlyUsedTests.fs" />
     <Compile Include="PrivateKeywordTests.fs" />
+    <Compile Include="PartialSignatureTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
