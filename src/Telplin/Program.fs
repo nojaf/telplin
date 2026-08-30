@@ -24,18 +24,40 @@ let formatDiagnostic (diagnostic : FSharpDiagnostic) : string =
 
     $"%s{diagnostic.FileName}(%d{diagnostic.StartLine},%d{diagnostic.StartColumn + 1}): %s{severity} FS%04d{diagnostic.ErrorNumber}: %s{diagnostic.Message}"
 
+/// Which source file of the project a `--files` argument means. A path that exists as given, from
+/// the working directory, wins. Otherwise it is matched against the end of the project's source
+/// paths, so `Arguments.fs` or `Telplin/Arguments.fs` finds the file wherever the command runs.
+let resolveFile (projectOptions : FSharpProjectOptions) (file : string) : Result<string, string> =
+    if File.Exists file then
+        Ok (Path.GetFullPath file)
+    else
+
+    let normalised = file.Replace ('\\', '/')
+
+    let candidates =
+        projectOptions.SourceFiles
+        |> Array.filter (fun sourceFile ->
+            let sourceFile = sourceFile.Replace ('\\', '/')
+
+            sourceFile.EndsWith ("/" + normalised, StringComparison.Ordinal)
+            || sourceFile = normalised
+        )
+
+    match candidates with
+    | [| sourceFile |] -> Ok sourceFile
+    | [||] -> Error $"\"%s{file}\" is not a file of the project, as given or relative to the project."
+    | many ->
+        let listed = many |> Array.map (sprintf "  %s") |> String.concat "\n"
+        Error $"\"%s{file}\" matches more than one file of the project, give more of the path:\n%s{listed}"
+
 /// The signatures that were asked for, generated in memory. Nothing is written yet.
 let generateSignatures
     (checker : FSharpChecker)
     (projectOptions : FSharpProjectOptions)
     (arguments : Arguments.Arguments)
+    (sourceFiles : string array)
     : (string * string * TelplinError list) list
     =
-    let sourceFiles =
-        match arguments.Files with
-        | [] -> projectOptions.SourceFiles
-        | files -> List.map Path.GetFullPath files |> List.toArray
-
     // MSBuild adds these to the compilation from the intermediate folder. Nobody wrote them and
     // nobody wants a signature for them.
     let isGenerated (file : string) =
@@ -132,7 +154,30 @@ let run (arguments : Arguments.Arguments) : int =
         1
     else
 
-    let signatures = generateSignatures checker projectOptions arguments
+    let requestedFiles =
+        match arguments.Files with
+        | [] -> Ok projectOptions.SourceFiles
+        | files ->
+            let resolved = List.map (resolveFile projectOptions) files
+
+            match
+                List.choose Result.toOption resolved,
+                List.choose
+                    (fun r ->
+                        match r with
+                        | Error e -> Some e
+                        | Ok _ -> None
+                    )
+                    resolved
+            with
+            | files, [] -> Ok (List.toArray files)
+            | _, errors -> Error (String.concat "\n" errors)
+
+    match requestedFiles with
+    | Error message -> fail message
+    | Ok sourceFiles ->
+
+    let signatures = generateSignatures checker projectOptions arguments sourceFiles
 
     for fileName, _, errors in signatures do
         if not errors.IsEmpty then
@@ -176,19 +221,43 @@ let run (arguments : Arguments.Arguments) : int =
 
         if verified then 0 else 1
     elif verified || arguments.Force then
-        for fileName, signature, _ in signatures do
-            let signaturePath = Path.ChangeExtension (fileName, ".fsi")
-            File.WriteAllText (signaturePath, signature)
-            printfn "%s" (positive theme $"Wrote %s{signaturePath}")
+        let signaturePaths =
+            signatures
+            |> List.map (fun (fileName, signature, _) ->
+                let signaturePath = Path.ChangeExtension (fileName, ".fsi")
+                File.WriteAllText (signaturePath, signature)
+                printfn "%s" (positive theme $"Wrote %s{signaturePath}")
+                signaturePath
+            )
 
-        // Until Telplin edits the project itself, the build does not know about the new files.
-        printfn "%s" (attention theme "The signature files are not part of the project yet.")
+        let isProject = input.EndsWith (".fsproj", StringComparison.Ordinal)
 
-        printfn
-            "%s"
-            (attention
-                theme
-                "List each one in the project file directly before its implementation file, as <Compile Include=\"File.fsi\" />.")
+        if isProject && arguments.UpdateProject then
+            let text, outcomes = ProjectFile.addSignatures input signaturePaths
+            let projectName = Path.GetFileName input
+
+            if outcomes |> List.exists (fun o -> o.IsAdded) then
+                File.WriteAllText (input, text)
+
+            for outcome in outcomes do
+                match outcome with
+                | ProjectFile.Outcome.Added path ->
+                    printfn "%s" (positive theme $"Listed %s{Path.GetFileName path} in %s{projectName}")
+                | ProjectFile.Outcome.AlreadyListed _ -> ()
+                | ProjectFile.Outcome.NotFound path ->
+                    printfn
+                        "%s"
+                        (attention
+                            theme
+                            $"%s{Path.GetFileName path} is not listed in %s{projectName}: its implementation file is not a literal <Compile> item. Add it before the implementation file yourself.")
+        else
+            printfn "%s" (attention theme "The signature files are not listed in the project.")
+
+            printfn
+                "%s"
+                (attention
+                    theme
+                    "List each one in the project file directly before its implementation file, as <Compile Include=\"File.fsi\" />.")
 
         if verified then 0 else 1
     else

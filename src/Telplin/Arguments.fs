@@ -13,6 +13,7 @@ type Arguments =
         IncludePrivateBindings : bool
         Verify : bool
         Force : bool
+        UpdateProject : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
@@ -28,6 +29,7 @@ let empty : Arguments =
         IncludePrivateBindings = false
         Verify = true
         Force = false
+        UpdateProject = true
         Help = false
         Version = false
         MsBuildArguments = []
@@ -69,6 +71,14 @@ let flags : (string * string * string * string list) list =
              "signatures in place. Files are written without it."
          ])
         ("",
+         "--no-project",
+         "",
+         [
+             "Do not list the signature files in the project file. By"
+             "default each one is added directly before its implementation"
+             "file, when the input is a project."
+         ])
+        ("",
          "--force",
          "",
          [
@@ -101,8 +111,10 @@ let private distance (a : string) (b : string) : int =
 
 let suggestion (token : string) : string option =
     flags
-    |> List.map (fun (_, long, _, _) -> long, distance (token.ToLowerInvariant ()) long)
-    |> List.filter (fun (_, cost) -> cost <= 3)
+    |> List.choose (fun (_, long, _, _) ->
+        let cost = distance (token.ToLowerInvariant ()) long
+        if cost <= 3 then Some (long, cost) else None
+    )
     |> List.sortBy snd
     |> List.tryHead
     |> Option.map fst
@@ -124,6 +136,7 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--only-record" :: rest -> go { arguments with OnlyRecord = true } rest
         | "--no-verify" :: rest -> go { arguments with Verify = false } rest
         | "--force" :: rest -> go { arguments with Force = true } rest
+        | "--no-project" :: rest -> go { arguments with UpdateProject = false } rest
         | "--include-private-bindings" :: rest ->
             go
                 { arguments with
