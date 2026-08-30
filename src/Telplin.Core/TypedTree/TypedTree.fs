@@ -5,6 +5,7 @@
 open System
 open System.IO
 open System.Text
+open System.Text.RegularExpressions
 open System.Collections.Concurrent
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
@@ -17,6 +18,30 @@ open Telplin.Core.TypedTree.FSharpProjectExtensions
 /// so the text only needs to be parseable.
 let sanitizeSignatureText (sigText : string) : string =
     sigText.Replace ("(default :> obj)", "null")
+
+/// FCS qualifies a type declared in a module with `ModuleSuffix` (explicit, or implicit when a type
+/// has the same name as the module) with the display name of that module, `Telplin.V`, even from
+/// inside that module where the name `Telplin` does not resolve. Strip that qualifier for every
+/// enclosing module with a suffix. See https://github.com/nojaf/telplin/issues/71
+let stripModuleSuffixQualifiers (mfv : FSharpMemberOrFunctionOrValue) (sigText : string) : string =
+    let rec enclosingModulesWithSuffix (entity : FSharpEntity option) =
+        match entity with
+        | None -> []
+        | Some entity ->
+
+        let rest = enclosingModulesWithSuffix entity.DeclaringEntity
+
+        if entity.IsFSharpModule && entity.HasFSharpModuleSuffix then
+            entity.DisplayName :: rest
+        else
+            rest
+
+    (sigText, enclosingModulesWithSuffix mfv.DeclaringEntity)
+    ||> List.fold (fun text name ->
+        // Only a leading segment: not `Other.Telplin.V`, and not `MyTelplin.V`.
+        let pattern = $"(?<![\\w.`]){Regex.Escape name}\\."
+        Regex.Replace (text, pattern, "")
+    )
 
 type ISourceText with
 
@@ -96,7 +121,7 @@ type TypedTreeInfoResolver
 
                 match sigTextOpt with
                 | None -> Error $"No sig text for %A{mfv}"
-                | Some sigText -> Ok (sanitizeSignatureText sigText)
+                | Some sigText -> Ok (sigText |> sanitizeSignatureText |> stripModuleSuffixQualifiers mfv)
 
         with ex ->
             Error ex.Message
@@ -111,7 +136,7 @@ type TypedTreeInfoResolver
                     match symbolUse.Symbol with
                     | :? FSharpMemberOrFunctionOrValue as mfv when mfv.CompiledName = ".ctor" ->
                         mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
-                        |> Option.map sanitizeSignatureText
+                        |> Option.map (sanitizeSignatureText >> stripModuleSuffixQualifiers mfv)
                     | _ -> None
                 )
 
