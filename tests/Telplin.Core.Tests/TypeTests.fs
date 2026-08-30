@@ -19,9 +19,11 @@ type B = {
 module A
 
 type B =
-    { Foo: string
-      Bar: int
-      SomethingElseButSomewhatLonger: float }
+    {
+        Foo: string
+        Bar: int
+        SomethingElseButSomewhatLonger: float
+    }
 """
 
 [<Test>]
@@ -180,7 +182,9 @@ namespace Hej
 open System
 
 type A =
-    { B: int }
+    {
+        B: int
+    }
 
     interface IDisposable
 """
@@ -226,7 +230,9 @@ type State =
 namespace X
 
 type State =
-    { Files: string list }
+    {
+        Files: string list
+    }
 
     static member Empty: State
 """
@@ -526,9 +532,7 @@ open System
 [<Sealed>]
 type AsyncMaybeBuilder =
     new: unit -> AsyncMaybeBuilder
-
-    member Using:
-        resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: not struct
+    member Using: resource: 'T * body: ('T -> Async<'a option>) -> Async<'a option> when 'T :> IDisposable and 'T: null
 """
 
 [<Test>]

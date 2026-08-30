@@ -7,9 +7,8 @@
     <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.3.3" />
     <PackageVersion Include="FSharp.Core" Version="[10.1.400]" />
     <PackageVersion Include="FSharp.Compiler.Service" Version="[43.12.400]" />
-    <PackageVersion Include="Fantomas.Core" Version="7.0.6" />
+    <PackageVersion Include="Fantomas.Core" Version="8.0.0-alpha-026" />
     <!-- Console application -->
-    <PackageVersion Include="Argu" Version="6.2.5" />
     <PackageVersion Include="CliWrap" Version="3.10.5" />
     <!-- Deploy -->
     <PackageVersion Include="Pulumi" Version="3.113.0" />

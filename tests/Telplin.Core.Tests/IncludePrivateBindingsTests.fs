@@ -107,10 +107,8 @@ module Telplin
 type T =
     struct
         member private X: int with get, set
-        member private Y: int
-        member Y: int with set
-        member Z: int
-        member private Z: int with set
+        member Y: int with private get, set
+        member Z: int with get, private set
     end
 """
 
