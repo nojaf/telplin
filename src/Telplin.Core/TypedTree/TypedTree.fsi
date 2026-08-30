@@ -36,4 +36,9 @@ val typeCheckForPair :
 val typeCheckForImplementation :
     projectOptions : FSharpProjectOptions -> sourceCode : string -> Choice<unit, FSharpDiagnostic array>
 
+/// Type check the whole project with each signature (implementation path, signature text) placed
+/// in front of its implementation. Returns the errors, an empty array when the pair compiles.
+val typeCheckProjectWithSignatures :
+    projectOptions : FSharpProjectOptions -> signatures : (string * string) list -> FSharpDiagnostic array
+
 val FCSSignature : options : FSharpProjectOptions -> implementation : string -> Choice<unit, string>

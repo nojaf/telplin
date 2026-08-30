@@ -2,6 +2,7 @@
 
 #nowarn "57"
 
+open System.IO
 open System.Text
 open System.Collections.Concurrent
 open FSharp.Compiler.Diagnostics
@@ -233,6 +234,47 @@ let typeCheckForPair projectOptions implementation signature =
         | FSharpCheckFileAnswer.Succeeded checkFileResults -> yield! checkFileResults.Diagnostics
     |]
     |> filterDiagnostics
+
+/// Type check the whole project with each signature placed in front of its implementation file.
+/// The signatures are served from memory, every other file is read from disk. Only errors are
+/// returned: a warning the project already had is not something the signatures introduced.
+let typeCheckProjectWithSignatures (projectOptions : FSharpProjectOptions) (signatures : (string * string) list) =
+    let signaturePaths =
+        signatures
+        |> List.map (fun (implementation, signature) ->
+            let signaturePath = Path.ChangeExtension (implementation, ".fsi")
+            fileCache.[signaturePath] <- SourceText.ofString signature
+            implementation, signaturePath
+        )
+        |> Map.ofList
+
+    let provided = signaturePaths |> Map.values |> Set.ofSeq
+
+    let sourceFiles =
+        projectOptions.SourceFiles
+        |> Array.collect (fun file ->
+            if provided.Contains file then
+                // Already listed in the project, it is placed again in front of its implementation.
+                [||]
+            else
+                match Map.tryFind file signaturePaths with
+                | Some signaturePath -> [| signaturePath ; file |]
+                | None -> [| file |]
+        )
+
+    let projectOptions =
+        { projectOptions with
+            SourceFiles = sourceFiles
+        }
+
+    let result =
+        inMemoryChecker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+
+    for signaturePath in provided do
+        fileCache.TryRemove signaturePath |> ignore
+
+    result.Diagnostics
+    |> Array.filter (fun d -> d.Severity = FSharpDiagnosticSeverity.Error)
 
 let FCSSignature options implementation =
     let projectOptions : FSharpProjectOptions =

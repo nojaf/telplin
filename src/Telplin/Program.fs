@@ -1,6 +1,7 @@
 open System
 open System.IO
 open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open Telplin.Core
 open Telplin
@@ -12,6 +13,66 @@ let fail (message : string) : int =
     eprintfn "%s" (negative theme message)
     eprintfn "Run '%s --help' to see the flags Telplin accepts." (HelpPage.invocation ())
     1
+
+let formatDiagnostic (diagnostic : FSharpDiagnostic) : string =
+    let severity =
+        match diagnostic.Severity with
+        | FSharpDiagnosticSeverity.Error -> "error"
+        | FSharpDiagnosticSeverity.Warning -> "warning"
+        | FSharpDiagnosticSeverity.Info
+        | FSharpDiagnosticSeverity.Hidden -> "info"
+
+    $"%s{diagnostic.FileName}(%d{diagnostic.StartLine},%d{diagnostic.StartColumn + 1}): %s{severity} FS%04d{diagnostic.ErrorNumber}: %s{diagnostic.Message}"
+
+/// The signatures that were asked for, generated in memory. Nothing is written yet.
+let generateSignatures
+    (checker : FSharpChecker)
+    (projectOptions : FSharpProjectOptions)
+    (arguments : Arguments.Arguments)
+    : (string * string * TelplinError list) list
+    =
+    let sourceFiles =
+        match arguments.Files with
+        | [] -> projectOptions.SourceFiles
+        | files -> List.map Path.GetFullPath files |> List.toArray
+
+    // MSBuild adds these to the compilation from the intermediate folder. Nobody wrote them and
+    // nobody wants a signature for them.
+    let isGenerated (file : string) =
+        file.EndsWith (".AssemblyInfo.fs", StringComparison.Ordinal)
+        || file.EndsWith (".AssemblyAttributes.fs", StringComparison.Ordinal)
+
+    sourceFiles
+    |> Array.choose (fun sourceFile ->
+        if
+            not (sourceFile.EndsWith (".fs", StringComparison.Ordinal))
+            || isGenerated sourceFile
+        then
+            None
+        else
+
+        printfn "process: %s" sourceFile
+
+        if not (File.Exists sourceFile) then
+            printfn $"File \"%s{sourceFile}\" was skipped because it doesn't exist on disk."
+            None
+        else
+
+        let code = File.ReadAllText sourceFile
+        let sourceText = SourceText.ofString code
+
+        let resolver =
+            TypedTree.Resolver.mkResolverFor
+                checker
+                sourceFile
+                sourceText
+                projectOptions
+                arguments.IncludePrivateBindings
+
+        let signature, errors = UntypedTree.Writer.mkSignatureFile resolver code
+        Some (sourceFile, signature, errors)
+    )
+    |> Array.toList
 
 let run (arguments : Arguments.Arguments) : int =
     match arguments.Input with
@@ -46,56 +107,93 @@ let run (arguments : Arguments.Arguments) : int =
         File.WriteAllLines (responseFile, args)
         printfn $"Wrote compiler arguments to %s{responseFile}"
 
-    if not arguments.OnlyRecord then
-        let signatureResults =
-            let sourceFiles =
-                match arguments.Files with
-                | [] -> projectOptions.SourceFiles
-                | files -> List.map Path.GetFullPath files |> List.toArray
+    if arguments.OnlyRecord then
+        0
+    else
 
-            sourceFiles
-            |> Array.filter (fun file -> file.EndsWith (".fs", StringComparison.Ordinal))
-            |> Array.choose (fun sourceFile ->
-                printfn "process: %s" sourceFile
+    // Telplin reads types off a project that compiles. One that does not has nothing reliable to
+    // say about its own signatures, so this stops here rather than producing something partial.
+    let existingErrors =
+        let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
 
-                if not (File.Exists sourceFile) then
-                    printfn $"File \"%s{sourceFile}\" was skipped because it doesn't exist on disk."
-                    None
-                else
+        result.Diagnostics
+        |> Array.filter (fun d -> d.Severity = FSharpDiagnosticSeverity.Error)
 
-                let code = File.ReadAllText sourceFile
-                let sourceText = SourceText.ofString code
+    if not (Array.isEmpty existingErrors) then
+        eprintfn
+            "%s"
+            (negative
+                theme
+                "The project does not compile. Telplin needs a project that compiles before it can generate signatures:")
 
-                let resolver =
-                    TypedTree.Resolver.mkResolverFor
-                        checker
-                        sourceFile
-                        sourceText
-                        projectOptions
-                        arguments.IncludePrivateBindings
+        for diagnostic in existingErrors do
+            eprintfn "  %s" (formatDiagnostic diagnostic)
 
-                let signature = UntypedTree.Writer.mkSignatureFile resolver code
-                Some (sourceFile, signature)
-            )
+        1
+    else
 
-        for fileName, (signature, errors) in signatureResults do
-            if not errors.IsEmpty then
-                eprintfn "%s" (negative theme $"Errors in %s{fileName}:")
+    let signatures = generateSignatures checker projectOptions arguments
 
-                for TelplinError (m, error) in errors do
-                    eprintfn "%s" (negative theme $"%A{m}: %s{error}")
+    for fileName, _, errors in signatures do
+        if not errors.IsEmpty then
+            eprintfn "%s" (negative theme $"Errors in %s{fileName}:")
 
-            if arguments.DryRun then
-                let length = fileName.Length + 4
-                printfn "%s" (String.init length (fun _ -> "-"))
-                printfn $"| %s{fileName} |"
-                printfn "%s" (String.init length (fun _ -> "-"))
-                printfn "%s" signature
-            else
-                let signaturePath = Path.ChangeExtension (fileName, ".fsi")
-                File.WriteAllText (signaturePath, signature)
+            for TelplinError (m, error) in errors do
+                eprintfn "%s" (negative theme $"%A{m}: %s{error}")
 
-    0
+    // The whole project is checked once, with every new signature in front of its implementation.
+    // Checking a file on its own is not enough: a signature hides what later files could see.
+    let verified =
+        if not arguments.Verify || signatures.IsEmpty then
+            true
+        else
+            let pairs = signatures |> List.map (fun (file, signature, _) -> file, signature)
+
+            match TypedTree.Resolver.typeCheckProjectWithSignatures projectOptions pairs with
+            | [||] ->
+                let count =
+                    match signatures.Length with
+                    | 1 -> "1 signature file"
+                    | n -> $"%d{n} signature files"
+
+                printfn "%s" (positive theme $"Verified: the project compiles with %s{count} in place.")
+                true
+            | diagnostics ->
+                eprintfn "%s" (negative theme "The project does not compile with the new signatures in place:")
+
+                for diagnostic in diagnostics do
+                    eprintfn "  %s" (formatDiagnostic diagnostic)
+
+                false
+
+    if arguments.DryRun then
+        for fileName, signature, _ in signatures do
+            let length = fileName.Length + 4
+            printfn "%s" (String.init length (fun _ -> "-"))
+            printfn $"| %s{fileName} |"
+            printfn "%s" (String.init length (fun _ -> "-"))
+            printfn "%s" signature
+
+        if verified then 0 else 1
+    elif verified || arguments.Force then
+        for fileName, signature, _ in signatures do
+            let signaturePath = Path.ChangeExtension (fileName, ".fsi")
+            File.WriteAllText (signaturePath, signature)
+            printfn "%s" (positive theme $"Wrote %s{signaturePath}")
+
+        // Until Telplin edits the project itself, the build does not know about the new files.
+        printfn "%s" (attention theme "The signature files are not part of the project yet.")
+
+        printfn
+            "%s"
+            (attention
+                theme
+                "List each one in the project file directly before its implementation file, as <Compile Include=\"File.fsi\" />.")
+
+        if verified then 0 else 1
+    else
+        eprintfn "%s" (negative theme "No signature file was written. Pass --force to write them anyway.")
+        1
 
 [<EntryPoint>]
 let main args =

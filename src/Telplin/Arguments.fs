@@ -11,6 +11,8 @@ type Arguments =
         Record : bool
         OnlyRecord : bool
         IncludePrivateBindings : bool
+        Verify : bool
+        Force : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
@@ -24,6 +26,8 @@ let empty : Arguments =
         Record = false
         OnlyRecord = false
         IncludePrivateBindings = false
+        Verify = true
+        Force = false
         Help = false
         Version = false
         MsBuildArguments = []
@@ -57,6 +61,20 @@ let flags : (string * string * string * string list) list =
              "No signature is generated."
          ])
         ("", "--include-private-bindings", "", [ "Include private bindings in the signature file." ])
+        ("",
+         "--no-verify",
+         "",
+         [
+             "Skip the check that the project still compiles with the new"
+             "signatures in place. Files are written without it."
+         ])
+        ("",
+         "--force",
+         "",
+         [
+             "Write the signatures even when that check fails."
+             "For debugging purposes only."
+         ])
         ("", "--version", "", [ "Print the version and exit." ])
         ("-h", "--help", "", [ "Display this page and exit." ])
     ]
@@ -104,6 +122,8 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--dry-run" :: rest -> go { arguments with DryRun = true } rest
         | "--record" :: rest -> go { arguments with Record = true } rest
         | "--only-record" :: rest -> go { arguments with OnlyRecord = true } rest
+        | "--no-verify" :: rest -> go { arguments with Verify = false } rest
+        | "--force" :: rest -> go { arguments with Force = true } rest
         | "--include-private-bindings" :: rest ->
             go
                 { arguments with
