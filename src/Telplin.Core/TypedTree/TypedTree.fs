@@ -12,6 +12,12 @@ open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
 open Telplin.Core.TypedTree.FSharpProjectExtensions
 
+/// FCS prints a `DefaultParameterValue` whose value is the default of a struct as `(default :> obj)`,
+/// which does not parse. The parameter attributes from the source are used in the end,
+/// so the text only needs to be parseable.
+let sanitizeSignatureText (sigText : string) : string =
+    sigText.Replace ("(default :> obj)", "null")
+
 type ISourceText with
 
     member x.GetContentAt (range : range) : string =
@@ -90,7 +96,7 @@ type TypedTreeInfoResolver
 
                 match sigTextOpt with
                 | None -> Error $"No sig text for %A{mfv}"
-                | Some sigText -> Ok sigText
+                | Some sigText -> Ok (sanitizeSignatureText sigText)
 
         with ex ->
             Error ex.Message
@@ -105,6 +111,7 @@ type TypedTreeInfoResolver
                     match symbolUse.Symbol with
                     | :? FSharpMemberOrFunctionOrValue as mfv when mfv.CompiledName = ".ctor" ->
                         mfv.GetValSignatureText (symbolUse.DisplayContext, symbolUse.Range)
+                        |> Option.map sanitizeSignatureText
                     | _ -> None
                 )
 

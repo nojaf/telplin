@@ -1283,3 +1283,28 @@ module Telplin
 type A =
     member Foo: unit -> unit
 """
+
+[<Test>]
+let ``optional parameter with a Nullable default value, 348`` () =
+    assertSignature
+        """
+module Test
+
+open System
+open System.Runtime.InteropServices
+
+type A =
+    static member B([<Optional; DefaultParameterValue(Nullable<TimeSpan>())>] expiration: Nullable<TimeSpan>) =
+        expiration
+"""
+        """
+module Test
+
+open System
+open System.Runtime.InteropServices
+
+[<Class>]
+type A =
+    static member B:
+        [<Optional; DefaultParameterValue(Nullable<TimeSpan>())>] expiration: Nullable<TimeSpan> -> Nullable<TimeSpan>
+"""

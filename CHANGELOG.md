@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+* A member with a `[<DefaultParameterValue>]` whose value is the default of a struct, such as `Nullable<TimeSpan>()`, no longer fails to parse. [#348](https://github.com/nojaf/telplin/issues/348)
+
 ## [0.14.0] - 2026-08-30
 
 ### Changed
