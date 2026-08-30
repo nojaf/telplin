@@ -125,11 +125,26 @@ let removePrivateKeywords (code : string) (ranges : FSharp.Compiler.Text.range l
 
     String.Join (newline, lines), ranges.Length
 
+/// The project or response file a run is about. A folder stands for the one project file in it;
+/// with none or several there is nothing to pick, and the run says so rather than guess.
+let resolveInput (input : string) : Result<string, string> =
+    if File.Exists input then
+        Ok input
+    elif Directory.Exists input then
+        match Directory.GetFiles (input, "*.fsproj") |> Array.sort with
+        | [| project |] -> Ok project
+        | [||] -> Error $"There is no project file (.fsproj) in \"%s{input}\"."
+        | projects ->
+            let listed = projects |> Array.map (sprintf "  %s") |> String.concat "\n"
+            Error $"\"%s{input}\" holds more than one project file, name the one to use:\n%s{listed}"
+    else
+        Error $"Input \"%s{input}\" does not exist."
+
 let run (arguments : Arguments.Arguments) : int =
-    match arguments.Input with
-    | None -> fail "No input was given. Pass a project file (.fsproj) or a response file (.rsp)."
-    | Some input when not (File.Exists input) -> fail $"Input \"%s{input}\" does not exist."
-    | Some input ->
+    match Option.map resolveInput arguments.Input with
+    | None -> fail "No input was given. Pass a project file (.fsproj), its folder, or a response file (.rsp)."
+    | Some (Error message) -> fail message
+    | Some (Ok input) ->
 
     let checker = FSharpChecker.Create ()
     let theme = forOutput ()

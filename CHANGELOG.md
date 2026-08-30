@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.13.0] - 2026-08-30
+
+### Added
+* `--only-used` leaves out let bindings that no other file of the project uses. Types, members and bindings with an attribute are kept. Only the project is looked at, so this is for files internal to a project. [#371](https://github.com/nojaf/telplin/pull/371)
+* The project is type checked before a run, and again with the new signatures in place before anything is written. `--no-verify` skips the second check, `--force` writes despite it.
+* Signature files are listed in the project file, directly before their implementation file. `--no-project` opts out.
+* The `private` keyword is removed from let bindings the signature leaves out. `--keep-private` opts out.
+* `--files` accepts a path relative to the project, such as `Api.fs` or `App/Api.fs`, from any working directory.
+* The input can be a folder that holds exactly one project file.
+
+### Changed
+* A project that does not compile is refused with its diagnostics.
+* The generated `AssemblyInfo.fs` and `AssemblyAttributes.fs` no longer get a signature file.
+
 ## [0.12.0] - 2026-08-30
 
 ### Changed

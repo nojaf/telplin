@@ -24,6 +24,8 @@ Run `telplin --help` for the full list of flags.
 4. The signature files are written next to their implementation files, and each one is listed in the project file directly before its implementation.
 5. The `private` keyword is removed from the let bindings the signature leaves out. With a signature file in place, a binding it does not mention is private whether or not it says so.
 
+The input can also be a folder that holds exactly one project file, or a response file (see below).
+
 Anything after `--` is passed to the design time build:
 
 > telplin src/App/App.fsproj -- -p:Configuration=Release
