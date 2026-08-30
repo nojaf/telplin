@@ -23,6 +23,17 @@ module SignatureCreation =
 
         UntypedTree.Writer.mkSignatureFile resolver implementation
 
+    let telplinOnlyUsed
+        includePrivateBindings
+        (otherFiles : (string * string) list)
+        (options : FSharpProjectOptions)
+        (implementation : string)
+        =
+        let resolver =
+            TypedTree.Resolver.mkResolverForCodeOnlyUsed options includePrivateBindings implementation otherFiles
+
+        UntypedTree.Writer.mkSignatureFile resolver implementation
+
     let fcs (options : FSharpProjectOptions) (implementation : string) =
         match TypedTree.Resolver.FCSSignature options implementation with
         | Choice1Of2 _ -> failwith "Could not generate a signature via FCS"

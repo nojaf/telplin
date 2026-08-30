@@ -17,15 +17,15 @@ type Outcome =
 
 // The opening tag of a Compile item, on one line, however it is closed. What is captured is the
 // indentation, so the new line matches it, and the path, so it can be resolved.
-let private compileItem : Regex =
+let compileItem : Regex =
     Regex ("""^(?<indent>[ \t]*)<Compile\s+Include\s*=\s*"(?<path>[^"]+)"[^>]*>""", RegexOptions.Compiled)
 
 /// The full path a Compile item names, resolved against the folder of the project.
-let private resolve (projectDirectory : string) (includePath : string) : string =
+let resolve (projectDirectory : string) (includePath : string) : string =
     Path.GetFullPath (Path.Combine (projectDirectory, includePath.Replace ('\\', Path.DirectorySeparatorChar)))
 
 /// Whether an Include is one literal file rather than a pattern MSBuild expands.
-let private isLiteral (includePath : string) : bool =
+let isLiteral (includePath : string) : bool =
     not (
         includePath.Contains '*'
         || includePath.Contains '?'

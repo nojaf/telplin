@@ -15,8 +15,11 @@
 
   <ItemGroup>
     <Compile Include="Theme.fs" />
+    <Compile Include="Arguments.fsi" />
     <Compile Include="Arguments.fs" />
+    <Compile Include="HelpPage.fsi" />
     <Compile Include="HelpPage.fs" />
+    <Compile Include="ProjectFile.fsi" />
     <Compile Include="ProjectFile.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

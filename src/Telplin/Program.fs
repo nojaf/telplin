@@ -4,6 +4,7 @@ open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open Telplin.Core
+open Telplin.Core.TypedTree.FSharpProjectExtensions
 open Telplin
 open Telplin.Theme
 
@@ -54,6 +55,7 @@ let resolveFile (projectOptions : FSharpProjectOptions) (file : string) : Result
 let generateSignatures
     (checker : FSharpChecker)
     (projectOptions : FSharpProjectOptions)
+    (projectResults : FSharpCheckProjectResults)
     (arguments : Arguments.Arguments)
     (sourceFiles : string array)
     : (string * string * TelplinError list) list
@@ -83,6 +85,12 @@ let generateSignatures
         let code = File.ReadAllText sourceFile
         let sourceText = SourceText.ofString code
 
+        let keepBinding =
+            if arguments.OnlyUsed then
+                TypedTree.Resolver.bindingsUsedElsewhere projectResults sourceFile
+            else
+                TypedTree.Resolver.keepEveryBinding
+
         let resolver =
             TypedTree.Resolver.mkResolverFor
                 checker
@@ -90,11 +98,32 @@ let generateSignatures
                 sourceText
                 projectOptions
                 arguments.IncludePrivateBindings
+                keepBinding
 
         let signature, errors = UntypedTree.Writer.mkSignatureFile resolver code
         Some (sourceFile, signature, errors)
     )
     |> Array.toList
+
+/// The implementation without its redundant `private` keywords, and how many were removed. Each
+/// range is one keyword on one line; the space after it goes with it.
+let removePrivateKeywords (code : string) (ranges : FSharp.Compiler.Text.range list) : string * int =
+    let newline = if code.Contains "\r\n" then "\r\n" else "\n"
+    let lines = code.Split newline
+
+    for range in List.sortByDescending (fun (r : FSharp.Compiler.Text.range) -> r.StartLine, r.StartColumn) ranges do
+        let line = lines.[range.StartLine - 1]
+        let after = range.EndColumn
+
+        let after =
+            if after < line.Length && line.[after] = ' ' then
+                after + 1
+            else
+                after
+
+        lines.[range.StartLine - 1] <- line.Substring (0, range.StartColumn) + line.Substring after
+
+    String.Join (newline, lines), ranges.Length
 
 let run (arguments : Arguments.Arguments) : int =
     match arguments.Input with
@@ -135,10 +164,11 @@ let run (arguments : Arguments.Arguments) : int =
 
     // Telplin reads types off a project that compiles. One that does not has nothing reliable to
     // say about its own signatures, so this stops here rather than producing something partial.
-    let existingErrors =
-        let result = checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+    let projectResults =
+        checker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
 
-        result.Diagnostics
+    let existingErrors =
+        projectResults.Diagnostics
         |> Array.filter (fun d -> d.Severity = FSharpDiagnosticSeverity.Error)
 
     if not (Array.isEmpty existingErrors) then
@@ -177,7 +207,8 @@ let run (arguments : Arguments.Arguments) : int =
     | Error message -> fail message
     | Ok sourceFiles ->
 
-    let signatures = generateSignatures checker projectOptions arguments sourceFiles
+    let signatures =
+        generateSignatures checker projectOptions projectResults arguments sourceFiles
 
     for fileName, _, errors in signatures do
         if not errors.IsEmpty then
@@ -229,6 +260,27 @@ let run (arguments : Arguments.Arguments) : int =
                 printfn "%s" (positive theme $"Wrote %s{signaturePath}")
                 signaturePath
             )
+
+        // With the signature in place, `private` on a binding it leaves out says nothing the
+        // signature does not. Only after verification: an implementation is only edited when the
+        // pair is known to compile.
+        if verified && not arguments.KeepPrivate && not arguments.IncludePrivateBindings then
+            for fileName, _, _ in signatures do
+                let code = File.ReadAllText fileName
+
+                match UntypedTree.Writer.redundantPrivateKeywords projectOptions.Defines code with
+                | [] -> ()
+                | ranges ->
+                    let edited, count = removePrivateKeywords code ranges
+                    File.WriteAllText (fileName, edited)
+
+                    let keywords =
+                        if count = 1 then
+                            "1 private keyword"
+                        else
+                            $"%d{count} private keywords"
+
+                    printfn "%s" (positive theme $"Removed %s{keywords} from %s{fileName}")
 
         let isProject = input.EndsWith (".fsproj", StringComparison.Ordinal)
 

@@ -14,6 +14,8 @@ type Arguments =
         Verify : bool
         Force : bool
         UpdateProject : bool
+        OnlyUsed : bool
+        KeepPrivate : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
@@ -30,6 +32,8 @@ let empty : Arguments =
         Verify = true
         Force = false
         UpdateProject = true
+        OnlyUsed = false
+        KeepPrivate = false
         Help = false
         Version = false
         MsBuildArguments = []
@@ -64,6 +68,17 @@ let flags : (string * string * string * string list) list =
          ])
         ("", "--include-private-bindings", "", [ "Include private bindings in the signature file." ])
         ("",
+         "--only-used",
+         "",
+         [
+             "Leave out let bindings that no other file of this project"
+             "uses. Only this project is looked at: a binding used by"
+             "another project, by tests, through reflection or by consumers"
+             "of a published library is not seen, so this is for files"
+             "internal to a project, not for a public API. Types, members"
+             "and bindings with an attribute are kept in full."
+         ])
+        ("",
          "--no-verify",
          "",
          [
@@ -77,6 +92,14 @@ let flags : (string * string * string * string list) list =
              "Do not list the signature files in the project file. By"
              "default each one is added directly before its implementation"
              "file, when the input is a project."
+         ])
+        ("",
+         "--keep-private",
+         "",
+         [
+             "Leave the private keyword on let bindings in the implementation"
+             "file. By default it is removed from the bindings the signature"
+             "leaves out, since the signature is what makes them private."
          ])
         ("",
          "--force",
@@ -137,6 +160,8 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--no-verify" :: rest -> go { arguments with Verify = false } rest
         | "--force" :: rest -> go { arguments with Force = true } rest
         | "--no-project" :: rest -> go { arguments with UpdateProject = false } rest
+        | "--only-used" :: rest -> go { arguments with OnlyUsed = true } rest
+        | "--keep-private" :: rest -> go { arguments with KeepPrivate = true } rest
         | "--include-private-bindings" :: rest ->
             go
                 { arguments with
@@ -171,3 +196,10 @@ let parse (args : string array) : Result<Arguments, string> =
             MsBuildArguments = msbuild
         }
         own
+    |> Result.bind (fun arguments ->
+        if arguments.OnlyUsed && arguments.IncludePrivateBindings then
+            Error
+                "--only-used and --include-private-bindings contradict each other: one leaves bindings out, the other puts more in."
+        else
+            Ok arguments
+    )
