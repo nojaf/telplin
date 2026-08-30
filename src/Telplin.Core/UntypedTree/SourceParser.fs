@@ -44,6 +44,15 @@ let (|PrivateConstructor|_|) (implicitCtor : ImplicitConstructorNode) =
     | _ -> ValueNone
 
 [<return : Struct>]
+let (|PrivateNestedModule|_|) (mdl : ModuleDecl) =
+    match mdl with
+    | ModuleDecl.NestedModule node ->
+        match node.Accessibility with
+        | Some Private -> ValueSome ()
+        | _ -> ValueNone
+    | _ -> ValueNone
+
+[<return : Struct>]
 let (|PrivateMemberDefn|_|) md =
     match md with
     | MemberDefn.ExplicitCtor node ->

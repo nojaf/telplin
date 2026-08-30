@@ -26,7 +26,7 @@ type T =
 """
 
 [<Test>]
-let ``a nested module whose only declaration cannot be converted is kept, 72`` () =
+let ``a nested module whose only declaration cannot be converted is left out, 72`` () =
     assertPartialSignature
         1
         """
@@ -39,9 +39,6 @@ let x = 1
 """
         """
 module Telplin
-
-module M =
-    begin end
 
 val x: int
 """

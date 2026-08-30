@@ -19,6 +19,7 @@
     <Compile Include="PrivateKeywordTests.fs" />
     <Compile Include="XmlDocTests.fs" />
     <Compile Include="PartialSignatureTests.fs" />
+    <Compile Include="VerifyProjectTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
