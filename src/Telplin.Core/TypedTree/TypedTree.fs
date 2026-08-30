@@ -2,6 +2,8 @@
 
 #nowarn "57"
 
+open System
+open System.IO
 open System.Text
 open System.Collections.Concurrent
 open FSharp.Compiler.Diagnostics
@@ -43,10 +45,17 @@ let inMemoryChecker =
     FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
 
 type TypedTreeInfoResolver
-    (defines, includePrivateBindings, sourceText : ISourceText, checkFileResults : FSharpCheckFileResults)
+    (
+        defines,
+        includePrivateBindings,
+        keepBinding : range -> bool,
+        sourceText : ISourceText,
+        checkFileResults : FSharpCheckFileResults
+    )
     =
     member val Defines = defines
     member val IncludePrivateBindings = includePrivateBindings
+    member _.KeepBinding (nameRange : range) : bool = keepBinding nameRange
 
     member _.GetValText (name, range : range, predicate) =
         try
@@ -142,7 +151,58 @@ type TypedTreeInfoResolver
         with ex ->
             Error ex.Message
 
-let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOptions includePrivateBindings =
+/// Every binding is kept.
+let keepEveryBinding (_ : range) : bool = true
+
+/// The module-level bindings of `sourceFile` that some other file of the project uses, as a test
+/// on the range of a binding's name. What is asked is whether a use exists outside the file: a
+/// binding only its own file calls has no reason to be in the signature, omitting it makes it
+/// private. Members and types are not looked at, they are always kept.
+let bindingsUsedElsewhere (projectResults : FSharpCheckProjectResults) (sourceFile : string) : range -> bool =
+    let sameFile (a : string) (b : string) =
+        String.Equals (Path.GetFullPath a, Path.GetFullPath b, StringComparison.OrdinalIgnoreCase)
+
+    let declarations =
+        projectResults.GetAllUsesOfAllSymbols ()
+        |> Array.choose (fun symbolUse ->
+            match symbolUse.Symbol with
+            | :? FSharpMemberOrFunctionOrValue as mfv when
+                mfv.IsModuleValueOrMember
+                && not mfv.IsMember
+                && not symbolUse.IsFromDefinition
+                && not (sameFile symbolUse.FileName sourceFile)
+                && sameFile mfv.DeclarationLocation.FileName sourceFile
+                ->
+                Some mfv.DeclarationLocation
+            // A match on `A.Even` is a use of the case, not of the binding that defines it. The
+            // case is declared inside the binding's name, `(|Even|Odd|)`, so it matches the same way.
+            | :? FSharpActivePatternCase as case when
+                not symbolUse.IsFromDefinition
+                && not (sameFile symbolUse.FileName sourceFile)
+                && sameFile case.DeclarationLocation.FileName sourceFile
+                ->
+                Some case.DeclarationLocation
+            | _ -> None
+        )
+
+    fun (nameRange : range) ->
+        // The declaration range of a value is its identifier. Matching on the line and on the
+        // column falling inside the name is forgiving of the bars around an active pattern.
+        declarations
+        |> Array.exists (fun declaration ->
+            declaration.StartLine = nameRange.StartLine
+            && declaration.StartColumn >= nameRange.StartColumn
+            && declaration.StartColumn <= nameRange.EndColumn
+        )
+
+let mkResolverFor
+    (checker : FSharpChecker)
+    sourceFileName
+    sourceText
+    projectOptions
+    includePrivateBindings
+    (keepBinding : range -> bool)
+    =
     let _, checkFileAnswer =
         checker.ParseAndCheckFileInProject (sourceFileName, 1, sourceText, projectOptions)
         |> Async.RunSynchronously
@@ -156,7 +216,14 @@ let mkResolverFor (checker : FSharpChecker) sourceFileName sourceText projectOpt
         match firstErrorDiag with
         | Some diag ->
             failwithf $"Type-checking %s{projectOptions.ProjectFileName} lead to errors. The first one being %A{diag}"
-        | None -> TypedTreeInfoResolver (projectOptions.Defines, includePrivateBindings, sourceText, checkFileResults)
+        | None ->
+            TypedTreeInfoResolver (
+                projectOptions.Defines,
+                includePrivateBindings,
+                keepBinding,
+                sourceText,
+                checkFileResults
+            )
     | FSharpCheckFileAnswer.Aborted -> failwith $"type checking aborted for %s{sourceFileName}"
 
 let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : string) : TypedTreeInfoResolver =
@@ -169,7 +236,47 @@ let mkResolverForCode projectOptions (includePrivateBindings : bool) (code : str
 
     let sourceText = SourceText.ofString code
 
-    mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions includePrivateBindings
+    mkResolverFor inMemoryChecker sourceFileName sourceText projectOptions includePrivateBindings keepEveryBinding
+
+/// A resolver for the first file of a small in-memory project, keeping only the bindings the other
+/// files use. This is the seam the tests use for `--only-used`; the console application computes
+/// the same from the project on disk.
+let mkResolverForCodeOnlyUsed
+    projectOptions
+    (includePrivateBindings : bool)
+    (code : string)
+    (otherFiles : (string * string) list)
+    : TypedTreeInfoResolver
+    =
+    let sourceFileName = "A.fs"
+    let files = (sourceFileName, code) :: otherFiles
+
+    for name, content in files do
+        fileCache.[name] <- SourceText.ofString content
+
+    let projectOptions : FSharpProjectOptions =
+        { projectOptions with
+            SourceFiles = files |> List.map fst |> List.toArray
+        }
+
+    let projectResults =
+        inMemoryChecker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+
+    let keepBinding = bindingsUsedElsewhere projectResults sourceFileName
+
+    let resolver =
+        mkResolverFor
+            inMemoryChecker
+            sourceFileName
+            (SourceText.ofString code)
+            projectOptions
+            includePrivateBindings
+            keepBinding
+
+    for name, _ in files do
+        fileCache.TryRemove name |> ignore
+
+    resolver
 
 let filterDiagnostics diagnostics =
     diagnostics
@@ -233,6 +340,47 @@ let typeCheckForPair projectOptions implementation signature =
         | FSharpCheckFileAnswer.Succeeded checkFileResults -> yield! checkFileResults.Diagnostics
     |]
     |> filterDiagnostics
+
+/// Type check the whole project with each signature placed in front of its implementation file.
+/// The signatures are served from memory, every other file is read from disk. Only errors are
+/// returned: a warning the project already had is not something the signatures introduced.
+let typeCheckProjectWithSignatures (projectOptions : FSharpProjectOptions) (signatures : (string * string) list) =
+    let signaturePaths =
+        signatures
+        |> List.map (fun (implementation, signature) ->
+            let signaturePath = Path.ChangeExtension (implementation, ".fsi")
+            fileCache.[signaturePath] <- SourceText.ofString signature
+            implementation, signaturePath
+        )
+        |> Map.ofList
+
+    let provided = signaturePaths |> Map.values |> Set.ofSeq
+
+    let sourceFiles =
+        projectOptions.SourceFiles
+        |> Array.collect (fun file ->
+            if provided.Contains file then
+                // Already listed in the project, it is placed again in front of its implementation.
+                [||]
+            else
+                match Map.tryFind file signaturePaths with
+                | Some signaturePath -> [| signaturePath ; file |]
+                | None -> [| file |]
+        )
+
+    let projectOptions =
+        { projectOptions with
+            SourceFiles = sourceFiles
+        }
+
+    let result =
+        inMemoryChecker.ParseAndCheckProject projectOptions |> Async.RunSynchronously
+
+    for signaturePath in provided do
+        fileCache.TryRemove signaturePath |> ignore
+
+    result.Diagnostics
+    |> Array.filter (fun d -> d.Severity = FSharpDiagnosticSeverity.Error)
 
 let FCSSignature options implementation =
     let projectOptions : FSharpProjectOptions =

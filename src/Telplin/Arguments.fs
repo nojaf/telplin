@@ -11,6 +11,11 @@ type Arguments =
         Record : bool
         OnlyRecord : bool
         IncludePrivateBindings : bool
+        Verify : bool
+        Force : bool
+        UpdateProject : bool
+        OnlyUsed : bool
+        KeepPrivate : bool
         Help : bool
         Version : bool
         MsBuildArguments : string list
@@ -24,6 +29,11 @@ let empty : Arguments =
         Record = false
         OnlyRecord = false
         IncludePrivateBindings = false
+        Verify = true
+        Force = false
+        UpdateProject = true
+        OnlyUsed = false
+        KeepPrivate = false
         Help = false
         Version = false
         MsBuildArguments = []
@@ -57,6 +67,47 @@ let flags : (string * string * string * string list) list =
              "No signature is generated."
          ])
         ("", "--include-private-bindings", "", [ "Include private bindings in the signature file." ])
+        ("",
+         "--only-used",
+         "",
+         [
+             "Leave out let bindings that no other file of this project"
+             "uses. Only this project is looked at: a binding used by"
+             "another project, by tests, through reflection or by consumers"
+             "of a published library is not seen, so this is for files"
+             "internal to a project, not for a public API. Types, members"
+             "and bindings with an attribute are kept in full."
+         ])
+        ("",
+         "--no-verify",
+         "",
+         [
+             "Skip the check that the project still compiles with the new"
+             "signatures in place. Files are written without it."
+         ])
+        ("",
+         "--no-project",
+         "",
+         [
+             "Do not list the signature files in the project file. By"
+             "default each one is added directly before its implementation"
+             "file, when the input is a project."
+         ])
+        ("",
+         "--keep-private",
+         "",
+         [
+             "Leave the private keyword on let bindings in the implementation"
+             "file. By default it is removed from the bindings the signature"
+             "leaves out, since the signature is what makes them private."
+         ])
+        ("",
+         "--force",
+         "",
+         [
+             "Write the signatures even when that check fails."
+             "For debugging purposes only."
+         ])
         ("", "--version", "", [ "Print the version and exit." ])
         ("-h", "--help", "", [ "Display this page and exit." ])
     ]
@@ -83,8 +134,10 @@ let private distance (a : string) (b : string) : int =
 
 let suggestion (token : string) : string option =
     flags
-    |> List.map (fun (_, long, _, _) -> long, distance (token.ToLowerInvariant ()) long)
-    |> List.filter (fun (_, cost) -> cost <= 3)
+    |> List.choose (fun (_, long, _, _) ->
+        let cost = distance (token.ToLowerInvariant ()) long
+        if cost <= 3 then Some (long, cost) else None
+    )
     |> List.sortBy snd
     |> List.tryHead
     |> Option.map fst
@@ -104,6 +157,11 @@ let parse (args : string array) : Result<Arguments, string> =
         | "--dry-run" :: rest -> go { arguments with DryRun = true } rest
         | "--record" :: rest -> go { arguments with Record = true } rest
         | "--only-record" :: rest -> go { arguments with OnlyRecord = true } rest
+        | "--no-verify" :: rest -> go { arguments with Verify = false } rest
+        | "--force" :: rest -> go { arguments with Force = true } rest
+        | "--no-project" :: rest -> go { arguments with UpdateProject = false } rest
+        | "--only-used" :: rest -> go { arguments with OnlyUsed = true } rest
+        | "--keep-private" :: rest -> go { arguments with KeepPrivate = true } rest
         | "--include-private-bindings" :: rest ->
             go
                 { arguments with
@@ -138,3 +196,10 @@ let parse (args : string array) : Result<Arguments, string> =
             MsBuildArguments = msbuild
         }
         own
+    |> Result.bind (fun arguments ->
+        if arguments.OnlyUsed && arguments.IncludePrivateBindings then
+            Error
+                "--only-used and --include-private-bindings contradict each other: one leaves bindings out, the other puts more in."
+        else
+            Ok arguments
+    )

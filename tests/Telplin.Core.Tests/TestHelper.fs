@@ -8,7 +8,7 @@ open CliWrap.Buffered
 open NUnit.Framework
 open Telplin.Core
 
-let private shouldEqualWithPrepend (expected : string) (actual : string) =
+let shouldEqualWithPrepend (expected : string) (actual : string) =
     let actual = String.Concat ("\n", actual.Replace ("\r", ""))
     let expected = expected.Replace ("\r", "")
     Assert.That (actual, Is.EqualTo expected)

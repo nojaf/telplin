@@ -557,6 +557,12 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             let valKw = mtn "val"
             let name = getLastIdentFromList name
 
+            // A binding with an attribute is there for something outside the compiler to find,
+            // an entry point, a test, a literal, so it is kept whether or not a file uses it.
+            if bindingNode.Attributes.IsNone && not (resolver.KeepBinding name.Range.FCSRange) then
+                ModuleDeclResult.None
+            else
+
             let valNodeResult =
                 resolver.GetValText (name.Text, name.Range.FCSRange)
                 |> Result.bind mkValFromString
@@ -740,3 +746,24 @@ let mkSignatureFile (resolver : TypedTreeInfoResolver) (code : string) : string 
 
     let code = CodeFormatter.FormatOakAsync signatureOak |> Async.RunSynchronously
     code, errors
+
+/// The `private` keywords on module-level let bindings, as ranges in the implementation file.
+/// With a signature file next to it, a binding the signature leaves out is private whether or not
+/// it says so, and the keyword is noise. Members are not touched.
+let redundantPrivateKeywords (defines : string list) (code : string) : FSharp.Compiler.Text.range list =
+    let ast, _diagnostics =
+        Fantomas.FCS.Parse.parseFile false (SourceText.ofString code) defines
+
+    let oak = CodeFormatter.TransformAST (ast, code)
+
+    let rec ofDecl (decl : ModuleDecl) : FSharp.Compiler.Text.range list =
+        match decl with
+        | ModuleDecl.TopLevelBinding binding ->
+            match binding.Accessibility with
+            | Some keyword when keyword.Text = "private" -> [ keyword.Range.FCSRange ]
+            | _ -> []
+        | ModuleDecl.NestedModule nested -> List.collect ofDecl nested.Declarations
+        | _ -> []
+
+    oak.ModulesOrNamespaces
+    |> List.collect (fun mdn -> List.collect ofDecl mdn.Declarations)

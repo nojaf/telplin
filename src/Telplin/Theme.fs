@@ -47,6 +47,8 @@ let flagName (theme : Theme) (text : string) : string = decorate theme "1;38;5;2
 let placeholder (theme : Theme) (text : string) : string = decorate theme "38;5;245" text
 let muted (theme : Theme) (text : string) : string = decorate theme "2" text
 let negative (theme : Theme) (text : string) : string = decorate theme "31" text
+let positive (theme : Theme) (text : string) : string = decorate theme "32" text
+let attention (theme : Theme) (text : string) : string = decorate theme "33" text
 
 let visibleLength (text : string) : int = escapeSequence.Replace(text, "").Length
 

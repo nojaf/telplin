@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
   attestations: write
@@ -35,10 +35,11 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      - name: Push to NuGet
+      - name: Push to NuGet and create the GitHub release
         run: dotnet fsi build.fsx --push
         env:
           NUGET_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
