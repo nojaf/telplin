@@ -10,7 +10,7 @@ open Telplin.Core.Tests.TestHelper
 [<Test>]
 let ``unused binding promoted to an error by the project does not fail the check`` () =
     let implementationPath =
-        Path.Combine (Path.GetTempPath (), $"{Path.GetRandomFileName ()}.fs")
+        Path.Combine (Path.GetTempPath (), $"%s{Path.GetRandomFileName ()}.fs")
 
     File.WriteAllText (
         implementationPath,

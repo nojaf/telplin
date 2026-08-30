@@ -39,7 +39,7 @@ let stripModuleSuffixQualifiers (mfv : FSharpMemberOrFunctionOrValue) (sigText :
     (sigText, enclosingModulesWithSuffix mfv.DeclaringEntity)
     ||> List.fold (fun text name ->
         // Only a leading segment: not `Other.Telplin.V`, and not `MyTelplin.V`.
-        let pattern = $"(?<![\\w.`]){Regex.Escape name}\\."
+        let pattern = $"(?<![\\w.`])%s{Regex.Escape name}\\."
         Regex.Replace (text, pattern, "")
     )
 
