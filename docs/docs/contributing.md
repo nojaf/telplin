@@ -56,6 +56,19 @@ This will build the solution, run all unit tests and do everything that the CI b
 dotnet fsi build.fsx
 ```
 
+## Troubleshooting scripts
+
+The `scripts` folder holds F# scripts that show the intermediate steps of a signature run. They use the NuGet packages pinned in `Directory.Packages.props`, no build of Fantomas or FCS is needed. Each takes a file path or the source on stdin.
+
+```shell
+# what FCS gives Telplin per binding or member (GetValSignatureText), add --fcs for GenerateSignature
+scripts/symbols.fsx input.fs
+# the Fantomas Oak of the source, or of one FCS member line with --member
+scripts/oak.fsx input.fs
+# run the locally built Telplin.Core: signature, errors and the diagnostics of both files together
+dotnet build src/Telplin.Core && scripts/telplin.fsx input.fs
+```
+
 ## Documentation &amp; Online tool
 
 You can run `dotnet fsi build.fsx -p Watch` to launch the online tool (<small>front-end &amp; back-end</small>) and the documentation.

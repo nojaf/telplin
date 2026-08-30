@@ -101,6 +101,47 @@ let createGithubRelease (ctx : Internal.StageContext) : Async<int> =
             return 1
     }
 
+/// Compile the troubleshooting scripts in `scripts/` without running them, so a rename in `src/`
+/// that one of them refers to is caught here and not the next time somebody reaches for it.
+/// A script another one `#load`s is left out: it is compiled as part of what loads it.
+/// They reference the debug build of Telplin.Core, which the stage builds first.
+let checkScripts (ctx : Internal.StageContext) : Async<int> =
+    async {
+        let folder = __SOURCE_DIRECTORY__ </> "scripts"
+        let scripts = Directory.EnumerateFiles (folder, "*.fsx") |> List.ofSeq
+        let loadDirective = Text.RegularExpressions.Regex "^\\s*#load\\s+\"([^\"]+)\""
+
+        let loaded =
+            scripts
+            |> List.collect (fun script ->
+                File.ReadLines script
+                |> Seq.choose (fun line ->
+                    let m = loadDirective.Match line
+                    if m.Success then
+                        Some (Path.GetFullPath (folder </> m.Groups.[1].Value))
+                    else
+                        None
+                )
+                |> List.ofSeq
+            )
+            |> Set.ofList
+
+        let mutable failed = 0
+
+        for script in scripts do
+            if not (loaded.Contains (Path.GetFullPath script)) then
+                let name = Path.GetRelativePath (__SOURCE_DIRECTORY__, script)
+                let! result = ctx.RunCommand $"dotnet fsi --typecheck-only --nologo \"%s{script}\""
+
+                match result with
+                | Ok () -> printfn "%s compiles." name
+                | Error _ ->
+                    printfn "%s does not compile." name
+                    failed <- failed + 1
+
+        return (if failed = 0 then 0 else 1)
+    }
+
 pipeline "Build" {
     workingDir __SOURCE_DIRECTORY__
     stage "clean" {
@@ -124,6 +165,10 @@ pipeline "Build" {
     stage "restore" { run "dotnet restore -tl" }
     stage "build" { run "dotnet build --no-restore -c Release ./telplin.sln -tl" }
     stage "test" { run "dotnet test --no-restore --no-build -c Release -tl" }
+    stage "scripts" {
+        run "dotnet build --no-restore -c Debug ./src/Telplin.Core/Telplin.Core.fsproj -tl"
+        run checkScripts
+    }
     stage "pack" { run "dotnet pack ./src/Telplin/Telplin.fsproj -c Release -tl" }
     stage "docs" {
         stage "client" {
