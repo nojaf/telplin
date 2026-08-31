@@ -1,26 +1,31 @@
-﻿---
+---
 index: 1
 ---
+
 # Motivation
+
+Introducing signature files to an existing code base is tedious by hand. Writing the signatures is only half the work: you also have to decide what belongs in them, and the implementation files deserve a cleanup once the signatures are in charge.
+
+Telplin does all of that in one verified run:
+
+- A signature is generated for every implementation file, faithful to how the original source is written.
+- Each signature exposes only what the rest of the project actually uses. A module-level binding no other file touches is left out, which makes it private.
+- The implementation files are cleaned up afterwards: the now-redundant `private` keywords are dropped, and the XML doc comments move to the signature file, the copy your tooling reads.
+- Nothing is written until the whole project type checks again with the new signatures in place.
+
+The result is a reviewable diff that pins down the actual API of every file, derived from the compiler's own type information rather than guesswork. Every default has an opt-out flag, see [Usage](./usage.html).
 
 ## The merits of signature files
 
-[Signature files](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/signature-files) have three significant benefits to an F# code base.  
+Beyond documenting an API, [signature files](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/signature-files) buy an F# code base a few concrete things.
 
-### References assemblies
+### Reference assemblies
 
-In `dotnet` 7, F# supports [references assemblies](https://learn.microsoft.com/en-us/dotnet/standard/assembly/reference-assemblies).  
-These can be produced by adding `<ProduceReferenceAssembly>true</ProduceReferenceAssembly>` to your `fsproj`.
+[Reference assemblies](https://learn.microsoft.com/en-us/dotnet/standard/assembly/reference-assemblies) (`<ProduceReferenceAssembly>true</ProduceReferenceAssembly>` in the `fsproj`) let a build skip recompiling downstream projects when the public API did not change. That check hinges on a stable [mvid](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.module.moduleversionid), and without signature files it is fragile in F#: adding a `let private` binding can change the `mvid` even though the public API did not move. With signature files in place, the `mvid` only changes when a signature changes.
 
-An important part of a reference assembly is the generated [mvid](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.module.moduleversionid?view=net-7.0).  
-This `mvid` should only change when the public API changes. Alas, this doesn't always work in F# code. Adding a new `let private` binding could potentially influence the `mvid`, even though the public API didn't change.  
-When signature files are used, the `mvid` does not change because the public API would only change when the signature changes.
+### A snappier IDE
 
-### Background checker speed up
-
-When `enablePartialTypeChecking` is enabled in the `F# Checker`, your IDE will skip the typechecking of implementation files that are backed by a signature, when type information is requested for a file.
-
-So imagine the following file structure:
+With partial type checking (`enablePartialTypeChecking` in the F# checker), the background checker of your IDE skips implementation files that are backed by a signature. Imagine the following file structure:
 
 ```
 A.fsi
@@ -31,28 +36,21 @@ C.fs
 D.fs
 ```
 
-If you open file `D.fs`, your editor will request type information for `D.fs` and it will need to know what happened in all the files prior to `D.fs`.  
-As signature files expose all the same information, the background compiler can skip over `A.fs` and `B.fs`. Because `A.fsi` and `B.fsi`, will contain the same information.  
-This improvement can make the IDE feel a lot snappier when working in a large codebase.
+Opening `D.fs` requires type information for every file before it, but `A.fs` and `B.fs` can be skipped: their signatures carry the same information. In a large code base this makes the editor feel a lot snappier.
 
-### Compilation improvement
+### Faster compilation
 
-In [dotnet/fsharp#14494](https://github.com/dotnet/fsharp/pull/14494), a new feature was introduced to optimize the compiler. If an implementation file is backed by a signature file, the verification of whether the implementation and its signature match will be done in parallel.  
-If a file relies on a backed file as a dependency, it can leverage the signature information to perform self-type checking. This approach not only improves efficiency but also significantly speeds up the type-checking process compared to checking the implementation file alone.  
-This feature will be part of dotnet `7.0.4xx` and can be enabled by adding `<OtherFlags>--test:GraphBasedChecking</OtherFlags>` to your `fsproj`.
+[Graph-based type checking](https://github.com/dotnet/fsharp/pull/14494) (`<ParallelCompilation>true</ParallelCompilation>` in the `fsproj`) lets the compiler check files in parallel. Signature files help twice: an implementation is verified against its own signature in parallel, and files that depend on it only need the signature to check themselves.
 
-## Why this tool?
+## What about `--allsigs`?
 
-The `F#` compiler currently exposes a feature to generate signature files during a build.  
-This can be enabled by adding `<OtherFlags>--allsigs</OtherFlags>` to your `fsproj`.
+The F# compiler can generate signature files itself during a build, by adding `<OtherFlags>--allsigs</OtherFlags>` to the `fsproj`. Its output has improved considerably over the years, and it is a perfectly reasonable way to get valid signatures out of a build.
 
-So why introduce an alternative for this?
+Generating the signature is also where `--allsigs` stops, and where Telplin starts. `--allsigs` exposes every declaration as is; Telplin checks what the rest of the project actually uses and trims each signature down to that, then cleans up the implementation files, lists the signatures in the project file, and verifies the whole project before writing anything. That is nowadays the main reason to reach for it.
 
-### Typed tree only
+### Closer to the source
 
-`--allsigs` will generate a signature file based on the typed tree. This leads to some rather mixed results when you compare it to your implementation file.
-
-Example:
+Telplin also stays closer to how the implementation is written. Given
 
 ```fsharp
 module MyNamespace.MyModule
@@ -71,41 +69,51 @@ type Foo() =
     member this.CollectKeys(d: IDictionary<string, string>) = d.Keys
 ```
 
-Leads to
+`--allsigs` produces
 
 ```fsharp
-namespace MyNamespace
-    
-    module MyModule =
-        
-        [<Literal>]
-        val Warning: string = "Some warning"
-        
-        type Foo =
-            
-            new: unit -> Foo
-            
-            [<System.Obsolete ("Some warning")>]
-            member Bar: x: int -> int
-            
-            member Barry: x: int * y: int -> int
-            
-            member
-              CollectKeys: d: System.Collections.Generic.IDictionary<string,
-                                                                     string>
-                             -> System.Collections.Generic.ICollection<string>
+module MyNamespace.MyModule
+
+[<Literal>]
+val Warning: string = "Some warning"
+
+type Foo =
+
+    new: unit -> Foo
+
+    [<System.Obsolete (Warning)>]
+    member Bar: x: int -> int
+
+    member Barry: x: int * y: int -> int
+
+    member
+      CollectKeys: d: System.Collections.Generic.IDictionary<string,string> ->
+                     System.Collections.Generic.ICollection<string>
 ```
 
-Syntactically this is a correct signature file, however, it is quite the departure from the source material.  
-The typed tree misses a lot of context the implementation file has.
+while Telplin writes
 
-`Telplin` works a bit different and tries to remain as faithful as possible to the original implementation file using both the `untyped` and the `typed` syntax tree.
+```fsharp
+module MyNamespace.MyModule
 
-### Faster release cycle.
+open System
+open System.Collections.Generic
 
-As the `--allsigs` flag is part of the F# compiler, this means that potential fixes to this feature are tied to `dotnet` SDK releases.  
-The release cadence of the `dotnet` SDK can be somewhat unpredictable and it could take a while before a fix finally reaches end-users.
+[<Literal>]
+val Warning: string = "Some warning"
 
-`Telplin` is a standalone tool that should be able to ship fixes shortly after they got merged.
+type Foo =
+    new: unit -> Foo
+
+    [<Obsolete(Warning)>]
+    member Bar: x: int -> int
+
+    member Barry: x: int * y: int -> int
+    member CollectKeys: d: IDictionary<string, string> -> ICollection<string>
+```
+
+Both are valid, but Telplin keeps the `open` statements, leaves types unqualified, and formats the result with Fantomas, so the signature reads like the implementation it belongs to.
+
+And since Telplin ships independently of the `dotnet` SDK, a fix lands shortly after it is merged instead of waiting for an SDK release.
 
 <tp-nav previous="./index.html" next="./usage.html"></tp-nav>

@@ -1,6 +1,7 @@
 ---
 index: 4
 ---
+
 # Contribution Guidelines
 
 ## Getting started
@@ -9,9 +10,9 @@ index: 4
 
 We recommend the following overall workflow when developing for this repository:
 
-* Fork this repository
-* Always work in your fork
-* Always keep your fork up to date
+- Fork this repository
+- Always work in your fork
+- Always keep your fork up to date
 
 Before updating your fork, run this command:
 
@@ -69,21 +70,28 @@ scripts/oak.fsx input.fs
 dotnet build src/Telplin.Core && scripts/telplin.fsx input.fs
 ```
 
+## Claude Code
+
+The repository ships a `.claude` folder for [Claude Code](https://claude.com/claude-code) users:
+
+- `/oak`, `/symbols` and `/telplin` are slash commands around the troubleshooting scripts above, so the agent can inspect the Oak, the FCS signature text and the generated signature of any snippet on its own.
+- `/telplin-issue` takes a GitHub issue url or number and walks through a signature issue end to end: fetch the issue, reproduce it with the locally built `Telplin.Core`, trim the example down and work towards a fix.
+
 ## Documentation &amp; Online tool
 
 You can run `dotnet fsi build.fsx -p Watch` to launch the online tool (<small>front-end &amp; back-end</small>) and the documentation.
 
-* docs (fsdocs): [http://localhost:7890/docs/index.html](http://localhost:7890/docs/index.html)
-* frontend (perla): [https://localhost:8900](https://localhost:8900)
-* backend (suave): [http://localhost:8906](http://localhost:8906)
+- docs (fsdocs): [http://localhost:7890/docs/index.html](http://localhost:7890/docs/index.html)
+- frontend (perla): [https://localhost:8900](https://localhost:8900)
+- backend (suave): [http://localhost:8906](http://localhost:8906)
 
 ## Pull request ground rules
 
-* Code should be formatted before commiting: `dotnet fantomas . -r`
-* Your local build needs to pass: `dotnet fsi build.fsx`
-* Use proper pull request titles. Not `Fixes #someNumber`!
-* Always aim to introduce the least amount of changes to achieve your goal.
-* Write unit tests in the same style as the existing ones. The name should start with a lowercase letter!
-* Ask questions when you are unsure 😸!
+- Code should be formatted before commiting: `dotnet fantomas . -r`
+- Your local build needs to pass: `dotnet fsi build.fsx`
+- Use proper pull request titles. Not `Fixes #someNumber`!
+- Always aim to introduce the least amount of changes to achieve your goal.
+- Write unit tests in the same style as the existing ones. The name should start with a lowercase letter!
+- Ask questions when you are unsure 😸!
 
 <tp-nav previous="./technical-overview.html"></tp-nav>
