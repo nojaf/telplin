@@ -9,7 +9,7 @@
 // --no-private  leave out private bindings (the default of the CLI is to include them here)
 // --fcs         use FCS GenerateSignature instead of Telplin, to compare
 #r "nuget: FSharp.Compiler.Service, 43.12.400"
-#r "nuget: Fantomas.Core, 8.0.0-alpha-026"
+#r "nuget: Fantomas.Core, 8.0.0-beta-001"
 #r "../artifacts/bin/Telplin.Core/debug/Telplin.Core.dll"
 #load "shared.fsx"
 #load "options.fsx"
