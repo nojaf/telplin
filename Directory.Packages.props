@@ -11,8 +11,8 @@
     <!-- Console application -->
     <PackageVersion Include="CliWrap" Version="3.10.5" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.113.0" />
-    <PackageVersion Include="Pulumi.FSharp" Version="3.113.0" />
+    <PackageVersion Include="Pulumi" Version="3.113.1" />
+    <PackageVersion Include="Pulumi.FSharp" Version="3.113.1" />
     <PackageVersion Include="Pulumi.Aws" Version="7.44.0" />
     <!-- Pulumi pins OpenTelemetry 1.9.0, which has known vulnerabilities (NU1902). -->
     <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
