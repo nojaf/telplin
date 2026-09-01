@@ -7,7 +7,7 @@
 // --signature  parse as a signature file (.fsi is detected from the file name)
 // --member     the input is a single member signature (`static member B: int -> int`);
 //              it is wrapped in `type A = ...` the way Telplin's mkMemberSigFromString does.
-#r "nuget: Fantomas.Core, 8.0.0-alpha-026"
+#r "nuget: Fantomas.Core, 8.0.0-beta-001"
 #load "shared.fsx"
 
 open Fantomas.Core
