@@ -23,10 +23,15 @@ let invocation () : string =
     match Option.ofObj Environment.ProcessPath with
     | None -> "telplin"
     | Some path ->
-        match Path.GetFileNameWithoutExtension path with
-        | "" -> "telplin"
-        | executable when String.Equals (executable, "dotnet", StringComparison.OrdinalIgnoreCase) -> "dotnet telplin"
-        | executable -> executable
+
+    let executable = Path.GetFileNameWithoutExtension path
+
+    if String.IsNullOrEmpty executable then
+        "telplin"
+    elif String.Equals (executable, "dotnet", StringComparison.OrdinalIgnoreCase) then
+        "dotnet telplin"
+    else
+        executable
 
 let examples : (string * string) list =
     [
