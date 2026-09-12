@@ -315,16 +315,8 @@ pipeline "Analyze" {
                             // same. A script that several others load is reported on once per
                             // loader, so a finding in `shared.fsx` shows up as many times as it is
                             // loaded.
-                            // Unlike `--project`, `--script` keeps the last occurrence only, so
-                            // every path goes after a single flag. Repeating the flag drops the
-                            // earlier scripts and still reports a clean run.
-                            // https://github.com/ionide/FSharp.Analyzers.SDK/issues/336
-                            let scripts =
-                                scriptsToAnalyze
-                                |> List.map (fun script -> $"\"{script}\"")
-                                |> String.concat " "
-
-                            $"--script {scripts}"
+                            for script in scriptsToAnalyze do
+                                $"--script \"{script}\""
                         ]
 
                     return! ctx.RunCommand (String.concat " " arguments)
