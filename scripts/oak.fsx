@@ -11,6 +11,7 @@
 #load "shared.fsx"
 
 open Fantomas.Core
+open Fantomas.Core.SyntaxOak
 open Shared
 
 let wrapMember (memberText : string) =
@@ -34,7 +35,7 @@ let parseOak (input : string) (isSignature : bool) (defines : string list) =
 
             match result with
             | None -> return "No Oak found for the given defines"
-            | Some (oak, _) -> return string oak
+            | Some (oak, _) -> return string<Oak> oak
         with ex ->
             return $"Error while parsing to Oak:\n%s{ex.Message}"
     }

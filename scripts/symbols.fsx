@@ -26,7 +26,7 @@ let run (args : Args) =
         |> Async.RunSynchronously
 
     match checkAnswer with
-    | FSharpCheckFileAnswer.Aborted -> printfn "Type check aborted"
+    | FSharpCheckFileAnswer.Aborted -> stdout.WriteLine "Type check aborted"
     | FSharpCheckFileAnswer.Succeeded checkResults ->
 
     let errors =
@@ -34,14 +34,14 @@ let run (args : Args) =
         |> Array.filter (fun d -> d.Severity = FSharp.Compiler.Diagnostics.FSharpDiagnosticSeverity.Error)
 
     if not (Array.isEmpty errors) then
-        printfn "== Diagnostics"
+        stdout.WriteLine "== Diagnostics"
 
         for d in errors do
             printfn "%s" (d.ToString ())
 
-        printfn ""
+        stdout.WriteLine ""
 
-    printfn "== Definitions (GetValSignatureText)"
+    stdout.WriteLine "== Definitions (GetValSignatureText)"
 
     checkResults.GetAllUsesOfAllSymbolsInFile ()
     |> Seq.filter (fun su -> su.IsFromDefinition)
@@ -67,11 +67,11 @@ let run (args : Args) =
     )
 
     if args.Flags.Contains "--fcs" then
-        printfn "\n== FCS GenerateSignature"
+        stdout.WriteLine "\n== FCS GenerateSignature"
 
         match checkResults.GenerateSignature () with
-        | None -> printfn "<none>"
-        | Some s -> printfn "%s" (string s)
+        | None -> stdout.WriteLine "<none>"
+        | Some s -> printfn "%s" (string<ISourceText> s)
 
 if isEntryScript __SOURCE_DIRECTORY__ __SOURCE_FILE__ then
     run (parseArgs fsi.CommandLineArgs.[1..])

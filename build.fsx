@@ -197,7 +197,7 @@ pipeline "Build" {
         whenCmdArg "--push"
         workingDir packageOutput
         run
-            $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key {apiKey} --skip-duplicate"
+            $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key %s{apiKey} --skip-duplicate"
     }
     stage "release" {
         whenCmdArg "--push"
@@ -259,10 +259,12 @@ let analyzerPaths (ctx : Internal.StageContext) : Async<Result<string list, stri
 
                 document.RootElement.GetProperty("Properties").EnumerateObject()
                 |> Seq.map (fun property ->
-                    match property.Value.GetString () with
-                    | null
-                    | "" -> Error $"MSBuild has no value for {property.Name}. Run `dotnet restore` first."
-                    | path -> Ok (path </> "analyzers" </> "dotnet" </> "fs")
+                    let path = property.Value.GetString ()
+
+                    if String.IsNullOrEmpty path then
+                        Error $"MSBuild has no value for %s{property.Name}. Run `dotnet restore` first."
+                    else
+                        Ok (path </> "analyzers" </> "dotnet" </> "fs")
                 )
                 |> Seq.fold
                     (fun acc next ->

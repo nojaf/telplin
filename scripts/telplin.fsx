@@ -37,7 +37,7 @@ let run (args : Args) =
     printfn "== Signature\n%s" signature
 
     if not (List.isEmpty errors) then
-        printfn "== Telplin errors"
+        stdout.WriteLine "== Telplin errors"
 
         for TelplinError (m, error) in errors do
             printfn "(%d,%d--%d,%d): %s" m.StartLine m.StartColumn m.EndLine m.EndColumn error
@@ -45,12 +45,12 @@ let run (args : Args) =
     let diagnostics = TypedTree.Resolver.typeCheckForPair options args.Source signature
 
     if not (Array.isEmpty diagnostics) then
-        printfn "== Diagnostics of implementation + signature"
+        stdout.WriteLine "== Diagnostics of implementation + signature"
 
         for d in diagnostics do
             printfn "%s" (d.ToString ())
     else
-        printfn "== Implementation + signature compile"
+        stdout.WriteLine "== Implementation + signature compile"
 
 if isEntryScript __SOURCE_DIRECTORY__ __SOURCE_FILE__ then
     run (parseArgs fsi.CommandLineArgs.[1..])

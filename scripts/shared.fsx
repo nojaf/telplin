@@ -3,6 +3,7 @@
 // so every script picks its own.
 module Shared
 
+open System
 open System.IO
 
 type Args =
@@ -32,7 +33,7 @@ let parseArgs (args : string array) : Args =
         args
         |> Array.indexed
         |> Array.choose (fun (i, a) ->
-            if a.StartsWith "--" && not (skip.Contains i) then
+            if a.StartsWith ("--", StringComparison.Ordinal) && not (skip.Contains i) then
                 Some a
             else
                 None
@@ -43,7 +44,7 @@ let parseArgs (args : string array) : Args =
         args
         |> Array.indexed
         |> Array.choose (fun (i, a) ->
-            if a.StartsWith "--" || skip.Contains i then
+            if a.StartsWith ("--", StringComparison.Ordinal) || skip.Contains i then
                 None
             else
                 Some a
@@ -55,7 +56,7 @@ let parseArgs (args : string array) : Args =
     | Some path when File.Exists path ->
         {
             Source = File.ReadAllText path
-            IsSignature = hasSignatureFlag || path.EndsWith ".fsi"
+            IsSignature = hasSignatureFlag || path.EndsWith (".fsi", StringComparison.Ordinal)
             Defines = defines
             Flags = flags
         }
