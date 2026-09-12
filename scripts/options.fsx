@@ -3,7 +3,10 @@
 // Same setup as the tests in Telplin.Core.Tests.
 module Options
 
-#r "nuget: FSharp.Compiler.Service, 43.12.400"
+// The compiler service `dotnet fsi` is itself running on, rather than a package. `#r "nuget: ..."`
+// cannot pin this one: fsi has it loaded already and only ever serves its own copy, so a version
+// above what the SDK ships fails to load and anything below is silently ignored.
+#r "FSharp.Compiler.Service.dll"
 
 open System
 open System.IO

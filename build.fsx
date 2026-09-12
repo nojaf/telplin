@@ -1,5 +1,5 @@
 #!/usr/bin/env -S dotnet fsi --
-#r "nuget: Fun.Build, 1.1.18"
+#r "nuget: Fun.Build, 1.2.0"
 #r "nuget: Fake.IO.FileSystem, 6.1.4"
 
 open System
@@ -101,43 +101,53 @@ let createGithubRelease (ctx : Internal.StageContext) : Async<int> =
             return 1
     }
 
+/// The troubleshooting scripts in `scripts/`.
+let troubleshootingScripts : string list =
+    Directory.EnumerateFiles (__SOURCE_DIRECTORY__ </> "scripts", "*.fsx")
+    |> List.ofSeq
+
+/// Of the given scripts, the ones that compile on their own: those no other script `#load`s.
+/// A loaded script is compiled as part of whatever loads it, so between them these reach them all.
+let runnableScripts (scripts : string list) : string list =
+    let loadDirective = Text.RegularExpressions.Regex "^\\s*#load\\s+\"([^\"]+)\""
+
+    let loaded =
+        scripts
+        |> List.collect (fun script ->
+            let folder = Path.GetDirectoryName script
+
+            File.ReadLines script
+            |> Seq.choose (fun line ->
+                let m = loadDirective.Match line
+
+                if m.Success then
+                    Some (Path.GetFullPath (folder </> m.Groups.[1].Value))
+                else
+                    None
+            )
+            |> List.ofSeq
+        )
+        |> Set.ofList
+
+    scripts
+    |> List.filter (fun script -> not (loaded.Contains (Path.GetFullPath script)))
+
 /// Compile the troubleshooting scripts in `scripts/` without running them, so a rename in `src/`
 /// that one of them refers to is caught here and not the next time somebody reaches for it.
-/// A script another one `#load`s is left out: it is compiled as part of what loads it.
 /// They reference the debug build of Telplin.Core, which the stage builds first.
 let checkScripts (ctx : Internal.StageContext) : Async<int> =
     async {
-        let folder = __SOURCE_DIRECTORY__ </> "scripts"
-        let scripts = Directory.EnumerateFiles (folder, "*.fsx") |> List.ofSeq
-        let loadDirective = Text.RegularExpressions.Regex "^\\s*#load\\s+\"([^\"]+)\""
-
-        let loaded =
-            scripts
-            |> List.collect (fun script ->
-                File.ReadLines script
-                |> Seq.choose (fun line ->
-                    let m = loadDirective.Match line
-                    if m.Success then
-                        Some (Path.GetFullPath (folder </> m.Groups.[1].Value))
-                    else
-                        None
-                )
-                |> List.ofSeq
-            )
-            |> Set.ofList
-
         let mutable failed = 0
 
-        for script in scripts do
-            if not (loaded.Contains (Path.GetFullPath script)) then
-                let name = Path.GetRelativePath (__SOURCE_DIRECTORY__, script)
-                let! result = ctx.RunCommand $"dotnet fsi --typecheck-only --nologo \"%s{script}\""
+        for script in runnableScripts troubleshootingScripts do
+            let name = Path.GetRelativePath (__SOURCE_DIRECTORY__, script)
+            let! result = ctx.RunCommand $"dotnet fsi --typecheck-only --nologo \"%s{script}\""
 
-                match result with
-                | Ok () -> printfn "%s compiles." name
-                | Error _ ->
-                    printfn "%s does not compile." name
-                    failed <- failed + 1
+            match result with
+            | Ok () -> printfn "%s compiles." name
+            | Error _ ->
+                printfn "%s does not compile." name
+                failed <- failed + 1
 
         return (if failed = 0 then 0 else 1)
     }
@@ -229,6 +239,11 @@ let projectsToAnalyze : string list =
     )
     |> Array.toList
 
+/// The scripts the analyzers run over: this build script and the troubleshooting scripts. They are
+/// source of this repository like anything under `src/`, and the only F# here no project compiles.
+let scriptsToAnalyze : string list =
+    runnableScripts ((__SOURCE_DIRECTORY__ </> "build.fsx") :: troubleshootingScripts)
+
 /// Where the analyzer packages were restored to. The two packages are ordinary package references,
 /// so MSBuild already knows the path of each and the version lives in Directory.Packages.props only.
 let analyzerPaths (ctx : Internal.StageContext) : Async<Result<string list, string>> =
@@ -265,6 +280,9 @@ pipeline "Analyze" {
     stage "restore" {
         run "dotnet tool restore"
         run "dotnet restore -tl"
+        // `scripts/telplin.fsx` references the debug build of Telplin.Core. Without it the script
+        // does not type check, and the analyzers have no typed tree to say anything about.
+        run "dotnet build --no-restore -c Debug ./src/Telplin.Core/Telplin.Core.fsproj -tl"
     }
     stage "analyze" {
         run (fun ctx ->
@@ -280,14 +298,31 @@ pipeline "Analyze" {
                             "dotnet fsharp-analyzers"
                             for analyzer in analyzers do
                                 $"--analyzers-path \"{analyzer}\""
-                            // Generated sources, not ours: the test SDK entry point and the per-project AssemblyInfo.
-                            "--exclude-files **/Microsoft.NET.Test.Sdk.Program.fs **/*.AssemblyInfo.fs"
+                            // Generated sources, not ours: the test SDK entry point, the per-project
+                            // AssemblyInfo, and the script NuGet writes per `#r "nuget: ..."`.
+                            "--exclude-files **/Microsoft.NET.Test.Sdk.Program.fs **/*.AssemblyInfo.fs **/.packagemanagement/**"
                             "--configuration Release"
                             "--verbosity d"
                             $"--code-root \"{__SOURCE_DIRECTORY__}\""
                             $"--report \"{report}\""
                             for project in projectsToAnalyze do
                                 $"--project \"{__SOURCE_DIRECTORY__ </> project}\""
+                            // The scripts go in the same run, so one report covers the repository.
+                            // Only the ones that compile on their own are named; the rest come along
+                            // through the `#load` that pulls them in, and are reported on all the
+                            // same. A script that several others load is reported on once per
+                            // loader, so a finding in `shared.fsx` shows up as many times as it is
+                            // loaded.
+                            // Unlike `--project`, `--script` keeps the last occurrence only, so
+                            // every path goes after a single flag. Repeating the flag drops the
+                            // earlier scripts and still reports a clean run.
+                            // https://github.com/ionide/FSharp.Analyzers.SDK/issues/336
+                            let scripts =
+                                scriptsToAnalyze
+                                |> List.map (fun script -> $"\"{script}\"")
+                                |> String.concat " "
+
+                            $"--script {scripts}"
                         ]
 
                     return! ctx.RunCommand (String.concat " " arguments)
