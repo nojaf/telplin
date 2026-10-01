@@ -18,6 +18,8 @@
     <!-- Don't create localization (en-US, etc) folders with resources -->
     <!-- https://github.com/dotnet/fsharp/issues/6007#issuecomment-547041463 -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- The provided.al2023 runtime ships without libicu, .NET aborts on startup without it. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
