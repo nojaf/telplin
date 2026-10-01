@@ -1308,3 +1308,31 @@ type A =
     static member B:
         [<Optional; DefaultParameterValue(Nullable<TimeSpan>())>] expiration: Nullable<TimeSpan> -> Nullable<TimeSpan>
 """
+
+[<Test>]
+let ``CLIEvent member, 69`` () =
+    assertSignature
+        """
+module Foo
+
+type MyClassWithCLIEvent() =
+
+    let event1 = new Event<string>()
+
+    [<CLIEvent>]
+    member this.Event1 = event1.Publish
+
+    member this.TestEvent(arg) =
+        event1.Trigger(arg)
+"""
+        """
+module Foo
+
+type MyClassWithCLIEvent =
+    new: unit -> MyClassWithCLIEvent
+
+    [<CLIEvent>]
+    member Event1: IEvent<string>
+
+    member TestEvent: arg: string -> unit
+"""

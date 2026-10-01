@@ -13,7 +13,7 @@
 // cannot pin this one: fsi has it loaded already and only ever serves its own copy, so a version
 // above what the SDK ships fails to load and anything below is silently ignored.
 #r "FSharp.Compiler.Service.dll"
-#r "nuget: Fantomas.Core, 8.0.0-beta-001"
+#r "nuget: Fantomas.Core, 8.0.5"
 #r "../artifacts/bin/Telplin.Core/debug/Telplin.Core.dll"
 #load "shared.fsx"
 #load "options.fsx"
