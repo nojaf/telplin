@@ -193,17 +193,20 @@ pipeline "Build" {
         workingDir "tool/server"
         run "dotnet lambda package"
     }
+    runIfOnlySpecified false
+}
+
+// Publish what the Build pipeline left behind: the package to NuGet and the release to GitHub.
+// This pipeline builds nothing, so the docs output of an earlier Build stays as it was.
+pipeline "Release" {
+    workingDir __SOURCE_DIRECTORY__
     stage "push" {
-        whenCmdArg "--push"
         workingDir packageOutput
         run
             $"dotnet nuget push telplin.*.nupkg --source https://api.nuget.org/v3/index.json --api-key %s{apiKey} --skip-duplicate"
     }
-    stage "release" {
-        whenCmdArg "--push"
-        run createGithubRelease
-    }
-    runIfOnlySpecified false
+    stage "release" { run createGithubRelease }
+    runIfOnlySpecified true
 }
 
 pipeline "Watch" {

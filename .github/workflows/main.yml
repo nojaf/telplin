@@ -36,7 +36,7 @@ jobs:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Push to NuGet and create the GitHub release
-        run: dotnet fsi build.fsx --push
+        run: dotnet fsi build.fsx -- -p Release
         env:
           NUGET_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
