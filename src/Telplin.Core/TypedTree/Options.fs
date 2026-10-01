@@ -107,6 +107,8 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 $"/p:NonExistentFile=\"%s{nonExistentFile}\""
                 // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1608
                 "-warnAsMessage:NU1608"
+                // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1510
+                "-warnAsMessage:NU1510"
             ]
             |> List.filter (String.IsNullOrWhiteSpace >> not)
             |> String.concat " "

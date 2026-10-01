@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.1] - 2026-10-01
+
+### Fixed
+* A project with a `PackageReference` that NuGet reports as not needed (NU1510, for example `System.Text.Json` on net10.0) no longer crashes the design time build. [#382](https://github.com/nojaf/telplin/issues/382)
+
 ## [0.17.0] - 2026-08-30
 
 ### Changed
