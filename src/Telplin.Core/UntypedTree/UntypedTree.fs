@@ -693,6 +693,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
             ExceptionDefnNode (
                 exceptionNode.XmlDoc,
                 exceptionNode.Attributes,
+                exceptionNode.ExceptionKeyword,
                 exceptionNode.Accessibility,
                 exceptionNode.UnionCase,
                 exceptionNode.WithKeyword,
