@@ -67,24 +67,34 @@ let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
     }
     |> Async.AwaitTask
 
-let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : string) =
+// https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1608
+// https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1510
+let nugetWarningsAsMessages = "-warnAsMessage:NU1608 -warnAsMessage:NU1510"
+
+/// Restore the project and, through it, every project it references. This runs once, on its own:
+/// a restore that is given a TargetFramework writes the assets file for that framework only, and
+/// a design time build needs that property.
+let restore (fsproj : FullPath) (additionalArguments : string) : Async<unit> =
+    let properties =
+        [
+            "/p:Telplin=True"
+            // See https://github.com/NuGet/Home/issues/13046
+            "/p:RestoreUseStaticGraphEvaluation=False"
+            // Avoid restoring with an existing lock file
+            "/p:RestoreLockedMode=false"
+            "/p:RestorePackagesWithLockFile=false"
+            // We trick NuGet into believing there is no lock file create, if it does exist it will try and create it.
+            "/p:NuGetLockFilePath=Telplin.lock"
+            nugetWarningsAsMessages
+        ]
+        |> String.concat " "
+
+    dotnet_msbuild fsproj $"/t:Restore %s{properties} %s{additionalArguments}"
+    |> Async.Ignore
+
+/// The design time build of a project that was restored already.
+let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (targetFramework : string) (additionalArguments : string) =
     async {
-        let! targetFrameworkJson =
-            dotnet_msbuild fsproj.FullName "--getProperty:TargetFrameworks --getProperty:TargetFramework"
-
-        let targetFramework =
-            let tf, tfs =
-                JsonDocument.Parse targetFrameworkJson
-                |> fun json -> json.RootElement.GetProperty "Properties"
-                |> fun properties ->
-                    properties.GetProperty("TargetFramework").GetString(),
-                    properties.GetProperty("TargetFrameworks").GetString()
-
-            if not (String.IsNullOrWhiteSpace tf) then
-                tf
-            else
-                tfs.Split ';' |> Array.head
-
         // When CoreCompile does not need a rebuild, MSBuild will skip that target and thus will not populate the FscCommandLineArgs items.
         // To overcome this we want to force a design time build, using the NonExistentFile property helps prevent a cache hit.
         let nonExistentFile = Path.Combine ("__NonExistentSubDir__", "__NonExistentFile__")
@@ -96,28 +106,17 @@ let mkOptionsFromDesignTimeBuildAux (fsproj : FileInfo) (additionalArguments : s
                 "/p:DesignTimeBuild=True"
                 "/p:SkipCompilerExecution=True"
                 "/p:ProvideCommandLineArgs=True"
-                // See https://github.com/NuGet/Home/issues/13046
-                "/p:RestoreUseStaticGraphEvaluation=False"
-                // Avoid restoring with an existing lock file
-                "/p:RestoreLockedMode=false"
-                "/p:RestorePackagesWithLockFile=false"
-                // We trick NuGet into believing there is no lock file create, if it does exist it will try and create it.
-                " /p:NuGetLockFilePath=Telplin.lock"
                 // Avoid skipping the CoreCompile target via this property.
                 $"/p:NonExistentFile=\"%s{nonExistentFile}\""
-                // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1608
-                "-warnAsMessage:NU1608"
-                // https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1510
-                "-warnAsMessage:NU1510"
+                nugetWarningsAsMessages
             ]
-            |> List.filter (String.IsNullOrWhiteSpace >> not)
             |> String.concat " "
 
         let targets =
             "ResolveAssemblyReferencesDesignTime,ResolveProjectReferencesDesignTime,ResolvePackageDependenciesDesignTime,FindReferenceAssembliesForReferences,_GenerateCompileDependencyCache,_ComputeNonExistentFileProperty,BeforeBuild,BeforeCompile,CoreCompile"
 
         let arguments =
-            $"/restore /t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
+            $"/t:%s{targets} %s{properties} --getItem:FscCommandLineArgs %s{additionalArguments}"
 
         let! json = dotnet_msbuild fsproj.FullName arguments
         let jsonDocument = JsonDocument.Parse json
@@ -139,6 +138,8 @@ type HighLevelFSharpProjectInfo =
     {
         FullPath : string
         ProduceReferenceAssembly : bool
+        /// The TargetFramework the design time build uses, the first one for a project with several.
+        TargetFramework : string
         FSharpProjectReferences : Set<string>
     }
 
@@ -151,15 +152,21 @@ type HighLevelFSharpProjects(projects : Set<HighLevelFSharpProjectInfo>) =
     member x.HasProject (fullPath : FullPath) : bool =
         Set.exists (fun p -> p.FullPath = fullPath) projects
 
-    member x.AllProjectPaths = projects |> Seq.map (fun hp -> hp.FullPath)
+    member x.AllProjects = projects
 
     member x.TryFind (fullPath : FullPath) : HighLevelFSharpProjectInfo option =
         projects |> Seq.tryFind (fun hp -> hp.FullPath = fullPath)
 
+/// Everything the design time build needs to know about a project up front, from one evaluation.
 let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProjectInfo> =
     async {
-        let! json = dotnet_msbuild fsproj "--getItem:ProjectReference"
+        let! json =
+            dotnet_msbuild
+                fsproj
+                "--getItem:ProjectReference --getProperty:ProduceReferenceAssembly --getProperty:TargetFramework --getProperty:TargetFrameworks"
+
         let jsonDocument = JsonDocument.Parse json
+        let properties = jsonDocument.RootElement.GetProperty "Properties"
 
         let references =
             jsonDocument.RootElement.GetProperty("Items").GetProperty("ProjectReference").EnumerateArray()
@@ -173,17 +180,28 @@ let findFSharpProjectReferences (fsproj : FullPath) : Async<HighLevelFSharpProje
             )
             |> Set.ofSeq
 
-        let! produceReferenceAssembly =
-            dotnet_msbuild fsproj "--getProperty:ProduceReferenceAssembly"
+        let produceReferenceAssembly =
+            properties.GetProperty("ProduceReferenceAssembly").GetString()
 
         let doesProduceReferenceAssembly =
             not (String.IsNullOrWhiteSpace produceReferenceAssembly)
             && produceReferenceAssembly.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
 
+        let targetFramework =
+            let tf, tfs =
+                properties.GetProperty("TargetFramework").GetString(),
+                properties.GetProperty("TargetFrameworks").GetString()
+
+            if not (String.IsNullOrWhiteSpace tf) then
+                tf
+            else
+                tfs.Split ';' |> Array.head
+
         return
             {
                 FullPath = fsproj
                 ProduceReferenceAssembly = doesProduceReferenceAssembly
+                TargetFramework = targetFramework
                 FSharpProjectReferences = references
             }
     }
@@ -250,14 +268,18 @@ let mkOptionsFromDesignTimeBuild (fsproj : string) (additionalArguments : string
         if not fsproj.Exists then
             invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
 
+        // The walk over the references only evaluates projects, it can go while the restore runs.
+        let! restored = Async.StartChild (restore fsproj.FullName additionalArguments)
+
         let! allProjects =
             collectProjectReferences fsproj.FullName HighLevelFSharpProjects.Empty
 
+        do! restored
+
         let! allProjectOptions =
-            allProjects.AllProjectPaths
-            |> Seq.map (fun fullPath ->
-                let fsproj = FileInfo fullPath
-                mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
+            allProjects.AllProjects
+            |> Seq.map (fun project ->
+                mkOptionsFromDesignTimeBuildAux (FileInfo project.FullPath) project.TargetFramework additionalArguments
             )
             |> Async.Parallel
 
@@ -292,7 +314,10 @@ let mkOptionsFromDesignTimeBuildWithoutReferences
         if not fsproj.Exists then
             invalidArg (nameof fsproj) $"\"%s{fsproj.FullName}\" does not exist."
 
-        return! mkOptionsFromDesignTimeBuildAux fsproj additionalArguments
+        let! restored = Async.StartChild (restore fsproj.FullName additionalArguments)
+        let! project = findFSharpProjectReferences fsproj.FullName
+        do! restored
+        return! mkOptionsFromDesignTimeBuildAux fsproj project.TargetFramework additionalArguments
     }
 
 let compileItems (fsproj : string) (additionalArguments : string) : Async<string array> =

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.2] - 2026-10-17
+
+### Changed
+* The project and its references are restored once, before their design time builds, and each project is evaluated once instead of three times. This makes reading a project with references faster.
+
+### Fixed
+* Running Telplin on a project no longer narrows the `obj/project.assets.json` of a referenced project that has several target frameworks to one of them, which broke the next `dotnet build --no-restore` of another framework with NETSDK1005.
+
 ## [0.17.1] - 2026-10-01
 
 ### Fixed
