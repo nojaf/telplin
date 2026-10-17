@@ -2,13 +2,6 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "fantomas": {
-      "version": "9.0.0-alpha-001",
-      "commands": [
-        "fantomas"
-      ],
-      "rollForward": false
-    },
     "amazon.lambda.tools": {
       "version": "7.0.0",
       "commands": [
@@ -27,6 +20,13 @@
       "version": "0.39.2",
       "commands": [
         "fsharp-analyzers"
+      ],
+      "rollForward": false
+    },
+    "fantomas": {
+      "version": "9.0.0-alpha-001",
+      "commands": [
+        "fantomas"
       ],
       "rollForward": false
     }
