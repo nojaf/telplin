@@ -222,7 +222,7 @@ let run (arguments : Arguments.Arguments) : int =
             Files = inputFiles @ arguments.Files
         }
 
-    let checker = FSharpChecker.Create ()
+    let checker = FSharpChecker.Create (useTransparentCompiler = true)
     let theme = forOutput ()
 
     let projectOptions =

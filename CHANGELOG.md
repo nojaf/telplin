@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+* Projects are type checked with the Transparent Compiler of FCS instead of the background compiler. It checks files that do not depend on each other in parallel, which makes a run on a project about 12 to 15% faster.
+
 ## [0.17.3] - 2026-10-23
 
 ### Changed
