@@ -53,6 +53,11 @@ let dotnet_msbuild (fsproj : FullPath) (args : string) : Async<string> =
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
         psi.UseShellExecute <- false
+
+        // The dotnet CLI blocks on sending telemetry at exit, which can take seconds on a restricted network
+        if not (psi.Environment.ContainsKey "DOTNET_CLI_TELEMETRY_OPTOUT") then
+            psi.Environment.Add ("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+
         use ps = new Process ()
         ps.StartInfo <- psi
         ps.Start () |> ignore
