@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.3] - 2026-10-23
+
+### Changed
+* The `dotnet msbuild` processes that read the project run with .NET CLI telemetry turned off (`DOTNET_CLI_TELEMETRY_OPTOUT=1`), unless that variable is already set. The CLI could block for seconds at exit while it sent telemetry on a restricted network.
+
 ## [0.17.2] - 2026-10-17
 
 ### Changed
