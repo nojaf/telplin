@@ -65,15 +65,18 @@ type ISourceText with
 
 let fileCache = ConcurrentDictionary<string, ISourceText>()
 
+/// A file that is not in the cache is read from disk. The Transparent Compiler fails on a file the
+/// document source does not return, it does not fall back to the file system.
 let documentSource fileName =
     async {
         match fileCache.TryGetValue fileName with
         | true, sourceText -> return Some sourceText
+        | false, _ when File.Exists fileName -> return Some (SourceText.ofString (File.ReadAllText fileName))
         | false, _ -> return None
     }
 
 let inMemoryChecker =
-    FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource)
+    FSharpChecker.Create (documentSource = DocumentSource.Custom documentSource, useTransparentCompiler = true)
 
 type TypedTreeInfoResolver
     (
