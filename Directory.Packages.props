@@ -33,7 +33,7 @@
     <PackageVersion Include="Thoth.Json" Version="10.5.1" />
     <PackageVersion Include="Zanaptak.TypedCssClasses" Version="1.0.0" />
     <!-- Lambda -->
-    <PackageVersion Include="Amazon.Lambda.Core" Version="3.3.0" />
+    <PackageVersion Include="Amazon.Lambda.Core" Version="3.4.0" />
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="2.2.3" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="3.0.1" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="3.0.1" />
