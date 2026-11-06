@@ -1,6 +1,6 @@
 #!/usr/bin/env -S dotnet fsi --
 #r "nuget: Fun.Build, 1.2.0"
-#r "nuget: Fake.IO.FileSystem, 6.1.4"
+#r "nuget: Fake.IO.FileSystem, 6.2.0"
 
 open System
 open System.IO

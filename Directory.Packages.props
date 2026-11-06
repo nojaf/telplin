@@ -4,23 +4,23 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Common -->
-    <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.3.3" />
+    <PackageVersion Include="Ionide.KeepAChangelog.Tasks" Version="0.4.0" />
     <PackageVersion Include="FSharp.Core" Version="[10.1.403]" />
     <PackageVersion Include="FSharp.Compiler.Service" Version="[43.12.403]" />
-    <PackageVersion Include="Fantomas.Core" Version="8.0.5" />
+    <PackageVersion Include="Fantomas.Core" Version="8.1.1" />
     <!-- Console application -->
     <PackageVersion Include="CliWrap" Version="3.10.5" />
     <!-- Deploy -->
-    <PackageVersion Include="Pulumi" Version="3.113.1" />
-    <PackageVersion Include="Pulumi.FSharp" Version="3.113.1" />
-    <PackageVersion Include="Pulumi.Aws" Version="7.44.0" />
+    <PackageVersion Include="Pulumi" Version="3.116.2" />
+    <PackageVersion Include="Pulumi.FSharp" Version="3.116.2" />
+    <PackageVersion Include="Pulumi.Aws" Version="7.53.0" />
     <!-- Pulumi pins OpenTelemetry 1.9.0, which has known vulnerabilities (NU1902). -->
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <!-- Test -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
-    <PackageVersion Include="NUnit" Version="4.6.1" />
-    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="NUnit" Version="5.0.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
     <!-- Online tool -->
     <PackageVersion Include="Fable.Browser.Url" Version="1.4.0" />
     <PackageVersion Include="Fable.Browser.WebSocket" Version="1.4.0" />
@@ -30,18 +30,18 @@
     <PackageVersion Include="Feliz.CompilerPlugins" Version="3.2.0" />
     <PackageVersion Include="Feliz" Version="3.3.3" />
     <PackageVersion Include="Feliz.UseElmish" Version="5.0.0" />
-    <PackageVersion Include="Thoth.Json" Version="10.5.1" />
+    <PackageVersion Include="Thoth.Json" Version="10.5.2" />
     <PackageVersion Include="Zanaptak.TypedCssClasses" Version="1.0.0" />
     <!-- Lambda -->
     <PackageVersion Include="Amazon.Lambda.Core" Version="3.4.0" />
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="2.3.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="3.0.1" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="3.0.1" />
-    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="10.0.11" />
-    <PackageVersion Include="Thoth.Json.System.Text.Json" Version="0.4.0" />
-    <PackageVersion Include="Suave" Version="3.4.6" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageVersion Include="Microsoft.Net.Http.Headers" Version="10.0.14" />
+    <PackageVersion Include="Thoth.Json.System.Text.Json" Version="0.5.0" />
+    <PackageVersion Include="Suave" Version="3.7.2" Condition="'$(Configuration)' == 'Debug'" />
     <!-- Analyzers -->
-    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.25.0" />
-    <PackageVersion Include="Ionide.Analyzers" Version="0.19.0" />
+    <PackageVersion Include="G-Research.FSharp.Analyzers" Version="0.26.0" />
+    <PackageVersion Include="Ionide.Analyzers" Version="0.20.0" />
   </ItemGroup>
 </Project>

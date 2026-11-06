@@ -87,9 +87,7 @@ type A =
 
         match oak.ModulesOrNamespaces.[0].Declarations.[0] with
         | ModuleDecl.TypeDefn typeDefn ->
-            let tdn = TypeDefn.TypeDefnNode typeDefn
-
-            match tdn.Members with
+            match TypeDefn.Members typeDefn with
             | [ _ctor ; MemberDefn.SigMember sigMember ] -> Ok sigMember
             | ms -> Error $"Unexpected members:%A{ms}"
 
@@ -116,9 +114,7 @@ type A =
 
         match oak.ModulesOrNamespaces.[0].Declarations.[0] with
         | ModuleDecl.TypeDefn typeDefn ->
-            let tdn = TypeDefn.TypeDefnNode typeDefn
-
-            match tdn.Members with
+            match TypeDefn.Members typeDefn with
             | [ _ctor ; MemberDefn.SigMember sigMember ] -> Ok [ sigMember ]
             | [ _ctor ; MemberDefn.SigMember getSig ; MemberDefn.SigMember setSig ] -> Ok [ getSig ; setSig ]
             | ms -> Error $"Unexpected members:%A{ms}"
@@ -139,9 +135,7 @@ let mkPrimaryConstructorFromString (primaryCtorText : string) : Result<MemberDef
 
         match oak.ModulesOrNamespaces.[0].Declarations.[0] with
         | ModuleDecl.TypeDefn typeDefn ->
-            let tdn = TypeDefn.TypeDefnNode typeDefn
-
-            match tdn.Members.[0] with
+            match (TypeDefn.Members typeDefn).[0] with
             | MemberDefn.SigMember ctor -> Ok ctor
             | ms -> Error $"Unexpected members:%A{ms}"
 
