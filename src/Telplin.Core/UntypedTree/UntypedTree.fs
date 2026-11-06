@@ -365,7 +365,9 @@ let mkTypeDefn
     (typeDefn : TypeDefn)
     : TypeDefn option * TelplinError list
     =
-    let tdn = TypeDefn.TypeDefnNode typeDefn
+    let sourceTypeName = TypeDefn.TypeName typeDefn
+    let sourceMembers = TypeDefn.Members typeDefn
+    let withKeyword = TypeDefn.WithKeyword typeDefn
 
     let typeName =
         // To overcome
@@ -376,10 +378,10 @@ let mkTypeDefn
             let hasExistingAttribute =
                 hasAnyAttribute
                     (set [| "Class" ; "ClassAttribute" ; "Struct" ; "StructAttribute" |])
-                    tdn.TypeName.Attributes
+                    sourceTypeName.Attributes
 
             let allMembersAreAbstractOrInherit =
-                tdn.Members
+                sourceMembers
                 |> List.forall (
                     function
                     | MemberDefn.AbstractSlot _
@@ -390,22 +392,22 @@ let mkTypeDefn
             match typeDefn with
             | TypeDefn.Regular _ ->
                 let hasConstructor =
-                    match tdn.TypeName.ImplicitConstructor with
+                    match sourceTypeName.ImplicitConstructor with
                     | None -> false
                     | Some PrivateConstructor -> resolver.IncludePrivateBindings
                     | Some _ -> true
 
                 if hasConstructor || hasExistingAttribute || allMembersAreAbstractOrInherit then
-                    tdn.TypeName.Attributes
+                    sourceTypeName.Attributes
                 else
-                    addAttribute "Class" tdn.TypeName.Attributes
-            | _ -> tdn.TypeName.Attributes
+                    addAttribute "Class" sourceTypeName.Attributes
+            | _ -> sourceTypeName.Attributes
 
         // To overcome: warning FS1178: The struct, record or union type is not structurally comparable because the type 'obj' does not satisfy the 'comparison' constraint.
         // Consider adding the 'NoComparison' attribute to the type to clarify that the type is not comparable
         let attributes =
             let isStructWithoutComparisonResult =
-                resolver.IsStructWithoutComparison (Type.Node tdn.TypeName.Identifier).Range.FCSRange
+                resolver.IsStructWithoutComparison (Type.Node sourceTypeName.Identifier).Range.FCSRange
 
             match isStructWithoutComparisonResult with
             | Error _ -> attributes
@@ -424,19 +426,18 @@ let mkTypeDefn
             if forceAndKeyword then
                 stn "and"
             else
-                tdn.TypeName.LeadingKeyword
+                sourceTypeName.LeadingKeyword
 
         TypeNameNode (
-            tdn.TypeName.XmlDoc,
+            sourceTypeName.XmlDoc,
             attributes,
             leadingKeyword,
-            tdn.TypeName.Accessibility,
-            tdn.TypeName.Identifier,
-            tdn.TypeName.TypeParameters,
-            tdn.TypeName.Constraints,
+            sourceTypeName.Accessibility,
+            sourceTypeName.Identifier,
+            sourceTypeName.TypeParameters,
+            sourceTypeName.Constraints,
             None,
-            tdn.TypeName.EqualsToken,
-            tdn.TypeName.WithKeyword,
+            sourceTypeName.EqualsToken,
             zeroRange
         )
 
@@ -457,7 +458,7 @@ let mkTypeDefn
     match typeDefn with
     | PrivateTypeDefnAugmentation -> None, []
     | TypeDefn.Record recordNode ->
-        let members, memberErrors = mkMembers resolver tdn.Members
+        let members, memberErrors = mkMembers resolver sourceMembers
 
         let sigRecord =
             TypeDefnRecordNode (
@@ -466,6 +467,7 @@ let mkTypeDefn
                 recordNode.OpeningBrace,
                 recordNode.Fields,
                 recordNode.ClosingBrace,
+                withKeyword,
                 members,
                 zeroRange
             )
@@ -478,34 +480,34 @@ let mkTypeDefn
         let members, memberErrors =
             let members, memberErrors = mkMembers resolver explicitNode.Body.Members
 
-            match tdn.TypeName.ImplicitConstructor with
+            match sourceTypeName.ImplicitConstructor with
             | Some PrivateConstructor when not resolver.IncludePrivateBindings -> members, memberErrors
             | None -> members, memberErrors
             | Some implicitCtor ->
-                match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
+                match mkImplicitCtor resolver sourceTypeName.Identifier implicitCtor with
                 | Error error -> members, error :: memberErrors
                 | Ok sigCtor -> sigCtor :: members, memberErrors
 
         let body =
             TypeDefnExplicitBodyNode (explicitNode.Body.Kind, members, explicitNode.Body.End, zeroRange)
 
-        let extraMembers, extraMemberErrors = mkMembers resolver tdn.Members
+        let extraMembers, extraMemberErrors = mkMembers resolver sourceMembers
 
         let sigExplicit =
-            TypeDefnExplicitNode (typeName, body, extraMembers, zeroRange)
+            TypeDefnExplicitNode (typeName, body, withKeyword, extraMembers, zeroRange)
             |> TypeDefn.Explicit
 
         Some sigExplicit, (memberErrors @ extraMemberErrors)
 
     | TypeDefn.Regular _ ->
         let members, memberErrors =
-            let members, memberErrors = mkMembers resolver tdn.Members
+            let members, memberErrors = mkMembers resolver sourceMembers
 
-            match tdn.TypeName.ImplicitConstructor with
+            match sourceTypeName.ImplicitConstructor with
             | None -> members, memberErrors
             | Some PrivateConstructor when not resolver.IncludePrivateBindings -> members, memberErrors
             | Some implicitCtor ->
-                match mkImplicitCtor resolver tdn.TypeName.Identifier implicitCtor with
+                match mkImplicitCtor resolver sourceTypeName.Identifier implicitCtor with
                 | Error error -> members, error :: memberErrors
                 | Ok sigCtor -> sigCtor :: members, memberErrors
 
@@ -515,42 +517,45 @@ let mkTypeDefn
                 TypeDefnExplicitNode (
                     typeName,
                     TypeDefnExplicitBodyNode (stn "class", [], stn "end", zeroRange),
+                    None,
                     [],
                     zeroRange
                 )
                 |> TypeDefn.Explicit
             else
-                TypeDefnRegularNode (typeName, members, zeroRange) |> TypeDefn.Regular
+                TypeDefnRegularNode (typeName, withKeyword, members, zeroRange)
+                |> TypeDefn.Regular
 
         Some sigRegular, memberErrors
 
     | TypeDefn.Union unionNode ->
-        let members, memberErrors = mkMembers resolver tdn.Members
+        let members, memberErrors = mkMembers resolver sourceMembers
 
         let sigUnion =
-            TypeDefnUnionNode (typeName, unionNode.Accessibility, unionNode.UnionCases, members, zeroRange)
+            TypeDefnUnionNode (typeName, unionNode.Accessibility, unionNode.UnionCases, withKeyword, members, zeroRange)
             |> TypeDefn.Union
 
         Some sigUnion, memberErrors
 
     | TypeDefn.Abbrev abbrevNode ->
-        let members, memberErrors = mkMembers resolver tdn.Members
+        let members, memberErrors = mkMembers resolver sourceMembers
 
         let sigAbbrev =
-            TypeDefnAbbrevNode (typeName, abbrevNode.Type, members, zeroRange)
+            TypeDefnAbbrevNode (typeName, abbrevNode.Type, withKeyword, members, zeroRange)
             |> TypeDefn.Abbrev
 
         Some sigAbbrev, memberErrors
 
     | TypeDefn.Augmentation _ ->
-        let members, memberErrors = mkMembers resolver tdn.Members
+        let members, memberErrors = mkMembers resolver sourceMembers
 
         let sigAugmentation =
-            TypeDefnAugmentationNode (typeName, members, zeroRange) |> TypeDefn.Augmentation
+            TypeDefnAugmentationNode (typeName, withKeyword, members, zeroRange)
+            |> TypeDefn.Augmentation
 
         Some sigAugmentation, memberErrors
 
-    | TypeDefn.None _ -> Some (TypeDefn.None tdn.TypeName), []
+    | TypeDefn.None _ -> Some (TypeDefn.None sourceTypeName), []
     | TypeDefn.Enum _
     | TypeDefn.Delegate _ -> Some typeDefn, []
 
@@ -696,6 +701,7 @@ let mkModuleDecl (resolver : TypedTreeInfoResolver) (mdl : ModuleDecl) : ModuleD
                 exceptionNode.ExceptionKeyword,
                 exceptionNode.Accessibility,
                 exceptionNode.UnionCase,
+                exceptionNode.Abbreviation,
                 exceptionNode.WithKeyword,
                 sigMembers,
                 zeroRange

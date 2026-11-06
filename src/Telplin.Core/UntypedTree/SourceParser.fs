@@ -69,10 +69,8 @@ let (|PrivateMemberDefn|_|) md =
 let (|PrivateTypeDefnAugmentation|_|) typeDefn =
     match typeDefn with
     | TypeDefn.Augmentation _ ->
-        let tdn = TypeDefn.TypeDefnNode typeDefn
-
         let allMembersArePrivate =
-            tdn.Members
+            TypeDefn.Members typeDefn
             |> List.forall (
                 function
                 | PrivateMemberDefn _ -> true
